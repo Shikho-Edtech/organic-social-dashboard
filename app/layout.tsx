@@ -10,7 +10,7 @@ export const metadata = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const c = await cookies();
-  const authed = verifyAuthToken(c.get(AUTH_COOKIE)?.value || "");
+  const authed = await verifyAuthToken(c.get(AUTH_COOKIE)?.value || "");
   return (
     <html lang="en">
       <body>

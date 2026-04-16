@@ -13,8 +13,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Wrong password" }, { status: 401 });
   }
 
+  const token = await createAuthToken();
   const res = NextResponse.json({ ok: true });
-  res.cookies.set(AUTH_COOKIE, createAuthToken(), {
+  res.cookies.set(AUTH_COOKIE, token, {
     httpOnly: true,
     secure: true,
     sameSite: "lax",
