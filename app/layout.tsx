@@ -2,6 +2,7 @@ import "./globals.css";
 import Nav from "@/components/Nav";
 import { cookies } from "next/headers";
 import { verifyAuthToken, AUTH_COOKIE } from "@/lib/auth";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata = {
   title: "Shikho Organic Social",
@@ -16,6 +17,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="bg-slate-50">
         {authed && <Nav />}
         <main className="max-w-7xl mx-auto px-6 py-8">{children}</main>
+        <Analytics />
       </body>
     </html>
   );
