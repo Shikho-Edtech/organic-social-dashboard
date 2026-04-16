@@ -1,35 +1,25 @@
+import { Card } from "./Card";
+
 type Props = {
   label: string;
   value: string | number;
-  delta?: number; // percent
-  tone?: "cyan" | "green" | "orange" | "pink" | "purple" | "red" | "blue" | "teal";
+  delta?: number;
+  sublabel?: string;
 };
 
-const toneClass: Record<string, string> = {
-  cyan: "text-accent-cyan",
-  green: "text-accent-green",
-  orange: "text-accent-orange",
-  pink: "text-accent-pink",
-  purple: "text-accent-purple",
-  red: "text-accent-red",
-  blue: "text-accent-blue",
-  teal: "text-accent-teal",
-};
-
-export default function KpiCard({ label, value, delta, tone = "cyan" }: Props) {
-  const deltaText = delta !== undefined ? (delta >= 0 ? "+" : "") + delta.toFixed(1) + "%" : null;
-  const deltaColor = delta === undefined ? "" : delta > 0 ? "text-accent-green" : delta < 0 ? "text-accent-red" : "text-slate-500";
+export default function KpiCard({ label, value, delta, sublabel }: Props) {
+  const deltaColor = delta === undefined ? "" : delta > 0 ? "text-brand-green" : delta < 0 ? "text-brand-red" : "text-slate-400";
+  const deltaText = delta !== undefined ? `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%` : null;
   return (
-    <div className="bg-ink-800 rounded-lg p-4">
-      <div className="text-xs text-slate-500 uppercase tracking-wider">{label}</div>
-      <div className={`text-2xl font-bold mt-1 ${toneClass[tone]}`}>
+    <Card className="!p-5">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{label}</div>
+      <div className="text-3xl font-bold text-slate-900 mt-2">
         {typeof value === "number" ? value.toLocaleString() : value}
       </div>
-      {deltaText && (
-        <div className={`text-xs mt-1 ${deltaColor}`}>
-          {deltaText} <span className="text-slate-500">vs previous period</span>
-        </div>
-      )}
-    </div>
+      <div className="mt-2 min-h-[18px] text-xs">
+        {deltaText && <span className={deltaColor}>{deltaText}</span>}
+        {sublabel && <span className="text-slate-400 ml-1.5">{sublabel}</span>}
+      </div>
+    </Card>
   );
 }

@@ -1,192 +1,114 @@
-// "This Week" home view
-import { getPosts, getDailyMetrics, getLatestDiagnosis } from "@/lib/sheets";
-import {
-  filterPosts,
-  computeKpis,
-  daysAgo,
-  startOfWeekBDT,
-  wowDelta,
-  topByReach,
-  topByEngagement,
-  dailyReach,
-  detectRedFlags,
-  bdt,
-  reach,
-  engagementRate,
-} from "@/lib/aggregate";
+import { getPosts, getDailyMetrics } from "@/lib/sheets";
+import { filterPosts, computeKpis, dailyReach, reach, engagementRate, groupStats, wowDelta, daysAgo } from "@/lib/aggregate";
+import { resolveRange } from "@/lib/daterange";
+import PageHeader from "@/components/PageHeader";
 import KpiCard from "@/components/KpiCard";
+import { ChartCard } from "@/components/Card";
 import TrendChart from "@/components/TrendChart";
+import Donut from "@/components/Donut";
+import BarChartBase from "@/components/BarChart";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
 
-export default async function ThisWeekPage() {
-  const [posts, daily, diagnosis] = await Promise.all([
-    getPosts(),
-    getDailyMetrics(),
-    getLatestDiagnosis(),
-  ]);
+export default async function OverviewPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
+  const sp = await searchParams;
+  const range = resolveRange(sp);
 
-  const now = new Date();
-  const weekStart = startOfWeekBDT(now);
-  const lastWeekStart = new Date(weekStart);
-  lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+  const [posts, daily] = await Promise.all([getPosts(), getDailyMetrics()]);
+  const inRange = filterPosts(posts, { start: range.start, end: range.end });
+  const kpis = computeKpis(inRange);
 
-  const thisWeek = filterPosts(posts, { start: weekStart, end: now });
-  const lastWeek = filterPosts(posts, { start: lastWeekStart, end: weekStart });
+  // Previous period of same length for WoW-style delta
+  const rangeDays = Math.max(1, Math.floor((range.end.getTime() - range.start.getTime()) / 86_400_000));
+  const prevEnd = new Date(range.start);
+  const prevStart = new Date(prevEnd.getTime() - rangeDays * 86_400_000);
+  const prevRange = filterPosts(posts, { start: prevStart, end: prevEnd });
+  const prevKpis = computeKpis(prevRange);
 
-  const kpiNow = computeKpis(thisWeek);
-  const kpiPrev = computeKpis(lastWeek);
+  const reachDelta = wowDelta(kpis.total_reach, prevKpis.total_reach).pct;
+  const engDelta = wowDelta(kpis.avg_engagement_rate, prevKpis.avg_engagement_rate).pct;
+  const postsDelta = wowDelta(kpis.posts, prevKpis.posts).pct;
 
-  // Follower change from daily metrics
-  const sortedDaily = [...daily].sort((a, b) => a.date.localeCompare(b.date));
-  const last7Daily = sortedDaily.slice(-7);
-  const prev7Daily = sortedDaily.slice(-14, -7);
-  const netThisWeek = last7Daily.reduce((s, d) => s + (d.new_follows - d.unfollows), 0);
-  const netLastWeek = prev7Daily.reduce((s, d) => s + (d.new_follows - d.unfollows), 0);
-  const followersNow = sortedDaily.length ? sortedDaily[sortedDaily.length - 1].followers_total : 0;
+  // Followers from daily metrics (filtered to range)
+  const dailyInRange = daily.filter((d) => {
+    if (!d.date) return false;
+    const t = new Date(d.date);
+    return t >= range.start && t <= range.end;
+  });
+  const netFollowers = dailyInRange.reduce((s, d) => s + ((d.new_follows || 0) - (d.unfollows || 0)), 0);
+  const currentFollowers = dailyInRange.length ? dailyInRange[dailyInRange.length - 1].followers_total : (daily.length ? daily[daily.length - 1].followers_total : 0);
 
-  const reachDelta = wowDelta(kpiNow.total_reach, kpiPrev.total_reach);
-  const engDelta = wowDelta(kpiNow.avg_engagement_rate, kpiPrev.avg_engagement_rate);
-  const postsDelta = wowDelta(kpiNow.posts, kpiPrev.posts);
-  const followerDelta = wowDelta(netThisWeek, netLastWeek);
+  // Weekly reach trend
+  const trend = dailyReach(inRange).map((d) => ({ date: d.date.slice(5), value: d.reach }));
 
-  // 30-day reach trend
-  const last30 = filterPosts(posts, { start: daysAgo(30), end: now });
-  const trendData = dailyReach(last30).map((d) => ({ date: d.date.slice(5), value: d.reach }));
+  // Format distribution
+  const formatStats = groupStats(inRange, "format");
+  const formatDist = formatStats.map((s) => ({ label: s.key || "Unknown", value: s.count }));
 
-  const top = topByReach(thisWeek, 3);
-  const topEng = topByEngagement(thisWeek, 500, 3);
-  const flags = detectRedFlags(posts, daily);
+  // Content pillars
+  const pillarStats = groupStats(inRange, "content_pillar").slice(0, 10);
+  const pillarData = pillarStats.map((s) => ({ label: s.key || "Unknown", value: s.total_reach }));
+
+  // Engagement mix
+  const totalReactions = inRange.reduce((s, p) => s + (p.reactions || 0), 0);
+  const totalComments = inRange.reduce((s, p) => s + (p.comments || 0), 0);
+  const totalShares = inRange.reduce((s, p) => s + (p.shares || 0), 0);
+  const engagementMix = [
+    { label: "Reactions", value: totalReactions },
+    { label: "Comments", value: totalComments },
+    { label: "Shares", value: totalShares },
+  ];
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <div className="text-xs text-slate-500 uppercase tracking-wider">Week of {weekStart.toISOString().slice(0, 10)}</div>
-        <h1 className="text-2xl font-bold text-slate-100 mt-1">This Week</h1>
+    <div>
+      <PageHeader title="Overview" subtitle="Key performance at a glance" dateLabel={range.label} />
+
+      {/* KPIs — 6 cards in a row */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+        <KpiCard label="Posts" value={kpis.posts} delta={postsDelta} sublabel="vs prev" />
+        <KpiCard label="Total Reach" value={kpis.total_reach} delta={reachDelta} sublabel="vs prev" />
+        <KpiCard label="Interactions" value={kpis.total_interactions} />
+        <KpiCard label="Avg Engagement" value={kpis.avg_engagement_rate.toFixed(2) + "%"} delta={engDelta} sublabel="vs prev" />
+        <KpiCard label="Avg Reach/Post" value={kpis.avg_reach_per_post} />
+        <KpiCard label="Followers" value={currentFollowers} sublabel={`${netFollowers >= 0 ? "+" : ""}${netFollowers.toLocaleString()} in range`} />
       </div>
 
-      {/* Headline / verdict */}
-      {diagnosis?.headline && (
-        <div className="bg-gradient-to-br from-ink-800 to-ink-900 border border-ink-700 rounded-lg p-5">
-          <div className="text-xs text-accent-cyan uppercase tracking-wider mb-2">Weekly verdict</div>
-          <div className="text-lg font-medium text-slate-100">{diagnosis.headline}</div>
-          {diagnosis.exam_alert && (
-            <div className="mt-3 pt-3 border-t border-ink-700 text-sm text-slate-300">
-              <span className="text-accent-purple font-semibold">Calendar alert: </span>
-              {diagnosis.exam_alert}
-            </div>
-          )}
-        </div>
-      )}
+      {/* Primary chart: reach trend */}
+      <div className="grid lg:grid-cols-2 gap-4 mb-4">
+        <ChartCard
+          title="Reach Trend"
+          subtitle="Daily unique reach"
+          caption="Daily unique users reached by posts in the selected period."
+        >
+          <TrendChart data={trend} color="#06b6d4" />
+        </ChartCard>
 
-      {/* Red flags (only show if any) */}
-      {flags.length > 0 && (
-        <div className="space-y-2">
-          <div className="text-xs text-slate-500 uppercase tracking-wider">Attention needed</div>
-          {flags.map((f, i) => (
-            <div
-              key={i}
-              className={`rounded-lg p-4 border ${
-                f.severity === "high" ? "bg-red-950/30 border-red-900/60" : "bg-orange-950/20 border-orange-900/40"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <span className={`text-xs font-bold uppercase tracking-wider ${f.severity === "high" ? "text-accent-red" : "text-accent-orange"}`}>
-                  {f.severity} · {f.category}
-                </span>
-              </div>
-              <div className="text-slate-100 font-medium mt-1">{f.headline}</div>
-              <div className="text-slate-400 text-sm mt-1">{f.detail}</div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KpiCard label="Net followers" value={netThisWeek >= 0 ? "+" + netThisWeek.toLocaleString() : netThisWeek.toLocaleString()} delta={followerDelta.pct} tone="green" />
-        <KpiCard label="Total reach" value={kpiNow.total_reach} delta={reachDelta.pct} tone="cyan" />
-        <KpiCard label="Avg engagement" value={kpiNow.avg_engagement_rate.toFixed(2) + "%"} delta={engDelta.pct} tone="pink" />
-        <KpiCard label="Posts published" value={kpiNow.posts} delta={postsDelta.pct} tone="purple" />
+        <ChartCard
+          title="Format Distribution"
+          subtitle="Post count by format"
+          caption="Share of total posts by format (Reel / Photo / Carousel / Video)."
+        >
+          <Donut data={formatDist} />
+        </ChartCard>
       </div>
 
-      {/* Reach trend (30d) */}
-      <div className="bg-ink-800 rounded-lg p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-slate-100 font-semibold">Reach trend</h3>
-            <div className="text-xs text-slate-500">Last 30 days · daily unique reach</div>
-          </div>
-          <div className="text-xs text-slate-500">Total followers: <span className="text-slate-300 font-medium">{followersNow.toLocaleString()}</span></div>
-        </div>
-        <TrendChart data={trendData} />
-      </div>
+      <div className="grid lg:grid-cols-2 gap-4">
+        <ChartCard
+          title="Content Pillars"
+          subtitle="Total reach by content pillar"
+          caption="Which pillars drive the most audience reach in this period."
+        >
+          <BarChartBase data={pillarData} horizontal height={Math.max(200, pillarData.length * 32)} colorByIndex />
+        </ChartCard>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        {/* Top by reach */}
-        <div className="bg-ink-800 rounded-lg p-5">
-          <div className="text-xs text-accent-green uppercase tracking-wider mb-3">Top 3 by reach (this week)</div>
-          <div className="space-y-3">
-            {top.length === 0 && <div className="text-slate-500 text-sm">No posts this week yet.</div>}
-            {top.map((p) => (
-              <div key={p.id} className="border-l-2 border-accent-green pl-3">
-                <div className="text-sm text-slate-300 font-medium">
-                  {Math.round(reach(p)).toLocaleString()} reach · {p.shares} shares
-                </div>
-                <div className="text-xs text-slate-500 mt-0.5 line-clamp-2">
-                  {p.message.slice(0, 120)}
-                </div>
-                <div className="text-xs text-accent-cyan mt-1">
-                  {p.content_pillar || "—"} · {p.format || p.type} · {p.featured_entity && p.featured_entity !== "None" ? p.featured_entity : ""}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Top by engagement rate */}
-        <div className="bg-ink-800 rounded-lg p-5">
-          <div className="text-xs text-accent-pink uppercase tracking-wider mb-3">Top 3 by engagement rate</div>
-          <div className="space-y-3">
-            {topEng.length === 0 && <div className="text-slate-500 text-sm">No qualifying posts yet.</div>}
-            {topEng.map((p) => (
-              <div key={p.id} className="border-l-2 border-accent-pink pl-3">
-                <div className="text-sm text-slate-300 font-medium">
-                  {engagementRate(p).toFixed(2)}% engagement · {Math.round(reach(p)).toLocaleString()} reach
-                </div>
-                <div className="text-xs text-slate-500 mt-0.5 line-clamp-2">
-                  {p.message.slice(0, 120)}
-                </div>
-                <div className="text-xs text-accent-cyan mt-1">
-                  {p.content_pillar || "—"} · {p.format || p.type}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* What happened from Claude */}
-      {diagnosis && diagnosis.what_happened && diagnosis.what_happened.length > 0 && (
-        <div className="bg-ink-800 rounded-lg p-5">
-          <div className="text-xs text-slate-500 uppercase tracking-wider mb-3">Observations from last weekly run</div>
-          <ul className="space-y-2">
-            {diagnosis.what_happened.map((obs: string, i: number) => (
-              <li key={i} className="text-sm text-slate-300 flex gap-2">
-                <span className="text-accent-cyan">•</span>
-                <span>{obs}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <div className="text-center text-xs text-slate-600 py-4">
-        Data refreshed from Google Sheets every 5 minutes.
-        <br />
-        Pipeline runs weekly · Dashboard ≠ Claude cost
+        <ChartCard
+          title="Engagement Mix"
+          subtitle="Reactions vs comments vs shares"
+          caption="How engagement is distributed across interaction types."
+        >
+          <Donut data={engagementMix} />
+        </ChartCard>
       </div>
     </div>
   );

@@ -7,29 +7,37 @@ type Props = {
   height?: number;
   horizontal?: boolean;
   formatValue?: (v: number) => string;
+  colorByIndex?: boolean;
 };
 
-const ROTATE = ["#06b6d4", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#3b82f6", "#14b8a6", "#ef4444"];
+const PALETTE = ["#06b6d4", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#3b82f6", "#14b8a6", "#ef4444", "#6366f1", "#84cc16", "#f97316", "#a78bfa"];
 
-export default function BarChartBase({ data, color, height = 220, horizontal, formatValue }: Props) {
+export default function BarChartBase({ data, color, height = 240, horizontal, formatValue, colorByIndex }: Props) {
+  const fmt = formatValue || ((v: number) => v.toLocaleString());
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data} layout={horizontal ? "vertical" : "horizontal"} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={!horizontal} horizontal={horizontal} />
+        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={!horizontal} horizontal={horizontal} />
         {horizontal ? (
           <>
-            <XAxis type="number" tick={{ fill: "#64748b", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => (formatValue ? formatValue(v) : v.toLocaleString())} />
-            <YAxis type="category" dataKey="label" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} width={130} />
+            <XAxis type="number" axisLine={false} tickLine={false} tickFormatter={fmt} />
+            <YAxis type="category" dataKey="label" axisLine={false} tickLine={false} width={130} />
           </>
         ) : (
           <>
-            <XAxis dataKey="label" tick={{ fill: "#64748b", fontSize: 10 }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fill: "#64748b", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => (formatValue ? formatValue(v) : v.toLocaleString())} />
+            <XAxis dataKey="label" axisLine={false} tickLine={false} />
+            <YAxis axisLine={false} tickLine={false} tickFormatter={fmt} width={50} />
           </>
         )}
-        <Tooltip contentStyle={{ backgroundColor: "#0f172a", border: "1px solid #334155", borderRadius: "6px", color: "#f1f5f9" }} formatter={(v: number) => (formatValue ? formatValue(v) : v.toLocaleString())} />
-        <Bar dataKey="value">
-          {data.map((_, i) => <Cell key={i} fill={color || ROTATE[i % ROTATE.length]} />)}
+        <Tooltip
+          contentStyle={{ backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "12px" }}
+          formatter={(v: number) => fmt(v)}
+          cursor={{ fill: "#f8fafc" }}
+        />
+        <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+          {data.map((_, i) => (
+            <Cell key={i} fill={colorByIndex ? PALETTE[i % PALETTE.length] : color || "#06b6d4"} />
+          ))}
         </Bar>
       </BarChart>
     </ResponsiveContainer>
