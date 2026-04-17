@@ -126,10 +126,10 @@ export default function ExploreClient({ posts }: Props) {
       <Card className="mb-6 !p-0">
         <div className="flex flex-wrap items-center gap-2 px-4 py-3">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mr-1">Filter</span>
-          <MultiSelect label="Pillar" options={pillarOptions} selected={pillars} onChange={setPillars} />
+          <MultiSelect label="Content Pillar" options={pillarOptions} selected={pillars} onChange={setPillars} />
           <MultiSelect label="Format" options={formatOptions} selected={formats} onChange={setFormats} />
           <MultiSelect label="Audience" options={audienceOptions} selected={audiences} onChange={setAudiences} />
-          <MultiSelect label="Entity" options={entityOptions} selected={entities} onChange={setEntities} searchable />
+          <MultiSelect label="Message" options={entityOptions} selected={entities} onChange={setEntities} searchable />
           <div className="h-6 w-px bg-slate-200 mx-1" />
           <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Group by</span>
           <GroupBySelect value={groupByDim} onChange={setGroupByDim} />
@@ -387,7 +387,7 @@ function MultiSelect({
       </button>
 
       {open && (
-        <div className="absolute left-0 mt-2 w-64 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
+        <div className="absolute left-0 mt-2 w-96 max-w-[calc(100vw-2rem)] bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
           <div className="px-3 py-2 border-b border-slate-100 flex items-center justify-between">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{label}</span>
             {count > 0 && (
@@ -431,7 +431,7 @@ function MultiSelect({
                       </svg>
                     )}
                   </span>
-                  <span className="truncate">{opt}</span>
+                  <span className="break-words text-left">{opt}</span>
                 </button>
               );
             })}
@@ -474,7 +474,7 @@ function GroupBySelect({
         </svg>
       </button>
       {open && (
-        <div className="absolute left-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden py-1">
+        <div className="absolute left-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden py-1">
           {GROUP_BY_OPTIONS.map((o) => (
             <button
               key={o.key as string}
