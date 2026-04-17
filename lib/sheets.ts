@@ -101,6 +101,17 @@ export async function getPosts(): Promise<Post[]> {
       hook_type: c["Hook Type"] || "None",
       visual_style: c["Visual Style"] || "Unknown",
       primary_audience: c["Primary Audience"] || "General",
+      // v2 classifier fields (Day 2B schema) — empty string on pre-v2 rows
+      spotlight_type: c["Spotlight Type"] || "",
+      spotlight_name: c["Spotlight Name"] || "",
+      classifier_confidence: (() => {
+        const v = c["Classifier Confidence"];
+        if (v === "" || v === null || v === undefined) return undefined;
+        const n = Number(v);
+        return isNaN(n) ? undefined : n;
+      })(),
+      prompt_version: c["Prompt Version"] || "",
+      manual_override: c["Manual Override"] || "",
     };
   });
 }

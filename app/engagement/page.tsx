@@ -30,6 +30,12 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
   const hookStats = groupStats(inRange, "hook_type").filter((s) => s.count >= 2).slice(0, 10);
   const hookER = hookStats.map((s) => ({ label: s.key, value: Number(s.avg_engagement_rate.toFixed(2)) }));
 
+  // Spotlight type effectiveness (v2 classifier)
+  const spotlightStats = groupStats(inRange, "spotlight_type")
+    .filter((s) => s.count >= 2 && s.key && s.key !== "None" && s.key !== "Unknown");
+  const spotlightER = spotlightStats.map((s) => ({ label: s.key, value: Number(s.avg_engagement_rate.toFixed(2)) }));
+  const spotlightReach = spotlightStats.map((s) => ({ label: s.key, value: s.avg_reach_per_post }));
+
   // Engagement breakdown (overall)
   const totals = inRange.reduce(
     (acc, p) => {
@@ -59,6 +65,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
       <div className="grid lg:grid-cols-2 gap-4 mb-4">
         <ChartCard
           title="Format Performance"
+          kind="ai"
           subtitle="Avg engagement rate by format"
           definition="Engagement rate = (reactions + comments + shares) ÷ unique reach, averaged per post. Formats with fewer than 2 posts are hidden."
           sampleSize={`n = ${inRange.length} posts`}
@@ -68,6 +75,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
         </ChartCard>
         <ChartCard
           title="Shares per Post"
+          kind="ai"
           subtitle="Avg shares by format"
           definition="Total shares in period ÷ number of posts in that format. Shares expand reach beyond the existing follower base — the strongest virality signal."
           caption="A format averaging high shares is pulling in new audience, not just engaging the existing one."
@@ -79,6 +87,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
       <div className="mb-4">
         <ChartCard
           title="Pillar Performance"
+          kind="ai"
           subtitle="Avg engagement rate by content pillar"
           definition="Average engagement rate per pillar. Only pillars with 2+ posts in the period are shown, to keep single outliers from misleading the ranking. Sorted by pillar name, not performance."
           sampleSize={`${pillarStats.length} pillars shown (2+ posts)`}
@@ -88,9 +97,34 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
         </ChartCard>
       </div>
 
+      {spotlightStats.length > 0 && (
+        <div className="grid lg:grid-cols-2 gap-4 mb-4">
+          <ChartCard
+            title="Spotlight Performance — Engagement"
+            kind="ai"
+            subtitle="Avg engagement rate by spotlight type"
+            definition="Posts grouped by what they spotlight: Teacher, Product, Program, or Campaign. Only types with 2+ posts shown. Assigned by the v2.2 classifier."
+            sampleSize={`${spotlightStats.length} spotlight types, n = ${spotlightStats.reduce((s, x) => s + x.count, 0)} posts`}
+            caption="Which spotlight category the audience engages with most. If Teacher posts outperform Product posts, lean into the faculty."
+          >
+            <BarChartBase data={spotlightER} horizontal height={Math.max(180, spotlightER.length * 36)} valueFormat="percent" colorByIndex metricName="Engagement rate" valueAxisLabel="Engagement rate" />
+          </ChartCard>
+          <ChartCard
+            title="Spotlight Performance — Reach"
+            kind="ai"
+            subtitle="Avg reach per post by spotlight type"
+            definition="Average unique reach per post for each spotlight type. Pairs with the engagement-rate view to surface the full picture: a type can have high engagement on small reach, or vice versa."
+            caption="High reach + high engagement means the spotlight type is working on both axes."
+          >
+            <BarChartBase data={spotlightReach} horizontal height={Math.max(180, spotlightReach.length * 36)} colorByIndex metricName="Avg reach" valueAxisLabel="Avg reach / post" />
+          </ChartCard>
+        </div>
+      )}
+
       <div className="grid lg:grid-cols-2 gap-4">
         <ChartCard
           title="Hook Type Effectiveness"
+          kind="ai"
           subtitle="Avg engagement rate by opening hook"
           definition="Posts grouped by classified hook type (Question, Stat, Celebration, etc.). Only hook types with 2+ posts are shown. Hook type is assigned by the weekly pipeline from the post's opening line."
           sampleSize={`${hookStats.length} hook types shown`}
@@ -100,6 +134,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
         </ChartCard>
         <ChartCard
           title="Engagement Breakdown"
+          kind="observed"
           subtitle="Volume by interaction type"
           definition="Total count of each reaction / comment / share across all posts in the period. 'Like + Care' groups Facebook's Like and Care reactions together."
           caption="High comment share suggests active community dialogue; high share ratio suggests virality potential."

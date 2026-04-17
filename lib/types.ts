@@ -31,6 +31,12 @@ export type Post = {
   hook_type?: string;
   visual_style?: string;
   primary_audience?: string;
+  // v2 classifier (Day 2B schema)
+  spotlight_type?: string;
+  spotlight_name?: string;
+  classifier_confidence?: number;
+  prompt_version?: string;
+  manual_override?: string;
 };
 
 export type DailyMetric = {

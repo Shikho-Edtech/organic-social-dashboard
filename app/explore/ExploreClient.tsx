@@ -20,10 +20,11 @@ const PRESET_LABELS: Record<Preset, string> = {
 };
 
 const GROUP_BY_OPTIONS: { key: keyof Post; label: string }[] = [
-  { key: "content_pillar", label: "Pillar" },
+  { key: "content_pillar", label: "Content Pillar" },
   { key: "format", label: "Format" },
   { key: "primary_audience", label: "Audience" },
-  { key: "featured_entity", label: "Entity" },
+  { key: "spotlight_type", label: "Spotlight Type" },
+  { key: "spotlight_name", label: "Spotlight" },
   { key: "hook_type", label: "Hook Type" },
   { key: "visual_style", label: "Visual Style" },
   { key: "funnel_stage", label: "Funnel Stage" },
@@ -68,7 +69,7 @@ export default function ExploreClient({ posts }: Props) {
       pillars: pillars.length ? pillars : undefined,
       formats: formats.length ? formats : undefined,
       audiences: audiences.length ? audiences : undefined,
-      entities: entities.length ? entities : undefined,
+      spotlightNames: entities.length ? entities : undefined,
     }),
     [posts, start, end, pillars, formats, audiences, entities]
   );
@@ -84,7 +85,7 @@ export default function ExploreClient({ posts }: Props) {
   const pillarOptions = useMemo(() => uniqueValues(posts, "content_pillar"), [posts]);
   const formatOptions = useMemo(() => uniqueValues(posts, "format"), [posts]);
   const audienceOptions = useMemo(() => uniqueValues(posts, "primary_audience"), [posts]);
-  const entityOptions = useMemo(() => uniqueValues(posts, "featured_entity"), [posts]);
+  const entityOptions = useMemo(() => uniqueValues(posts, "spotlight_name"), [posts]);
 
   function clearAll() {
     setPillars([]); setFormats([]); setAudiences([]); setEntities([]);
@@ -129,7 +130,7 @@ export default function ExploreClient({ posts }: Props) {
           <MultiSelect label="Content Pillar" options={pillarOptions} selected={pillars} onChange={setPillars} />
           <MultiSelect label="Format" options={formatOptions} selected={formats} onChange={setFormats} />
           <MultiSelect label="Audience" options={audienceOptions} selected={audiences} onChange={setAudiences} />
-          <MultiSelect label="Message" options={entityOptions} selected={entities} onChange={setEntities} searchable />
+          <MultiSelect label="Spotlight" options={entityOptions} selected={entities} onChange={setEntities} searchable />
           <div className="h-6 w-px bg-slate-200 mx-1" />
           <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Group by</span>
           <GroupBySelect value={groupByDim} onChange={setGroupByDim} />
@@ -167,6 +168,7 @@ export default function ExploreClient({ posts }: Props) {
           <div className="mb-4">
             <ChartCard
               title="Reach Over Time"
+              kind="observed"
               subtitle="Daily unique reach for the current filter set"
               caption="Trend of daily unique reach for the posts matching your filters. Gaps indicate days with no qualifying posts."
             >
@@ -177,6 +179,7 @@ export default function ExploreClient({ posts }: Props) {
           <div className="mb-4">
             <ChartCard
               title={`Performance by ${groupByLabel}`}
+              kind="ai"
               subtitle="Total unique reach by segment"
               caption={`Each bar is the sum of unique reach for posts in that ${groupByLabel.toLowerCase()} segment. Percentage shown is share of total reach across segments shown.`}
             >
@@ -216,10 +219,15 @@ export default function ExploreClient({ posts }: Props) {
                     <span className="text-slate-500">{p.format || p.type}</span>
                     <span>·</span>
                     <span>{bdt(p.created_time).toISOString().slice(0, 10)}</span>
-                    {p.featured_entity && p.featured_entity !== "None" && (
+                    {p.spotlight_name && (
                       <>
                         <span>·</span>
-                        <span className="text-brand-shikho-orange">{p.featured_entity}</span>
+                        <span className="text-brand-shikho-orange">
+                          {p.spotlight_name}
+                          {p.spotlight_type && p.spotlight_type !== "None" && (
+                            <span className="text-slate-400 font-normal"> ({p.spotlight_type})</span>
+                          )}
+                        </span>
                       </>
                     )}
                   </div>

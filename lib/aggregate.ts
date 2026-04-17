@@ -56,7 +56,9 @@ export type PostFilters = {
   pillars?: string[];
   formats?: string[];
   audiences?: string[];
-  entities?: string[];
+  entities?: string[];          // legacy v1 — filters featured_entity
+  spotlightTypes?: string[];    // v2 — Teacher | Product | Program | Campaign
+  spotlightNames?: string[];    // v2 — canonical entity name
   hooks?: string[];
   visualStyles?: string[];
   funnelStages?: string[];
@@ -73,6 +75,8 @@ export function filterPosts(posts: Post[], f: PostFilters): Post[] {
     if (f.formats?.length && !f.formats.includes(p.format || "")) return false;
     if (f.audiences?.length && !f.audiences.includes(p.primary_audience || "")) return false;
     if (f.entities?.length && !f.entities.includes(p.featured_entity || "")) return false;
+    if (f.spotlightTypes?.length && !f.spotlightTypes.includes(p.spotlight_type || "")) return false;
+    if (f.spotlightNames?.length && !f.spotlightNames.includes(p.spotlight_name || "")) return false;
     if (f.hooks?.length && !f.hooks.includes(p.hook_type || "")) return false;
     if (f.visualStyles?.length && !f.visualStyles.includes(p.visual_style || "")) return false;
     if (f.funnelStages?.length && !f.funnelStages.includes(p.funnel_stage || "")) return false;
