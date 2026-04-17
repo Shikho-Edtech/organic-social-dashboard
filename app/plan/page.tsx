@@ -62,8 +62,13 @@ export default async function PlanPage() {
                         <div className="flex-1 min-w-0">
                           <div className="text-xs text-slate-500 mb-1.5">
                             {slot.pillar}
-                            {slot.featured_entity && slot.featured_entity !== "None" && (
-                              <span> · <span className="text-slate-600">{slot.featured_entity}</span></span>
+                            {(slot.spotlight_name || (slot.featured_entity && slot.featured_entity !== "None")) && (
+                              <span> · <span className="text-slate-600">
+                                {slot.spotlight_name || slot.featured_entity}
+                                {slot.spotlight_type && slot.spotlight_type !== "None" && (
+                                  <span className="text-slate-400"> ({slot.spotlight_type})</span>
+                                )}
+                              </span></span>
                             )}
                             {slot.audience && <span> · {slot.audience}</span>}
                           </div>

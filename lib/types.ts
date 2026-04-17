@@ -92,7 +92,9 @@ export type CalendarSlot = {
   time_bdt: string;
   format: string;
   pillar: string;
-  featured_entity: string;
+  featured_entity: string;      // legacy — still populated by 2E.2 back-fill
+  spotlight_type?: string;      // v2 — Teacher | Product | Program | Campaign | None
+  spotlight_name?: string;      // v2 — canonical entity name
   hook_line: string;
   key_message: string;
   visual_direction: string;

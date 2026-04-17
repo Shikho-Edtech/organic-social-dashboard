@@ -211,6 +211,8 @@ export async function getCalendar(): Promise<CalendarSlot[]> {
     format: r["Format"],
     pillar: r["Pillar"],
     featured_entity: r["Featured Entity"] || "None",
+    spotlight_type: r["Spotlight Type"] || "",
+    spotlight_name: r["Spotlight Name"] || "",
     hook_line: r["Hook Line"] || r["Brief"] || "",
     key_message: r["Key Message"] || "",
     visual_direction: r["Visual Direction"] || "",
