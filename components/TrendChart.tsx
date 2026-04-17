@@ -1,16 +1,24 @@
 "use client";
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
+type FormatSpec = "number" | "percent" | "percent1";
+
 type Props = {
   data: { date: string; value: number }[];
   color?: string;
   height?: number;
-  valueFormat?: (v: number) => string;
+  valueFormat?: FormatSpec;
   variant?: "area" | "line";
 };
 
+function makeFormatter(spec?: FormatSpec): (v: number) => string {
+  if (spec === "percent") return (v) => v + "%";
+  if (spec === "percent1") return (v) => v.toFixed(1) + "%";
+  return (v) => v.toLocaleString();
+}
+
 export default function TrendChart({ data, color = "#06b6d4", height = 220, valueFormat, variant = "area" }: Props) {
-  const fmt = valueFormat || ((v: number) => v.toLocaleString());
+  const fmt = makeFormatter(valueFormat);
   const gradId = `grad-${color.replace("#", "")}`;
   return (
     <ResponsiveContainer width="100%" height={height}>

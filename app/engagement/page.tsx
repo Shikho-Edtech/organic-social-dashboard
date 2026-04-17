@@ -58,7 +58,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
 
       <div className="grid lg:grid-cols-2 gap-4 mb-4">
         <ChartCard title="Format Performance" subtitle="Avg engagement rate by format" caption="Engagement rate = (reactions + comments + shares) ÷ unique reach. Higher is better.">
-          <BarChartBase data={formatER} valueFormat={(v) => v + "%"} colorByIndex />
+          <BarChartBase data={formatER} valueFormat="percent" colorByIndex />
         </ChartCard>
         <ChartCard title="Shares per Post" subtitle="Avg shares by format" caption="Shares amplify reach beyond your audience — the strongest virality signal.">
           <BarChartBase data={formatShares} colorByIndex />
@@ -67,13 +67,13 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
 
       <div className="mb-4">
         <ChartCard title="Pillar Performance" subtitle="Avg engagement rate by content pillar" caption="Identify which content themes resonate most with the audience. Min 2 posts per pillar.">
-          <BarChartBase data={pillarER} horizontal height={Math.max(240, pillarER.length * 32)} valueFormat={(v) => v + "%"} colorByIndex />
+          <BarChartBase data={pillarER} horizontal height={Math.max(240, pillarER.length * 32)} valueFormat="percent" colorByIndex />
         </ChartCard>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
         <ChartCard title="Hook Type Effectiveness" subtitle="Avg engagement rate by opening hook" caption="Which opening patterns (Question, Stat, Celebration, etc.) engage best.">
-          <BarChartBase data={hookER} horizontal height={Math.max(220, hookER.length * 32)} valueFormat={(v) => v + "%"} colorByIndex />
+          <BarChartBase data={hookER} horizontal height={Math.max(220, hookER.length * 32)} valueFormat="percent" colorByIndex />
         </ChartCard>
         <ChartCard title="Engagement Breakdown" subtitle="Volume by interaction type" caption="How engagement is distributed. High comment share suggests an active community dialogue.">
           <Donut data={reactionDonut} />

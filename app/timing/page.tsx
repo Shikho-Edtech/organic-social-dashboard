@@ -98,7 +98,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
           <BarChartBase data={slotReach} colorByIndex />
         </ChartCard>
         <ChartCard title="Engagement Rate by Time of Day" subtitle="Interactions ÷ reach by BDT slot" caption="When the audience is most actively interacting — not just seeing — content.">
-          <BarChartBase data={slotEng} valueFormat={(v) => v + "%"} colorByIndex />
+          <BarChartBase data={slotEng} valueFormat="percent" colorByIndex />
         </ChartCard>
       </div>
 
@@ -107,7 +107,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
           <BarChartBase data={dayReach} colorByIndex />
         </ChartCard>
         <ChartCard title="Engagement Rate by Day of Week" subtitle="BDT days" caption="When the audience is most active. Use to time your highest-value content.">
-          <BarChartBase data={dayEng} valueFormat={(v) => v + "%"} colorByIndex />
+          <BarChartBase data={dayEng} valueFormat="percent" colorByIndex />
         </ChartCard>
       </div>
     </div>

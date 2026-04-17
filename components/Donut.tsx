@@ -3,14 +3,22 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recha
 
 const PALETTE = ["#06b6d4", "#f59e0b", "#10b981", "#ec4899", "#8b5cf6", "#3b82f6", "#14b8a6", "#ef4444"];
 
+type FormatSpec = "number" | "percent" | "percent1";
+
 type Props = {
   data: { label: string; value: number }[];
   height?: number;
-  valueFormat?: (v: number) => string;
+  valueFormat?: FormatSpec;
 };
 
+function makeFormatter(spec?: FormatSpec): (v: number) => string {
+  if (spec === "percent") return (v) => v + "%";
+  if (spec === "percent1") return (v) => v.toFixed(1) + "%";
+  return (v) => v.toLocaleString();
+}
+
 export default function Donut({ data, height = 220, valueFormat }: Props) {
-  const fmt = valueFormat || ((v: number) => v.toLocaleString());
+  const fmt = makeFormatter(valueFormat);
   return (
     <ResponsiveContainer width="100%" height={height}>
       <PieChart>

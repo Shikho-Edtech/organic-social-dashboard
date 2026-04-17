@@ -76,7 +76,7 @@ export default async function TrendsPage({ searchParams }: { searchParams: Recor
             data={weeklyEng}
             color="#ec4899"
             variant="line"
-            valueFormat={(v) => v.toFixed(1) + "%"}
+            valueFormat="percent1"
           />
         </ChartCard>
         <ChartCard title="Weekly Shares" subtitle="Share volume over time" caption="Shares are the strongest virality signal — they expand reach beyond your existing audience.">

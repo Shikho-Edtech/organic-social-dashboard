@@ -54,7 +54,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
           <BarChartBase data={funnelDist} colorByIndex />
         </ChartCard>
         <ChartCard title="Funnel Engagement" subtitle="Avg engagement rate by stage" caption="Which funnel stage resonates most in terms of interaction rate.">
-          <BarChartBase data={funnelEng} valueFormat={(v) => v + "%"} colorByIndex />
+          <BarChartBase data={funnelEng} valueFormat="percent" colorByIndex />
         </ChartCard>
       </div>
 
