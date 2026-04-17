@@ -52,6 +52,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
       <div className="grid lg:grid-cols-2 gap-4 mb-4">
         <ChartCard
           title="Funnel Distribution"
+          kind="ai"
           subtitle="Posts by marketing stage"
           definition="TOFU (top-of-funnel): awareness / education. MOFU (middle): consideration / demo. BOFU (bottom): direct conversion asks. Funnel stage is assigned by the weekly classifier."
           sampleSize={`n = ${inRange.length} posts`}
@@ -61,6 +62,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
         </ChartCard>
         <ChartCard
           title="Funnel Engagement"
+          kind="ai"
           subtitle="Avg engagement rate by stage"
           definition="For each funnel stage: total interactions ÷ total reach across all posts in that stage. Reach-weighted."
           caption="Which funnel stage resonates most in terms of interaction rate."

@@ -19,6 +19,7 @@ export function ChartCard({
   caption,
   definition,
   sampleSize,
+  kind,
   children,
   className = "",
 }: {
@@ -29,11 +30,18 @@ export function ChartCard({
   definition?: string;
   /** Optional sample size (e.g. "n = 42 posts"). Rendered as a small muted badge next to the title. */
   sampleSize?: string;
+  /** Data provenance: observed (raw Meta), ai (classifier), derived (computed). */
+  kind?: "observed" | "ai" | "derived";
   children: ReactNode;
   className?: string;
 }) {
+  const kindBorder =
+    kind === "observed" ? "border-l-4 border-l-cyan-500"
+    : kind === "ai"     ? "border-l-4 border-l-indigo-500"
+    : kind === "derived"? "border-l-4 border-l-violet-500"
+    : "";
   return (
-    <Card className={className}>
+    <Card className={`${kindBorder} ${className}`}>
       <div className="mb-4">
         <div className="flex items-start gap-2">
           <h3 className="text-base font-semibold text-slate-900">{title}</h3>
@@ -52,6 +60,15 @@ export function ChartCard({
           {sampleSize && (
             <span className="ml-auto text-[10px] font-semibold uppercase tracking-wider text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded translate-y-[2px]">
               {sampleSize}
+            </span>
+          )}
+          {kind && (
+            <span className={`${sampleSize ? "ml-1" : "ml-auto"} text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded translate-y-[2px] ${
+              kind === "observed" ? "bg-cyan-50 text-cyan-700"
+              : kind === "ai"     ? "bg-indigo-50 text-indigo-700"
+              :                     "bg-violet-50 text-violet-700"
+            }`}>
+              {kind === "observed" ? "Meta data" : kind === "ai" ? "AI-classified" : "Derived"}
             </span>
           )}
         </div>

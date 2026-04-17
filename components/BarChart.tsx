@@ -4,7 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 type FormatSpec = "number" | "percent" | "percent1";
 
 type Props = {
-  data: { label: string; value: number }[];
+  data: { label: string; value: number; meta?: number; muted?: boolean }[];
   color?: string;
   height?: number;
   horizontal?: boolean;
@@ -44,10 +44,12 @@ export default function BarChartBase({
   const total = showPercent ? data.reduce((s, d) => s + (d.value || 0), 0) : 0;
   const pct = (v: number) => (total > 0 ? (v / total) * 100 : 0);
 
-  const tooltipFormatter = (v: number): [string, string] => {
+  const tooltipFormatter = (v: number, _name: string, entry: any): [string, string] => {
     const name = metricName || "Value";
-    if (showPercent && total > 0) return [`${fmt(v)} (${pct(v).toFixed(1)}% of total)`, name];
-    return [fmt(v), name];
+    const meta = entry?.payload?.meta;
+    const suffix = typeof meta === "number" ? ` · n=${meta}` : "";
+    if (showPercent && total > 0) return [`${fmt(v)} (${pct(v).toFixed(1)}% of total)${suffix}`, name];
+    return [`${fmt(v)}${suffix}`, name];
   };
 
   // Label shown at the end of each bar when showPercent is on
@@ -122,8 +124,11 @@ export default function BarChartBase({
           cursor={{ fill: "#f8fafc" }}
         />
         <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-          {data.map((_, i) => (
-            <Cell key={i} fill={colorByIndex ? PALETTE[i % PALETTE.length] : color || "#06b6d4"} />
+          {data.map((d, i) => (
+            <Cell
+              key={i}
+              fill={d.muted ? "#cbd5e1" : (colorByIndex ? PALETTE[i % PALETTE.length] : color || "#06b6d4")}
+            />
           ))}
           {showPercent && (
             <LabelList

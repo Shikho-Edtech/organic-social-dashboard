@@ -56,14 +56,27 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
     };
   });
 
-  const slotReach = slotData.map((s) => ({ label: s.label, value: s.reachAvg }));
-  const slotEng = slotData.map((s) => ({ label: s.label, value: Number(s.er.toFixed(2)) }));
+  const MIN_N = 5;
+  const slotReach = slotData.map((s) => ({
+    label: s.label,
+    value: s.reachAvg,
+    meta: s.posts,
+    muted: s.posts < MIN_N,
+  }));
+  const slotEng = slotData.map((s) => ({
+    label: s.label,
+    value: Number(s.er.toFixed(2)),
+    meta: s.posts,
+    muted: s.posts < MIN_N,
+  }));
 
   // Best slots summary
+  const reliableSlots = slotData.filter((s) => s.posts >= MIN_N);
+  const bestPool = reliableSlots.length ? reliableSlots : slotData;
   const bestDayReach = dayReach.reduce((a, b) => (b.value > a.value ? b : a), dayReach[0]);
   const bestDayEng = dayEng.reduce((a, b) => (b.value > a.value ? b : a), dayEng[0]);
-  const bestSlotReach = slotData.reduce((a, b) => (b.reachAvg > a.reachAvg ? b : a), slotData[0]);
-  const bestSlotEng = slotData.reduce((a, b) => (b.er > a.er ? b : a), slotData[0]);
+  const bestSlotReach = bestPool.reduce((a, b) => (b.reachAvg > a.reachAvg ? b : a), slotData[0]);
+  const bestSlotEng = bestPool.reduce((a, b) => (b.er > a.er ? b : a), slotData[0]);
 
   return (
     <div>
@@ -96,18 +109,20 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
       <div className="grid lg:grid-cols-2 gap-4 mb-4">
         <ChartCard
           title="Avg Reach by Time of Day"
+          kind="observed"
           subtitle="Posts grouped into BDT time slots"
           definition="Posts are bucketed into 6 BDT time slots based on their publish hour. Each bar shows average unique reach per post in that slot. Slots with 0 posts in the period show as 0."
           sampleSize={`${inRange.length} posts in range`}
-          caption="Which time windows drive the most audience reach in Bangladesh time."
+          caption="Slots with fewer than 5 posts are dimmed — a single viral post can skew averages. Shikho rarely publishes between midnight and 8am BDT."
         >
           <BarChartBase data={slotReach} colorByIndex metricName="Avg reach / post" valueAxisLabel="Avg reach / post" categoryAxisLabel="Time slot (BDT)" />
         </ChartCard>
         <ChartCard
           title="Engagement Rate by Time of Day"
+          kind="derived"
           subtitle="Interactions ÷ reach by BDT slot"
           definition="For each BDT slot: total interactions in that slot ÷ total reach in that slot. Reach-weighted, so a single viral post in a slot will dominate."
-          caption="When the audience is most actively interacting — not just seeing — content."
+          caption="Dimmed slots have fewer than 5 posts in the period and should be interpreted cautiously."
         >
           <BarChartBase data={slotEng} valueFormat="percent" colorByIndex metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Time slot (BDT)" />
         </ChartCard>
@@ -116,6 +131,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
       <div className="grid lg:grid-cols-2 gap-4">
         <ChartCard
           title="Avg Reach by Day of Week"
+          kind="observed"
           subtitle="BDT days"
           definition="Posts are bucketed by day-of-week (Sunday to Saturday, BDT). Each bar = average unique reach per post on that day."
           caption="Day-level reach patterns. Sunday is often strong for ed-tech in Bangladesh."
@@ -124,6 +140,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
         </ChartCard>
         <ChartCard
           title="Engagement Rate by Day of Week"
+          kind="derived"
           subtitle="BDT days"
           definition="For each day-of-week: total interactions ÷ total reach across all posts published that day. Reach-weighted."
           caption="When the audience is most active. Use to time your highest-value content."

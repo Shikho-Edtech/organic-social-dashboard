@@ -64,6 +64,7 @@ export default async function TrendsPage({ searchParams }: { searchParams: Recor
       <div className="grid lg:grid-cols-2 gap-4 mb-4">
         <ChartCard
           title="Daily Posting Volume"
+          kind="observed"
           subtitle="Posts published per day"
           definition="Count of posts published on each calendar day (BDT). Gaps mean no posts were published that day."
           caption="Number of posts published each day in the selected period."
@@ -72,6 +73,7 @@ export default async function TrendsPage({ searchParams }: { searchParams: Recor
         </ChartCard>
         <ChartCard
           title="Daily Reach"
+          kind="observed"
           subtitle="Unique reach per day"
           definition="Sum of post-level unique reach for posts published that day. Not lifetime page reach — reach attributed to posts. Spikes typically mean a single post went viral."
           caption="Daily unique reach — spikes often indicate viral or boosted content."
@@ -83,6 +85,7 @@ export default async function TrendsPage({ searchParams }: { searchParams: Recor
       <div className="grid lg:grid-cols-2 gap-4">
         <ChartCard
           title="Weekly Engagement Rate"
+          kind="derived"
           subtitle="Interactions per unique reach"
           definition="For each ISO week: (total reactions + comments + shares) ÷ (total unique reach). This is reach-weighted, not averaged per post, so a few high-reach posts dominate the signal — which is what you want."
           caption="Week-over-week stability indicates healthy audience relationship. Big drops warrant investigating what changed."
@@ -98,6 +101,7 @@ export default async function TrendsPage({ searchParams }: { searchParams: Recor
         </ChartCard>
         <ChartCard
           title="Weekly Shares"
+          kind="observed"
           subtitle="Share volume over time"
           definition="Total shares across all posts published in each ISO week."
           caption="Shares are the strongest virality signal — they expand reach beyond your existing audience."

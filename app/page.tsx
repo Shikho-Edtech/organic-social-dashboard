@@ -77,6 +77,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
       <div className="grid lg:grid-cols-2 gap-4 mb-4">
         <ChartCard
           title="Reach Trend"
+          kind="observed"
           subtitle="Daily unique reach"
           definition="Sum of post-level unique reach for posts published that day. Attributed to post-publish date, not page impression date."
           caption="Daily unique users reached by posts in the selected period."
@@ -86,6 +87,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
 
         <ChartCard
           title="Format Distribution"
+          kind="ai"
           subtitle="Post count by format"
           definition="Count of posts by format (Reel / Photo / Carousel / Video). Format is pulled from the post's media type, cross-verified with the weekly classifier."
           caption="Share of total posts by format. Heavy tilt toward one format may indicate under-diversification."
@@ -97,6 +99,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
       <div className="grid lg:grid-cols-2 gap-4">
         <ChartCard
           title="Content Pillars"
+          kind="ai"
           subtitle="Total reach by content pillar"
           definition="Sum of unique reach for all posts in each pillar. Pillars are assigned by the weekly classifier using the full pillar taxonomy."
           sampleSize={`top ${pillarData.length} of ${groupStats(inRange, "content_pillar").length}`}
@@ -115,6 +118,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
 
         <ChartCard
           title="Engagement Mix"
+          kind="observed"
           subtitle="Reactions vs comments vs shares"
           definition="Total count of each interaction type across all posts in the period. Helps answer: is the audience passively reacting, actively discussing, or amplifying?"
           caption="How engagement is distributed across interaction types."
