@@ -86,6 +86,13 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
   for (const sec of retentionPoints) retentionViews[sec] = 0;
   let avgWatchFromCurveNumerator = 0;
   let avgWatchFromCurveDenom = 0;
+  // Day 2U: track the denominator alongside the numerator. Previously the
+  // hook/15s/30s retention % divided by totalViews (ALL reels, including
+  // those with empty retention curves). If half the reels predated the
+  // retention pipeline, the % shown was ~halved. Now we only count reels
+  // whose curves we actually parsed.
+  let viewsWithCurve = 0;
+  let reelsWithCurve = 0;
 
   for (const r of reels) {
     const curve = parseRetentionCurve(r.retention_graph);
@@ -97,11 +104,15 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
     }
     avgWatchFromCurveNumerator += views * (r.avg_watch_time || 0);
     avgWatchFromCurveDenom += views;
+    viewsWithCurve += views;
+    reelsWithCurve += 1;
   }
 
   // View-weighted average watch time is more informative than per-reel average
-  // because it weights by audience size.
-  const weightedAvgWatch = avgWatchFromCurveDenom > 0
+  // because it weights by audience size. Falls back to unweighted only when
+  // no reels have curves — flagged in the sublabel below.
+  const haveCurveData = avgWatchFromCurveDenom > 0;
+  const weightedAvgWatch = haveCurveData
     ? avgWatchFromCurveNumerator / avgWatchFromCurveDenom
     : avgWatchTime;
 
@@ -113,13 +124,21 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
   const total15s = total15sBucket > 0 ? total15sBucket : retentionViews[15];
   const total30s = total30sBucket > 0 ? total30sBucket : retentionViews[30];
 
+  // Denominator for retention percentages. When we use Meta's bucket fields,
+  // divide by the full totalViews (all reels). When we derive from the curve,
+  // divide by viewsWithCurve so numerator and denominator come from the same
+  // pool of reels.
+  const denom15s = total15sBucket > 0 ? totalViews : viewsWithCurve;
+  const denom30s = total30sBucket > 0 ? totalViews : viewsWithCurve;
+
   // Replacement metrics (since Meta doesn't populate Completion Rate or
   // Sound On Rate for reels):
   //   Hook Retention (3s) — viewers still watching at second 3, the critical
-  //     hook window. Derived from per-second curve.
+  //     hook window. Derived from per-second curve; denominator is viewsWithCurve
+  //     so the % isn't biased downward by curve-less reels in the pool.
   //   Replay Rate — replays as a share of total plays. Tells us which reels
   //     are sticky enough to get rewatched.
-  const hookRetention3s = totalViews ? (retentionViews[3] / totalViews) * 100 : 0;
+  const hookRetention3s = viewsWithCurve ? (retentionViews[3] / viewsWithCurve) * 100 : 0;
   const replayRate = totalPlays ? (totalReplays / totalPlays) * 100 : 0;
 
   // Top 10 reels by plays
@@ -167,8 +186,11 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
   // per-second curve so it works for reels (Meta's bucket fields are empty).
   // Each bar shows: viewers still watching at second N, computed as
   // sum(total_views * retention[N]) across all reels in range.
+  // Day 2U: first bar uses viewsWithCurve, not totalViews, so the starting
+  // denominator matches the numerator pool. Otherwise the 0s bar towers
+  // over the rest purely because it includes curve-less reels.
   const funnel = [
-    { label: "0s (start)", value: totalViews },
+    { label: "0s (start)", value: viewsWithCurve },
     { label: "2s", value: retentionViews[2] || 0 },
     { label: "3s", value: retentionViews[3] || 0 },
     { label: "6s", value: retentionViews[6] || 0 },
@@ -253,11 +275,11 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
         <KpiCard label="Reels Posted" value={totalReels} sublabel="in range" />
         <KpiCard label="Total Plays" value={totalPlays} sublabel={`${totalReplays.toLocaleString()} replays`} />
-        <KpiCard label="Avg Watch Time" value={`${weightedAvgWatch.toFixed(1)}s`} sublabel="view-weighted" />
+        <KpiCard label="Avg Watch Time" value={`${weightedAvgWatch.toFixed(1)}s`} sublabel={haveCurveData ? "view-weighted" : "unweighted (no curve data)"} />
         <KpiCard
           label="Hook Retention (3s)"
           value={`${hookRetention3s.toFixed(1)}%`}
-          sublabel="past the critical hook window"
+          sublabel={reelsWithCurve ? `past 3s · ${reelsWithCurve}/${totalReels} reels with curves` : "no curve data in range"}
         />
         <KpiCard label="Followers Gained" value={totalFollowersGained} sublabel="from reels" />
       </div>
@@ -272,14 +294,14 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
           <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">15s Retention</div>
           <div className="text-xl font-bold text-brand-green mt-1">{total15s.toLocaleString()}</div>
           <div className="text-[10px] text-slate-400 mt-0.5">
-            {totalViews ? ((total15s / totalViews) * 100).toFixed(1) : "0"}% · {total15sBucket > 0 ? "Meta bucket" : "derived from curve"}
+            {denom15s ? ((total15s / denom15s) * 100).toFixed(1) : "0"}% · {total15sBucket > 0 ? "Meta bucket" : "derived from curve"}
           </div>
         </Card>
         <Card className="!p-4">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">30s Retention</div>
           <div className="text-xl font-bold text-brand-pink mt-1">{total30s.toLocaleString()}</div>
           <div className="text-[10px] text-slate-400 mt-0.5">
-            {totalViews ? ((total30s / totalViews) * 100).toFixed(1) : "0"}% · {total30sBucket > 0 ? "Meta bucket" : "derived from curve"}
+            {denom30s ? ((total30s / denom30s) * 100).toFixed(1) : "0"}% · {total30sBucket > 0 ? "Meta bucket" : "derived from curve"}
           </div>
         </Card>
         <Card className="!p-4">
@@ -297,8 +319,8 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
           title="Retention Funnel"
           kind="derived"
           subtitle="Viewers still watching at key seconds (all reels in range)"
-          definition="For each second N, we compute sum(total_views × retention[N]) across all reels. The retention curve comes from Meta's per-second drop-off data, which IS populated for reels unlike the 15s/30s bucket fields. 0s = starting viewers; later bars = how many survived to that second."
-          sampleSize={`${totalReels} reels`}
+          definition="For each second N, sum(total_views × retention[N]) across all reels with parseable retention curves. Meta's per-second drop-off data IS populated for reels (unlike the 15s/30s bucket fields). 0s = starting viewers of those reels; later bars = how many survived to that second. Reels without retention curves are excluded from both numerator and denominator."
+          sampleSize={`${reelsWithCurve} of ${totalReels} reels have retention curves`}
           caption="Biggest drop on Shikho reels is typically between 2s and 6s — the hook window. If 6s→15s survival is high, format is sticky. If 15s→30s drop is steep, middle loses people."
         >
           <BarChartBase data={funnel} colorByIndex metricName="Viewers" valueAxisLabel="Viewers" categoryAxisLabel="Seconds watched" />

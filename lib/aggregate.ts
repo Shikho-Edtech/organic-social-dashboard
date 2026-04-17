@@ -63,8 +63,14 @@ export function totalInteractions(p: Post): number {
 }
 
 export function engagementRate(p: Post): number {
-  const reach = p.unique_views || p.media_views || 1;
-  return (totalInteractions(p) / reach) * 100;
+  // Day 2U: stop the `|| 1` div-by-zero guard — it produced absurd
+  // percentages (e.g. 500% ER on a post with 5 interactions and 0 reach
+  // being surfaced in Explore Top-10). Zero reach → zero rate is the
+  // honest answer; the post either shouldn't be shown or should be
+  // marked as no-reach-data upstream.
+  const r = p.unique_views || p.media_views || 0;
+  if (r <= 0) return 0;
+  return (totalInteractions(p) / r) * 100;
 }
 
 export function reach(p: Post): number {

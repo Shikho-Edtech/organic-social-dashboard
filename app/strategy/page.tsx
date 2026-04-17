@@ -1,5 +1,6 @@
 import { getPosts, getLatestDiagnosis } from "@/lib/sheets";
-import { filterPosts, groupStats } from "@/lib/aggregate";
+import { filterPosts, groupStats, daysBetween } from "@/lib/aggregate";
+import { minPostsForRange } from "@/lib/stats";
 import { resolveRange } from "@/lib/daterange";
 import PageHeader from "@/components/PageHeader";
 import { Card, ChartCard } from "@/components/Card";
@@ -93,6 +94,12 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
   const inRange = filterPosts(posts, { start: range.start, end: range.end });
 
   // Funnel distribution
+  // Day 2U: apply the adaptive min-n gate to the engagement bars so a
+  // single BOFU post with 1 reach + 1 share can't produce a towering BOFU
+  // bar. The distribution/count chart still shows everything — it's a
+  // volume chart, not a rate chart, so low-n buckets are still honest.
+  const rangeDays = Math.max(1, daysBetween(range.start, range.end) + 1);
+  const MIN_N_FUNNEL = minPostsForRange(rangeDays);
   const funnelStats = groupStats(inRange, "funnel_stage");
   const funnelOrder = ["TOFU", "MOFU", "BOFU"];
   const funnelDist = funnelOrder.map((stage) => {
@@ -101,7 +108,8 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
   });
   const funnelEng = funnelOrder.map((stage) => {
     const s = funnelStats.find((x) => x.key === stage);
-    return { label: stage, value: Number((s?.avg_engagement_rate || 0).toFixed(2)) };
+    const eligible = s && s.count >= MIN_N_FUNNEL;
+    return { label: stage, value: eligible ? Number(s.avg_engagement_rate.toFixed(2)) : 0 };
   });
 
   const whatHappened: string[] = diagnosis?.what_happened || [];
@@ -187,7 +195,8 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
           title="Funnel Engagement"
           kind="ai"
           subtitle="Avg engagement rate by stage"
-          definition="For each funnel stage: total interactions ÷ total reach across all posts in that stage. Reach-weighted."
+          definition={`For each funnel stage: total interactions ÷ total reach across all posts in that stage. Reach-weighted. Stages with fewer than ${MIN_N_FUNNEL} posts in the period are hidden (zeroed bar) so a single post can't produce a misleading spike.`}
+          sampleSize={`min ${MIN_N_FUNNEL} posts per stage · ${rangeDays}d window`}
           caption="Which funnel stage resonates most in terms of interaction rate."
         >
           <BarChartBase data={funnelEng} valueFormat="percent" colorByIndex metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Funnel stage" />

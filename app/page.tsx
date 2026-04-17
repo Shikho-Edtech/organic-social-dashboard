@@ -68,7 +68,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
         <KpiCard label="Posts" value={kpis.posts} delta={postsDelta} sublabel="vs prev" />
         <KpiCard label="Total Reach" value={kpis.total_reach} delta={reachDelta} sublabel="vs prev" />
         <KpiCard label="Interactions" value={kpis.total_interactions} />
-        <KpiCard label="Avg Engagement" value={kpis.avg_engagement_rate.toFixed(2) + "%"} delta={engDelta} sublabel="vs prev" />
+        <KpiCard label="Engagement Rate" value={kpis.avg_engagement_rate.toFixed(2) + "%"} delta={engDelta} sublabel="vs prev · reach-weighted" />
         <KpiCard label="Avg Reach/Post" value={kpis.avg_reach_per_post} />
         <KpiCard label="Followers" value={currentFollowers} sublabel={`${netFollowers >= 0 ? "+" : ""}${netFollowers.toLocaleString()} in range`} />
       </div>

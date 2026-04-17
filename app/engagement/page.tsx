@@ -1,22 +1,40 @@
 import { getPosts } from "@/lib/sheets";
-import { filterPosts, groupStats } from "@/lib/aggregate";
-import { bestByLowerBound, reliabilityLabel } from "@/lib/stats";
+import { filterPosts, groupStats, daysBetween } from "@/lib/aggregate";
+import { minPostsForRange, reliabilityLabel } from "@/lib/stats";
 import { resolveRange } from "@/lib/daterange";
 import PageHeader from "@/components/PageHeader";
 import { Card, ChartCard } from "@/components/Card";
 import BarChartBase from "@/components/BarChart";
 import Donut from "@/components/Donut";
+import type { GroupStatRow } from "@/lib/aggregate";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
+
+// Day 2U: unify everything on reach-weighted engagement rate.
+//
+// Before this change the bar charts showed `avg_engagement_rate`
+// (Σinteractions / Σreach) but the "Best X" KPI strip ranked by
+// `er_summary` (mean of per-post rates, CI-lower-bounded). Two different
+// statistics on the same page meant the crowned "Best Format" could
+// disagree with the tallest bar. Now both use reach-weighted, and the
+// min-n floor is adaptive (3/5/10/… via minPostsForRange) instead of a
+// blanket n>=2 that let tiny buckets win.
+function rankByReachWeighted(items: GroupStatRow[]): GroupStatRow | undefined {
+  if (!items.length) return undefined;
+  return [...items].sort((a, b) => b.avg_engagement_rate - a.avg_engagement_rate)[0];
+}
 
 export default async function EngagementPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   const range = resolveRange(searchParams);
   const posts = await getPosts();
   const inRange = filterPosts(posts, { start: range.start, end: range.end });
 
+  const rangeDays = Math.max(1, daysBetween(range.start, range.end) + 1);
+  const MIN_N = minPostsForRange(rangeDays);
+
   // Format × engagement rate
-  const formatStats = groupStats(inRange, "format").filter((s) => s.count >= 2);
+  const formatStats = groupStats(inRange, "format").filter((s) => s.count >= MIN_N);
   const formatER = formatStats.map((s) => ({ label: s.key, value: Number(s.avg_engagement_rate.toFixed(2)) }));
   const formatShares = formatStats.map((s) => ({
     label: s.key,
@@ -24,25 +42,27 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
   }));
 
   // Pillar × engagement rate (top 12 for readability)
-  const pillarStats = groupStats(inRange, "content_pillar").filter((s) => s.count >= 2).slice(0, 12);
+  const pillarStats = groupStats(inRange, "content_pillar").filter((s) => s.count >= MIN_N).slice(0, 12);
   const pillarER = pillarStats.map((s) => ({ label: s.key, value: Number(s.avg_engagement_rate.toFixed(2)) }));
 
   // Hook type effectiveness
-  const hookStats = groupStats(inRange, "hook_type").filter((s) => s.count >= 2).slice(0, 10);
+  const hookStats = groupStats(inRange, "hook_type").filter((s) => s.count >= MIN_N).slice(0, 10);
   const hookER = hookStats.map((s) => ({ label: s.key, value: Number(s.avg_engagement_rate.toFixed(2)) }));
 
   // Spotlight type effectiveness (v2 classifier)
   const spotlightStats = groupStats(inRange, "spotlight_type")
-    .filter((s) => s.count >= 2 && s.key && s.key !== "None" && s.key !== "Unknown");
+    .filter((s) => s.count >= MIN_N && s.key && s.key !== "None" && s.key !== "Unknown");
   const spotlightER = spotlightStats.map((s) => ({ label: s.key, value: Number(s.avg_engagement_rate.toFixed(2)) }));
   const spotlightReach = spotlightStats.map((s) => ({ label: s.key, value: s.avg_reach_per_post }));
 
-  // Day 2O: CI-ranked "best X" callouts. Ranks by 95% CI lower bound of
-  // engagement rate — single outliers in tiny buckets can't win.
-  const bestFormat = bestByLowerBound(formatStats, (s) => s.er_summary);
-  const bestPillar = bestByLowerBound(pillarStats, (s) => s.er_summary);
-  const bestHook = bestByLowerBound(hookStats, (s) => s.er_summary);
-  const bestSpotlight = bestByLowerBound(spotlightStats, (s) => s.er_summary);
+  // Day 2U: "Best X" now ranks by the SAME reach-weighted rate the chart
+  // shows. Protection against single-post outliers comes from the
+  // adaptive min-n gate (MIN_N) applied above, which also hides those
+  // buckets from the chart — so the KPI winner is always a visible bar.
+  const bestFormat = rankByReachWeighted(formatStats);
+  const bestPillar = rankByReachWeighted(pillarStats);
+  const bestHook = rankByReachWeighted(hookStats);
+  const bestSpotlight = rankByReachWeighted(spotlightStats);
 
   // Engagement breakdown (overall)
   const totals = inRange.reduce(
@@ -70,58 +90,46 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
     <div>
       <PageHeader title="Engagement" subtitle="What drives interaction" dateLabel={range.label} />
 
-      {/* CI-ranked "best X" strip — uses 95% CI lower bound so low-n buckets can't win */}
+      {/* "Best X" strip — same reach-weighted rate as the bars below */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <Card className="!p-5">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Best Format</div>
           <div className="text-2xl font-bold text-brand-cyan mt-2">{bestFormat?.key || "—"}</div>
           <div className="text-xs text-slate-500 mt-1">
-            {(bestFormat?.er_summary.mean || 0).toFixed(2)}% avg eng rate
+            {(bestFormat?.avg_engagement_rate || 0).toFixed(2)}% eng rate
           </div>
           <div className="text-[11px] text-slate-400 mt-0.5">
             {reliabilityLabel(bestFormat?.count || 0)}
-            {bestFormat && isFinite(bestFormat.er_summary.lowerBound95) && (
-              <> · reliable floor {Math.max(0, bestFormat.er_summary.lowerBound95).toFixed(2)}%</>
-            )}
           </div>
         </Card>
         <Card className="!p-5">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Best Pillar</div>
           <div className="text-2xl font-bold text-brand-pink mt-2">{bestPillar?.key || "—"}</div>
           <div className="text-xs text-slate-500 mt-1">
-            {(bestPillar?.er_summary.mean || 0).toFixed(2)}% avg eng rate
+            {(bestPillar?.avg_engagement_rate || 0).toFixed(2)}% eng rate
           </div>
           <div className="text-[11px] text-slate-400 mt-0.5">
             {reliabilityLabel(bestPillar?.count || 0)}
-            {bestPillar && isFinite(bestPillar.er_summary.lowerBound95) && (
-              <> · reliable floor {Math.max(0, bestPillar.er_summary.lowerBound95).toFixed(2)}%</>
-            )}
           </div>
         </Card>
         <Card className="!p-5">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Best Hook</div>
           <div className="text-2xl font-bold text-brand-green mt-2">{bestHook?.key || "—"}</div>
           <div className="text-xs text-slate-500 mt-1">
-            {(bestHook?.er_summary.mean || 0).toFixed(2)}% avg eng rate
+            {(bestHook?.avg_engagement_rate || 0).toFixed(2)}% eng rate
           </div>
           <div className="text-[11px] text-slate-400 mt-0.5">
             {reliabilityLabel(bestHook?.count || 0)}
-            {bestHook && isFinite(bestHook.er_summary.lowerBound95) && (
-              <> · reliable floor {Math.max(0, bestHook.er_summary.lowerBound95).toFixed(2)}%</>
-            )}
           </div>
         </Card>
         <Card className="!p-5">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Best Spotlight Type</div>
           <div className="text-2xl font-bold text-brand-purple mt-2">{bestSpotlight?.key || "—"}</div>
           <div className="text-xs text-slate-500 mt-1">
-            {(bestSpotlight?.er_summary.mean || 0).toFixed(2)}% avg eng rate
+            {(bestSpotlight?.avg_engagement_rate || 0).toFixed(2)}% eng rate
           </div>
           <div className="text-[11px] text-slate-400 mt-0.5">
             {reliabilityLabel(bestSpotlight?.count || 0)}
-            {bestSpotlight && isFinite(bestSpotlight.er_summary.lowerBound95) && (
-              <> · reliable floor {Math.max(0, bestSpotlight.er_summary.lowerBound95).toFixed(2)}%</>
-            )}
           </div>
         </Card>
       </div>
@@ -131,7 +139,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           title="Format Performance"
           kind="ai"
           subtitle="Avg engagement rate by format"
-          definition="Engagement rate = (reactions + comments + shares) ÷ unique reach, averaged per post. Formats with fewer than 2 posts are hidden."
+          definition={`Engagement rate = total interactions (reactions + comments + shares) ÷ total unique reach across posts in that format — reach-weighted so viral outliers don't dominate. Formats with fewer than ${MIN_N} posts are hidden.`}
           sampleSize={`n = ${inRange.length} posts`}
           caption="Higher is better. A format that consistently beats the average is worth doubling down on."
         >
@@ -153,8 +161,8 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           title="Pillar Performance"
           kind="ai"
           subtitle="Avg engagement rate by content pillar"
-          definition="Average engagement rate per pillar. Only pillars with 2+ posts in the period are shown, to keep single outliers from misleading the ranking. Sorted by pillar name, not performance."
-          sampleSize={`${pillarStats.length} pillars shown (2+ posts)`}
+          definition={`Reach-weighted engagement rate per pillar (Σ interactions ÷ Σ reach). Only pillars with ${MIN_N}+ posts in the period are shown, so a single outlier can't win.`}
+          sampleSize={`${pillarStats.length} pillars shown (${MIN_N}+ posts)`}
           caption="Identify which content themes resonate most with the audience. Use alongside the Strategy tab's top-performer list."
         >
           <BarChartBase data={pillarER} horizontal height={Math.max(240, pillarER.length * 32)} valueFormat="percent" colorByIndex metricName="Engagement rate" valueAxisLabel="Engagement rate" />
@@ -167,7 +175,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
             title="Spotlight Performance — Engagement"
             kind="ai"
             subtitle="Avg engagement rate by spotlight type"
-            definition="Posts grouped by what they spotlight: Teacher, Product, Program, or Campaign. Only types with 2+ posts shown. Assigned by the v2.2 classifier."
+            definition={`Posts grouped by what they spotlight: Teacher, Product, Program, or Campaign. Reach-weighted engagement rate. Only types with ${MIN_N}+ posts shown. Assigned by the v2.2 classifier.`}
             sampleSize={`${spotlightStats.length} spotlight types, n = ${spotlightStats.reduce((s, x) => s + x.count, 0)} posts`}
             caption="Which spotlight category the audience engages with most. If Teacher posts outperform Product posts, lean into the faculty."
           >
@@ -190,7 +198,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           title="Hook Type Effectiveness"
           kind="ai"
           subtitle="Avg engagement rate by opening hook"
-          definition="Posts grouped by classified hook type (Question, Stat, Celebration, etc.). Only hook types with 2+ posts are shown. Hook type is assigned by the weekly pipeline from the post's opening line."
+          definition={`Posts grouped by classified hook type (Question, Stat, Celebration, etc.). Reach-weighted engagement rate. Only hook types with ${MIN_N}+ posts are shown. Hook type is assigned by the weekly pipeline from the post's opening line.`}
           sampleSize={`${hookStats.length} hook types shown`}
           caption="If one hook dominates, try testing the same content with a different opening to see if it's the hook or the topic."
         >
