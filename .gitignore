@@ -5,3 +5,9 @@ out/
 .env
 .env.local
 *.log
+
+# Fixer-script backups (apply_day*.py leave these; safe to regenerate)
+*.bak
+
+# TypeScript incremental build cache
+tsconfig.tsbuildinfo
