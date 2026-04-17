@@ -81,9 +81,18 @@ export default function ExploreClient({ posts }: Props) {
   const totalFilters = pillars.length + formats.length + audiences.length + entities.length;
   const groupByLabel = GROUP_BY_OPTIONS.find((o) => o.key === groupByDim)?.label || String(groupByDim);
 
+  const pillarOptions = useMemo(() => uniqueValues(posts, "content_pillar"), [posts]);
+  const formatOptions = useMemo(() => uniqueValues(posts, "format"), [posts]);
+  const audienceOptions = useMemo(() => uniqueValues(posts, "primary_audience"), [posts]);
+  const entityOptions = useMemo(() => uniqueValues(posts, "featured_entity"), [posts]);
+
+  function clearAll() {
+    setPillars([]); setFormats([]); setAudiences([]); setEntities([]);
+  }
+
   return (
     <div>
-      {/* Header: matches other pages */}
+      {/* Header */}
       <div className="mb-6">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
@@ -113,36 +122,29 @@ export default function ExploreClient({ posts }: Props) {
         <KpiCard label="Engagement Rate" value={kpis.avg_engagement_rate.toFixed(2) + "%"} />
       </div>
 
-      {/* Filters + Group by */}
+      {/* Filter toolbar — single row of dropdowns */}
       <Card className="mb-6 !p-0">
-        <FilterPanel
-          posts={posts}
-          pillars={pillars}
-          setPillars={setPillars}
-          formats={formats}
-          setFormats={setFormats}
-          audiences={audiences}
-          setAudiences={setAudiences}
-          entities={entities}
-          setEntities={setEntities}
-          totalFilters={totalFilters}
-        />
-        <div className="flex items-center justify-between gap-3 px-5 py-3 bg-slate-50/60 border-t border-slate-100 rounded-b-xl">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Group by</span>
-            <select
-              value={groupByDim as string}
-              onChange={(e) => setGroupByDim(e.target.value as keyof Post)}
-              className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-md text-xs text-slate-700 font-medium focus:outline-none focus:border-brand-shikho-indigo"
-            >
-              {GROUP_BY_OPTIONS.map((o) => (
-                <option key={o.key as string} value={o.key as string}>{o.label}</option>
-              ))}
-            </select>
-          </div>
-          <div className="text-xs text-slate-500">
-            <span className="font-semibold text-slate-700">{filtered.length.toLocaleString()}</span> posts match
-            {totalFilters > 0 && <span className="text-slate-400"> · {totalFilters} filter{totalFilters > 1 ? "s" : ""} active</span>}
+        <div className="flex flex-wrap items-center gap-2 px-4 py-3">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mr-1">Filter</span>
+          <MultiSelect label="Pillar" options={pillarOptions} selected={pillars} onChange={setPillars} />
+          <MultiSelect label="Format" options={formatOptions} selected={formats} onChange={setFormats} />
+          <MultiSelect label="Audience" options={audienceOptions} selected={audiences} onChange={setAudiences} />
+          <MultiSelect label="Entity" options={entityOptions} selected={entities} onChange={setEntities} searchable />
+          <div className="h-6 w-px bg-slate-200 mx-1" />
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Group by</span>
+          <GroupBySelect value={groupByDim} onChange={setGroupByDim} />
+          <div className="ml-auto flex items-center gap-3 text-xs text-slate-500">
+            <span>
+              <span className="font-semibold text-slate-700">{filtered.length.toLocaleString()}</span> posts match
+            </span>
+            {totalFilters > 0 && (
+              <button
+                onClick={clearAll}
+                className="text-slate-500 hover:text-slate-800 underline underline-offset-2"
+              >
+                Clear {totalFilters} filter{totalFilters > 1 ? "s" : ""}
+              </button>
+            )}
           </div>
         </div>
       </Card>
@@ -331,119 +333,162 @@ function RangeDropdown({
   );
 }
 
-/* -------- Collapsible filter panel -------- */
-function FilterPanel({
-  posts, pillars, setPillars, formats, setFormats, audiences, setAudiences, entities, setEntities, totalFilters,
+/* -------- Multi-select dropdown -------- */
+function MultiSelect({
+  label, options, selected, onChange, searchable,
 }: {
-  posts: Post[];
-  pillars: string[]; setPillars: (v: string[]) => void;
-  formats: string[]; setFormats: (v: string[]) => void;
-  audiences: string[]; setAudiences: (v: string[]) => void;
-  entities: string[]; setEntities: (v: string[]) => void;
-  totalFilters: number;
+  label: string;
+  options: string[];
+  selected: string[];
+  onChange: (v: string[]) => void;
+  searchable?: boolean;
 }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
 
-  function clearAll() {
-    setPillars([]); setFormats([]); setAudiences([]); setEntities([]);
+  useEffect(() => {
+    function onDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    if (open) document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  const filtered = searchable && query
+    ? options.filter((o) => o.toLowerCase().includes(query.toLowerCase()))
+    : options;
+
+  function toggle(opt: string) {
+    onChange(selected.includes(opt) ? selected.filter((x) => x !== opt) : [...selected, opt]);
   }
 
+  const count = selected.length;
+
   return (
-    <div>
+    <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-5 py-3.5 border-b border-slate-100"
+        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs border transition-colors ${
+          count > 0
+            ? "bg-brand-shikho-indigo/5 border-brand-shikho-indigo/30 text-brand-shikho-indigo font-semibold"
+            : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+        }`}
       >
-        <div className="flex items-center gap-2">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500">
-            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-          </svg>
-          <span className="text-sm font-semibold text-slate-700">Filters</span>
-          {totalFilters > 0 && (
-            <span className="px-1.5 py-0.5 rounded-md bg-brand-shikho-indigo text-white text-[10px] font-semibold">
-              {totalFilters}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-3">
-          {totalFilters > 0 && (
-            <span
-              onClick={(e) => { e.stopPropagation(); clearAll(); }}
-              className="text-xs text-slate-500 hover:text-slate-800 cursor-pointer"
-            >
-              Clear all
-            </span>
-          )}
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`text-slate-400 transition-transform ${open ? "rotate-180" : ""}`}>
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
-        </div>
+        <span>{label}</span>
+        {count > 0 && (
+          <span className="px-1.5 py-0.5 rounded-full bg-brand-shikho-indigo text-white text-[10px] font-semibold leading-none">
+            {count}
+          </span>
+        )}
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform ${open ? "rotate-180" : ""}`}>
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
       </button>
+
       {open && (
-        <div className="px-5 py-4 space-y-3">
-          <FilterChips label="Pillar" options={uniqueValues(posts, "content_pillar")} selected={pillars} onChange={setPillars} />
-          <FilterChips label="Format" options={uniqueValues(posts, "format")} selected={formats} onChange={setFormats} />
-          <FilterChips label="Audience" options={uniqueValues(posts, "primary_audience")} selected={audiences} onChange={setAudiences} />
-          <FilterChips label="Entity" options={uniqueValues(posts, "featured_entity")} selected={entities} onChange={setEntities} collapseAfter={14} />
+        <div className="absolute left-0 mt-2 w-64 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
+          <div className="px-3 py-2 border-b border-slate-100 flex items-center justify-between">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{label}</span>
+            {count > 0 && (
+              <button onClick={() => onChange([])} className="text-[11px] text-slate-500 hover:text-slate-800 underline underline-offset-2">
+                Clear
+              </button>
+            )}
+          </div>
+          {searchable && (
+            <div className="px-3 py-2 border-b border-slate-100">
+              <input
+                type="text"
+                placeholder="Search…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="w-full px-2 py-1 text-xs border border-slate-200 rounded-md focus:outline-none focus:border-brand-shikho-indigo"
+                autoFocus
+              />
+            </div>
+          )}
+          <div className="max-h-64 overflow-y-auto py-1">
+            {filtered.length === 0 && (
+              <div className="px-3 py-4 text-xs text-slate-400 text-center">No matches</div>
+            )}
+            {filtered.map((opt) => {
+              const active = selected.includes(opt);
+              return (
+                <button
+                  key={opt}
+                  onClick={() => toggle(opt)}
+                  className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left transition-colors ${
+                    active ? "bg-brand-shikho-indigo/5 text-brand-shikho-indigo font-medium" : "text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 ${
+                    active ? "bg-brand-shikho-indigo border-brand-shikho-indigo" : "bg-white border-slate-300"
+                  }`}>
+                    {active && (
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    )}
+                  </span>
+                  <span className="truncate">{opt}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-function FilterChips({
-  label, options, selected, onChange, collapseAfter,
+/* -------- Group By single-select dropdown -------- */
+function GroupBySelect({
+  value, onChange,
 }: {
-  label: string;
-  options: string[];
-  selected: string[];
-  onChange: (v: string[]) => void;
-  collapseAfter?: number;
+  value: keyof Post;
+  onChange: (v: keyof Post) => void;
 }) {
-  const [showAll, setShowAll] = useState(false);
-  if (options.length === 0) return null;
-  const visible = collapseAfter && !showAll ? options.slice(0, collapseAfter) : options;
-  const hiddenCount = collapseAfter && !showAll ? options.length - collapseAfter : 0;
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    if (open) document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  const current = GROUP_BY_OPTIONS.find((o) => o.key === value)?.label || String(value);
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mr-1 min-w-[56px]">{label}</span>
-      {visible.map((opt) => {
-        const active = selected.includes(opt);
-        return (
-          <button
-            key={opt}
-            onClick={() => onChange(active ? selected.filter((x) => x !== opt) : [...selected, opt])}
-            className={`px-2.5 py-1 rounded-full text-xs transition-colors ${
-              active
-                ? "bg-brand-shikho-indigo text-white font-semibold"
-                : "bg-white border border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
-            }`}
-          >
-            {opt}
-          </button>
-        );
-      })}
-      {hiddenCount > 0 && (
-        <button
-          onClick={() => setShowAll(true)}
-          className="text-xs text-slate-500 hover:text-slate-800 underline underline-offset-2"
-        >
-          +{hiddenCount} more
-        </button>
-      )}
-      {showAll && collapseAfter && options.length > collapseAfter && (
-        <button
-          onClick={() => setShowAll(false)}
-          className="text-xs text-slate-400 hover:text-slate-700"
-        >
-          show less
-        </button>
-      )}
-      {selected.length > 0 && (
-        <button onClick={() => onChange([])} className="text-xs text-slate-400 hover:text-slate-700 ml-1">
-          clear
-        </button>
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 transition-colors font-medium"
+      >
+        <span>{current}</span>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform ${open ? "rotate-180" : ""}`}>
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+      {open && (
+        <div className="absolute left-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden py-1">
+          {GROUP_BY_OPTIONS.map((o) => (
+            <button
+              key={o.key as string}
+              onClick={() => { onChange(o.key); setOpen(false); }}
+              className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
+                value === o.key
+                  ? "bg-brand-shikho-indigo/5 text-brand-shikho-indigo font-semibold"
+                  : "text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );
