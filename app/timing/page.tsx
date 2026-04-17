@@ -1,6 +1,6 @@
 import { getPosts } from "@/lib/sheets";
 import { filterPosts, bdt, reach } from "@/lib/aggregate";
-import { summarize, bestByLowerBound, reliabilityLabel, type Summary } from "@/lib/stats";
+import { summarize, bestByLowerBound, reliabilityLabel, minPostsForRange, type Summary } from "@/lib/stats";
 import { resolveRange } from "@/lib/daterange";
 import PageHeader from "@/components/PageHeader";
 import { Card, ChartCard } from "@/components/Card";
@@ -83,37 +83,60 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
     };
   });
 
-  // Chart series — show raw means so bars stay honest. Dim low-n slots.
-  const MIN_N = 10;
-  const slotReachChart = slotData.map((s) => ({
-    label: s.label,
-    value: Math.round(s.reachSum.mean),
-    meta: s.posts,
-    muted: s.posts < MIN_N,
-  }));
-  const slotEngChart = slotData.map((s) => ({
-    label: s.label,
-    value: Number(s.erSum.mean.toFixed(2)),
-    meta: s.posts,
-    muted: s.posts < MIN_N,
-  }));
-  const dayReachChart = dayData.map((d) => ({
-    label: d.label,
-    value: Math.round(d.reachSum.mean),
-  }));
-  const dayEngChart = dayData.map((d) => ({
-    label: d.label,
-    value: Number(d.erSum.mean.toFixed(2)),
-  }));
+  // Day 2S: adaptive min-N per range. A slot/day with fewer than `minN`
+  // posts is HIDDEN from the chart entirely — not just dimmed — so a
+  // single-post bucket can't visually dominate the bar chart. Day-of-week
+  // uses the same threshold (7 buckets vs 6 — close enough in practice).
+  const rangeDays = Math.max(
+    1,
+    Math.round((range.end.getTime() - range.start.getTime()) / 86_400_000)
+  );
+  const MIN_N = minPostsForRange(rangeDays);
 
-  // Rank "Best X" by 95% CI lower bound of the mean. n<2 entries auto-drop.
-  const bestDayReach = bestByLowerBound(dayData, (d) => d.reachSum);
-  const bestDayEng = bestByLowerBound(dayData, (d) => d.erSum);
-  const bestSlotReach = bestByLowerBound(slotData, (s) => s.reachSum);
-  const bestSlotEng = bestByLowerBound(slotData, (s) => s.erSum);
+  const slotReachChart = slotData
+    .filter((s) => s.posts >= MIN_N)
+    .map((s) => ({
+      label: s.label,
+      value: Math.round(s.reachSum.mean),
+      meta: s.posts,
+    }));
+  const slotEngChart = slotData
+    .filter((s) => s.posts >= MIN_N)
+    .map((s) => ({
+      label: s.label,
+      value: Number(s.erSum.mean.toFixed(2)),
+      meta: s.posts,
+    }));
+  const dayReachChart = dayData
+    .filter((d) => d.posts >= MIN_N)
+    .map((d) => ({
+      label: d.label,
+      value: Math.round(d.reachSum.mean),
+      meta: d.posts,
+    }));
+  const dayEngChart = dayData
+    .filter((d) => d.posts >= MIN_N)
+    .map((d) => ({
+      label: d.label,
+      value: Number(d.erSum.mean.toFixed(2)),
+      meta: d.posts,
+    }));
 
-  // Flag when there isn't enough data anywhere to estimate a CI.
-  const anyRankable = slotData.some((s) => isFinite(s.reachSum.lowerBound95));
+  const slotsShown = slotReachChart.length;
+  const daysShown = dayReachChart.length;
+
+  // Rank "Best X" by 95% CI lower bound of the mean among slots/days that
+  // also clear the MIN_N bar — so the "Best" KPI always names a bucket that
+  // actually appears in the chart below.
+  const eligibleSlots = slotData.filter((s) => s.posts >= MIN_N);
+  const eligibleDays = dayData.filter((d) => d.posts >= MIN_N);
+  const bestDayReach = bestByLowerBound(eligibleDays, (d) => d.reachSum);
+  const bestDayEng = bestByLowerBound(eligibleDays, (d) => d.erSum);
+  const bestSlotReach = bestByLowerBound(eligibleSlots, (s) => s.reachSum);
+  const bestSlotEng = bestByLowerBound(eligibleSlots, (s) => s.erSum);
+
+  // Flag when no slot clears the gate so we can show a dash + hint.
+  const anyRankable = eligibleSlots.length > 0;
 
   return (
     <div>
@@ -186,20 +209,33 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
           title="Avg Reach by Time of Day"
           kind="observed"
           subtitle="Posts grouped into BDT time slots"
-          definition="Posts are bucketed into 6 BDT time slots based on their publish hour. Each bar shows average unique reach per post in that slot. Slots with 0 posts in the period show as 0."
-          sampleSize={`${inRange.length} posts in range`}
-          caption="Slots with fewer than 10 posts are dimmed. The 'Best for Reach' KPI above ranks by 95% CI lower bound, so single-post slots cannot win."
+          definition={`Posts are bucketed into 6 BDT time slots based on their publish hour. Each bar shows average unique reach per post in that slot. Slots with fewer than ${MIN_N} posts are HIDDEN (adaptive threshold: 7d→3, 14d→5, 30d→10, larger ranges scale up).`}
+          sampleSize={`${inRange.length} posts · ${slotsShown}/6 slots ≥ ${MIN_N}`}
+          caption={`Only slots with at least ${MIN_N} posts in a ${rangeDays}-day window are shown — a single viral post can't promote a time slot on its own.`}
         >
-          <BarChartBase data={slotReachChart} colorByIndex metricName="Avg reach / post" valueAxisLabel="Avg reach / post" categoryAxisLabel="Time slot (BDT)" />
+          {slotsShown > 0 ? (
+            <BarChartBase data={slotReachChart} colorByIndex metricName="Avg reach / post" valueAxisLabel="Avg reach / post" categoryAxisLabel="Time slot (BDT)" />
+          ) : (
+            <div className="flex items-center justify-center h-48 text-sm text-slate-500">
+              No slot has ≥ {MIN_N} posts in this {rangeDays}-day window. Widen the range.
+            </div>
+          )}
         </ChartCard>
         <ChartCard
           title="Engagement Rate by Time of Day"
           kind="derived"
           subtitle="Interactions ÷ reach by BDT slot"
-          definition="For each BDT slot: mean of per-post engagement rates in that slot. Per-post ER = interactions ÷ that post's reach × 100."
-          caption="Dimmed slots have fewer than 10 posts. KPI above uses CI lower bound for ranking."
+          definition={`For each BDT slot: mean of per-post engagement rates in that slot. Per-post ER = interactions ÷ that post's reach × 100. Slots with fewer than ${MIN_N} posts are hidden.`}
+          sampleSize={`${slotsShown}/6 slots ≥ ${MIN_N}`}
+          caption={`Same threshold as the reach chart: a slot needs ≥ ${MIN_N} posts to appear.`}
         >
-          <BarChartBase data={slotEngChart} valueFormat="percent" colorByIndex metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Time slot (BDT)" />
+          {slotsShown > 0 ? (
+            <BarChartBase data={slotEngChart} valueFormat="percent" colorByIndex metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Time slot (BDT)" />
+          ) : (
+            <div className="flex items-center justify-center h-48 text-sm text-slate-500">
+              No slot has ≥ {MIN_N} posts in this {rangeDays}-day window.
+            </div>
+          )}
         </ChartCard>
       </div>
 
@@ -208,19 +244,33 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
           title="Avg Reach by Day of Week"
           kind="observed"
           subtitle="BDT days"
-          definition="Posts are bucketed by day-of-week (Sunday to Saturday, BDT). Each bar = average unique reach per post on that day."
-          caption="Day-level reach patterns. Sunday is often strong for ed-tech in Bangladesh."
+          definition={`Posts are bucketed by day-of-week (Sunday to Saturday, BDT). Each bar = average unique reach per post on that day. Days with fewer than ${MIN_N} posts in the window are hidden.`}
+          sampleSize={`${daysShown}/7 days ≥ ${MIN_N}`}
+          caption={`Day-level reach patterns. Days need ≥ ${MIN_N} posts in a ${rangeDays}-day window to appear.`}
         >
-          <BarChartBase data={dayReachChart} colorByIndex metricName="Avg reach / post" valueAxisLabel="Avg reach / post" categoryAxisLabel="Day of week" />
+          {daysShown > 0 ? (
+            <BarChartBase data={dayReachChart} colorByIndex metricName="Avg reach / post" valueAxisLabel="Avg reach / post" categoryAxisLabel="Day of week" />
+          ) : (
+            <div className="flex items-center justify-center h-48 text-sm text-slate-500">
+              No day-of-week has ≥ {MIN_N} posts in this {rangeDays}-day window.
+            </div>
+          )}
         </ChartCard>
         <ChartCard
           title="Engagement Rate by Day of Week"
           kind="derived"
           subtitle="BDT days"
-          definition="For each day-of-week: mean of per-post engagement rates across all posts published that day."
-          caption="When the audience is most active. Use to time your highest-value content."
+          definition={`For each day-of-week: mean of per-post engagement rates across all posts published that day. Days with fewer than ${MIN_N} posts are hidden.`}
+          sampleSize={`${daysShown}/7 days ≥ ${MIN_N}`}
+          caption={`When the audience is most active. Same ≥ ${MIN_N} threshold as the reach chart.`}
         >
-          <BarChartBase data={dayEngChart} valueFormat="percent" colorByIndex metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Day of week" />
+          {daysShown > 0 ? (
+            <BarChartBase data={dayEngChart} valueFormat="percent" colorByIndex metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Day of week" />
+          ) : (
+            <div className="flex items-center justify-center h-48 text-sm text-slate-500">
+              No day-of-week has ≥ {MIN_N} posts in this {rangeDays}-day window.
+            </div>
+          )}
         </ChartCard>
       </div>
     </div>

@@ -110,6 +110,28 @@ export function bestByLowerBound<T>(
   return top;
 }
 
+/**
+ * Day 2S: minimum sample size required for a category bar (timing slot,
+ * day of week, etc.) to be shown at all. Scales with range length.
+ *
+ * Anchors from the user spec:
+ *   7d  → 3
+ *   14d → 5
+ *   30d → 10
+ *
+ * Extrapolated for wider ranges so the threshold stays useful without
+ * hiding everything on long windows.
+ */
+export function minPostsForRange(days: number): number {
+  if (days <= 7)   return 3;
+  if (days <= 14)  return 5;
+  if (days <= 30)  return 10;
+  if (days <= 60)  return 15;
+  if (days <= 90)  return 20;
+  if (days <= 180) return 30;
+  return 50;
+}
+
 /** Short label for n-based reliability, shown next to KPI values. */
 export function reliabilityLabel(n: number): string {
   if (n === 0) return "no data";
