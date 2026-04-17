@@ -6,13 +6,28 @@ import PageHeader from "@/components/PageHeader";
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
 
-const formatColors: Record<string, { bg: string; text: string }> = {
-  Reel:     { bg: "bg-pink-50",    text: "text-pink-700" },
-  Photo:    { bg: "bg-blue-50",    text: "text-blue-700" },
-  Carousel: { bg: "bg-amber-50",   text: "text-amber-700" },
-  Video:    { bg: "bg-purple-50",  text: "text-purple-700" },
-  Link:     { bg: "bg-teal-50",    text: "text-teal-700" },
-  Status:   { bg: "bg-slate-100",  text: "text-slate-700" },
+// Day 2Q: Plan page visual refresh — matches the Strategy/Explore language.
+// Day column gets a colored accent stripe per slot format, a compact "time
+// pill" instead of plain text, and the rationale dropdown is styled as a
+// proper disclosure instead of native <details> chrome.
+
+const formatColors: Record<string, { bg: string; text: string; ring: string; stripe: string }> = {
+  Reel:     { bg: "bg-pink-50",   text: "text-pink-700",   ring: "ring-pink-200",   stripe: "bg-pink-400" },
+  Photo:    { bg: "bg-blue-50",   text: "text-blue-700",   ring: "ring-blue-200",   stripe: "bg-blue-400" },
+  Carousel: { bg: "bg-amber-50",  text: "text-amber-700",  ring: "ring-amber-200",  stripe: "bg-amber-400" },
+  Video:    { bg: "bg-purple-50", text: "text-purple-700", ring: "ring-purple-200", stripe: "bg-purple-400" },
+  Link:     { bg: "bg-teal-50",   text: "text-teal-700",   ring: "ring-teal-200",   stripe: "bg-teal-400" },
+  Status:   { bg: "bg-slate-100", text: "text-slate-700",  ring: "ring-slate-200",  stripe: "bg-slate-300" },
+};
+
+const dayAccent: Record<string, string> = {
+  Monday:    "from-indigo-500/90 to-blue-500/80",
+  Tuesday:   "from-cyan-500/90 to-teal-500/80",
+  Wednesday: "from-emerald-500/90 to-green-500/80",
+  Thursday:  "from-amber-500/90 to-orange-500/80",
+  Friday:    "from-rose-500/90 to-pink-500/80",
+  Saturday:  "from-fuchsia-500/90 to-purple-500/80",
+  Sunday:    "from-violet-500/90 to-indigo-500/80",
 };
 
 export default async function PlanPage() {
@@ -35,61 +50,124 @@ export default async function PlanPage() {
         </Card>
       )}
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {orderedDays.map((day) => {
           const slots = byDay[day];
+          const accent = dayAccent[day] || "from-slate-500 to-slate-400";
           return (
             <Card key={day} className="!p-0 overflow-hidden">
-              <div className="px-6 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-                <div>
-                  <div className="font-semibold text-slate-900">{day}</div>
-                  <div className="text-xs text-slate-500">{slots[0]?.date}</div>
+              <div className={`relative px-6 py-4 bg-gradient-to-r ${accent} text-white`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-white/80">{slots[0]?.date}</div>
+                    <div className="text-lg font-bold mt-0.5">{day}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold leading-none">{slots.length}</div>
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-white/80 mt-1">post{slots.length > 1 ? "s" : ""}</div>
+                  </div>
                 </div>
-                <div className="text-xs text-slate-500">{slots.length} posts</div>
               </div>
               <div className="divide-y divide-slate-100">
                 {slots.map((slot, i) => {
                   const fc = formatColors[slot.format] || formatColors.Status;
                   return (
-                    <div key={i} className="px-6 py-4">
-                      <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 w-16 text-sm font-medium text-slate-700">{slot.time_bdt || "—"}</div>
-                        <div className="flex-shrink-0">
-                          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${fc.bg} ${fc.text}`}>
+                    <div key={i} className="relative px-6 py-5 hover:bg-slate-50/60 transition-colors">
+                      <div className={`absolute left-0 top-0 bottom-0 w-1 ${fc.stripe}`} />
+                      <div className="flex items-start gap-4">
+                        {/* Time pill */}
+                        <div className="flex-shrink-0 w-20">
+                          <div className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700 bg-slate-100 rounded-md px-2 py-1">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500">
+                              <circle cx="12" cy="12" r="10"></circle>
+                              <polyline points="12 6 12 12 16 14"></polyline>
+                            </svg>
+                            {slot.time_bdt || "—"}
+                          </div>
+                        </div>
+                        {/* Format chip */}
+                        <div className="flex-shrink-0 pt-0.5">
+                          <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-md ${fc.bg} ${fc.text} ring-1 ${fc.ring}`}>
                             {slot.format}
                           </span>
                         </div>
+                        {/* Main content */}
                         <div className="flex-1 min-w-0">
-                          <div className="text-xs text-slate-500 mb-1.5">
-                            {slot.pillar}
+                          {/* Meta row */}
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500 mb-1.5">
+                            <span className="font-semibold text-brand-shikho-pink">{slot.pillar}</span>
                             {(slot.spotlight_name || (slot.featured_entity && slot.featured_entity !== "None")) && (
-                              <span> · <span className="text-slate-600">
-                                {slot.spotlight_name || slot.featured_entity}
-                                {slot.spotlight_type && slot.spotlight_type !== "None" && (
-                                  <span className="text-slate-400"> ({slot.spotlight_type})</span>
-                                )}
-                              </span></span>
+                              <>
+                                <span className="text-slate-300">·</span>
+                                <span className="text-brand-shikho-orange font-medium">
+                                  {slot.spotlight_name || slot.featured_entity}
+                                  {slot.spotlight_type && slot.spotlight_type !== "None" && (
+                                    <span className="text-slate-400 font-normal"> ({slot.spotlight_type})</span>
+                                  )}
+                                </span>
+                              </>
                             )}
-                            {slot.audience && <span> · {slot.audience}</span>}
+                            {slot.audience && (
+                              <>
+                                <span className="text-slate-300">·</span>
+                                <span>{slot.audience}</span>
+                              </>
+                            )}
+                            {slot.funnel_stage && (
+                              <>
+                                <span className="text-slate-300">·</span>
+                                <span className="text-slate-600 font-medium">{slot.funnel_stage}</span>
+                              </>
+                            )}
                           </div>
-                          <div className="text-[15px] text-slate-900 font-medium leading-snug">{slot.hook_line}</div>
-                          {slot.key_message && <div className="text-sm text-slate-600 mt-1">{slot.key_message}</div>}
-                          {slot.visual_direction && (
-                            <div className="text-xs text-slate-500 mt-2">
-                              <span className="text-slate-700 font-medium">Visual: </span>{slot.visual_direction}
+                          {/* Hook */}
+                          <div className="text-[15px] text-slate-900 font-semibold leading-snug">{slot.hook_line}</div>
+                          {slot.key_message && <div className="text-sm text-slate-600 mt-1 leading-relaxed">{slot.key_message}</div>}
+
+                          {/* Spec rows */}
+                          <div className="mt-3 space-y-1.5">
+                            {slot.visual_direction && (
+                              <div className="flex gap-2 text-xs">
+                                <span className="flex-shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-400 w-16">Visual</span>
+                                <span className="text-slate-700 leading-relaxed">{slot.visual_direction}</span>
+                              </div>
+                            )}
+                            {slot.cta && (
+                              <div className="flex gap-2 text-xs">
+                                <span className="flex-shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-400 w-16">CTA</span>
+                                <span className="text-slate-700 leading-relaxed">{slot.cta}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Expected + Success metric — inline chips */}
+                          {(slot.expected_reach || slot.success_metric) && (
+                            <div className="flex flex-wrap gap-2 mt-3">
+                              {slot.expected_reach && (
+                                <span className="inline-flex items-center gap-1 text-[11px] bg-brand-cyan/10 text-brand-cyan rounded-md px-2 py-1">
+                                  <span className="font-semibold">Target:</span>
+                                  <span>{slot.expected_reach}</span>
+                                </span>
+                              )}
+                              {slot.success_metric && (
+                                <span className="inline-flex items-center gap-1 text-[11px] bg-brand-green/10 text-brand-green rounded-md px-2 py-1">
+                                  <span className="font-semibold">Success:</span>
+                                  <span>{slot.success_metric}</span>
+                                </span>
+                              )}
                             </div>
                           )}
-                          <div className="text-xs text-slate-500 mt-1.5">
-                            <span className="text-slate-700 font-medium">CTA: </span>{slot.cta}
-                          </div>
-                          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-slate-500">
-                            {slot.expected_reach && (<span><span className="text-slate-700">Expected: </span>{slot.expected_reach}</span>)}
-                            {slot.success_metric && (<span><span className="text-slate-700">Success: </span>{slot.success_metric}</span>)}
-                          </div>
+
+                          {/* Rationale disclosure */}
                           {slot.rationale && (
-                            <details className="mt-2">
-                              <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-800">Rationale</summary>
-                              <div className="mt-1.5 text-xs text-slate-600 bg-slate-50 rounded p-2">{slot.rationale}</div>
+                            <details className="group mt-3">
+                              <summary className="list-none cursor-pointer inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-800">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-open:rotate-90">
+                                  <polyline points="9 18 15 12 9 6"></polyline>
+                                </svg>
+                                Why this post
+                              </summary>
+                              <div className="mt-2 text-xs text-slate-600 bg-slate-50 rounded-md p-3 leading-relaxed border border-slate-100">{slot.rationale}</div>
                             </details>
                           )}
                         </div>
