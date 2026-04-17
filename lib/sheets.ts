@@ -92,7 +92,15 @@ export async function getPosts(): Promise<Post[]> {
       content_pillar: c["Content Pillar"] || "",
       funnel_stage: c["Funnel Stage"] || "",
       caption_tone: c["Caption Tone"] || "",
-      format: c["Format"] || r["Type"] || "",
+      // Day 2E.4: Format column dropped from Classifications. Derive from
+      // Raw_Posts so old (classifier-cased "Video") and new (raw "video") rows
+      // land in the same aggregation bucket.
+      format: (() => {
+        if (c["Format"]) return c["Format"] as string;
+        if (toBool(r["Is Reel"])) return "Reel";
+        const t = (r["Type"] || "") as string;
+        return t ? t.charAt(0).toUpperCase() + t.slice(1).toLowerCase() : "";
+      })(),
       language: c["Language"] || "",
       has_cta: toBool(c["Has CTA"]),
       cta_type: c["CTA Type"] || "None",
