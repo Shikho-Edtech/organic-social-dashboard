@@ -71,9 +71,14 @@ export async function getPosts(): Promise<Post[]> {
 
   return raw.map((r) => {
     const c = classById[r["Post ID"]] || {};
+    // Day 2N: prefer the pipeline-shifted BDT timestamp when present (Day 2G
+    // widened Raw_Posts to 20 cols with "Created Time (BDT)"). Falls back to
+    // the legacy UTC column for pre-Day-2G rows. Downstream `bdt()` in
+    // lib/aggregate detects the +06:00 suffix and takes the clean read path.
+    const createdTime = (r["Created Time (BDT)"] as string) || (r["Created Time"] as string) || "";
     return {
       id: r["Post ID"],
-      created_time: r["Created Time"],
+      created_time: createdTime,
       type: r["Type"],
       message: r["Message (first 200 chars)"] || "",
       reactions: toNumber(r["Reactions"]),

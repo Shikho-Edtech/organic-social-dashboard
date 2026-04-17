@@ -3,8 +3,30 @@ import type { Post, DailyMetric } from "./types";
 
 // ─── Date helpers (Bangladesh time, UTC+6) ───
 
+// Day 2N: prefer the pipeline-written `Created Time (BDT)` column over
+// the UTC column + setHours arithmetic. The old path depended on Node's
+// local timezone matching UTC (true on Vercel prod, not guaranteed
+// elsewhere), and the setHours/getUTCHours dance hid a whole class of
+// off-by-one-day bugs. The pipeline (Day 2G) now ships a clean BDT
+// wall-clock string per post; use it when present and keep the legacy
+// math as a fallback for pre-Day-2G rows that never got the column.
 export function bdt(iso: string): Date {
-  // Parse FB created_time (e.g. "2026-04-16T15:01:42+0000") and shift to BDT
+  if (!iso) return new Date(NaN);
+
+  // Day 2N preferred path: already-BDT wall clock, no offset needed.
+  // Accepts "2026-04-16T21:01:42+06:00" or naive "2026-04-16T21:01:42".
+  // Heuristic: any "+06:00" suffix means the pipeline already shifted.
+  if (iso.includes("+06:00") || iso.includes("+0600")) {
+    // Strip the offset and parse as-if local to the current runtime, so
+    // getHours()/getDay() return the BDT wall clock regardless of where
+    // the server runs.
+    const naive = iso.replace(/([+-]\d{2}):?\d{2}$/, "");
+    return new Date(naive);
+  }
+
+  // Legacy path: UTC FB timestamp ("...+0000" or "...Z"). Shift the UTC
+  // hours by +6 and store that back as local time. Works in UTC runtime
+  // (Vercel prod); getHours returns the BDT hour after the setHours call.
   const d = new Date(iso.replace(/\+0000/, "Z"));
   d.setHours(d.getUTCHours() + 6);
   return d;
