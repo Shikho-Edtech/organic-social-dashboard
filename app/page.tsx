@@ -1,5 +1,5 @@
 import { getPosts, getDailyMetrics } from "@/lib/sheets";
-import { filterPosts, computeKpis, dailyReach, reach, engagementRate, groupStats, wowDelta, daysAgo } from "@/lib/aggregate";
+import { filterPosts, computeKpis, dailyReach, groupStats, wowDelta } from "@/lib/aggregate";
 import { resolveRange } from "@/lib/daterange";
 import PageHeader from "@/components/PageHeader";
 import KpiCard from "@/components/KpiCard";
@@ -11,9 +11,8 @@ import BarChartBase from "@/components/BarChart";
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
 
-export default async function OverviewPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
-  const sp = await searchParams;
-  const range = resolveRange(sp);
+export default async function OverviewPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
+  const range = resolveRange(searchParams);
 
   const [posts, daily] = await Promise.all([getPosts(), getDailyMetrics()]);
   const inRange = filterPosts(posts, { start: range.start, end: range.end });

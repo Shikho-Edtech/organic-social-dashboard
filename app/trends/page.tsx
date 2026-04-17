@@ -1,5 +1,5 @@
 import { getPosts, getDailyMetrics } from "@/lib/sheets";
-import { filterPosts, dailyReach, reach, engagementRate, bdt } from "@/lib/aggregate";
+import { filterPosts, dailyReach, reach, bdt } from "@/lib/aggregate";
 import { resolveRange } from "@/lib/daterange";
 import PageHeader from "@/components/PageHeader";
 import { ChartCard } from "@/components/Card";
@@ -9,9 +9,8 @@ import BarChartBase from "@/components/BarChart";
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
 
-export default async function TrendsPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
-  const sp = await searchParams;
-  const range = resolveRange(sp);
+export default async function TrendsPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
+  const range = resolveRange(searchParams);
 
   const [posts, daily] = await Promise.all([getPosts(), getDailyMetrics()]);
   const inRange = filterPosts(posts, { start: range.start, end: range.end });
@@ -35,7 +34,6 @@ export default async function TrendsPage({ searchParams }: { searchParams: Promi
   for (const p of inRange) {
     if (!p.created_time) continue;
     const d = bdt(p.created_time);
-    const wk = `W${d.toISOString().slice(0, 10).slice(5)}`;
     const weekKey = `${d.getFullYear()}-W${String(getWeek(d)).padStart(2, "0")}`;
     const r = reach(p);
     const e = (p.reactions || 0) + (p.comments || 0) + (p.shares || 0);

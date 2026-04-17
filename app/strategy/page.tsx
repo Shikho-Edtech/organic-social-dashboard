@@ -1,5 +1,5 @@
 import { getPosts, getLatestDiagnosis } from "@/lib/sheets";
-import { filterPosts, groupStats, reach, engagementRate } from "@/lib/aggregate";
+import { filterPosts, groupStats } from "@/lib/aggregate";
 import { resolveRange } from "@/lib/daterange";
 import PageHeader from "@/components/PageHeader";
 import { Card, ChartCard } from "@/components/Card";
@@ -8,9 +8,8 @@ import BarChartBase from "@/components/BarChart";
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
 
-export default async function StrategyPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
-  const sp = await searchParams;
-  const range = resolveRange(sp);
+export default async function StrategyPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
+  const range = resolveRange(searchParams);
   const [posts, diagnosis] = await Promise.all([getPosts(), getLatestDiagnosis()]);
   const inRange = filterPosts(posts, { start: range.start, end: range.end });
 

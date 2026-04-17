@@ -1,5 +1,5 @@
 import { getPosts } from "@/lib/sheets";
-import { filterPosts, groupStats, reach, engagementRate } from "@/lib/aggregate";
+import { filterPosts, groupStats } from "@/lib/aggregate";
 import { resolveRange } from "@/lib/daterange";
 import PageHeader from "@/components/PageHeader";
 import { ChartCard } from "@/components/Card";
@@ -9,9 +9,8 @@ import Donut from "@/components/Donut";
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
 
-export default async function EngagementPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
-  const sp = await searchParams;
-  const range = resolveRange(sp);
+export default async function EngagementPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
+  const range = resolveRange(searchParams);
   const posts = await getPosts();
   const inRange = filterPosts(posts, { start: range.start, end: range.end });
 
