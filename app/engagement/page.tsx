@@ -1,8 +1,9 @@
 import { getPosts } from "@/lib/sheets";
 import { filterPosts, groupStats } from "@/lib/aggregate";
+import { bestByLowerBound, reliabilityLabel } from "@/lib/stats";
 import { resolveRange } from "@/lib/daterange";
 import PageHeader from "@/components/PageHeader";
-import { ChartCard } from "@/components/Card";
+import { Card, ChartCard } from "@/components/Card";
 import BarChartBase from "@/components/BarChart";
 import Donut from "@/components/Donut";
 
@@ -36,6 +37,13 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
   const spotlightER = spotlightStats.map((s) => ({ label: s.key, value: Number(s.avg_engagement_rate.toFixed(2)) }));
   const spotlightReach = spotlightStats.map((s) => ({ label: s.key, value: s.avg_reach_per_post }));
 
+  // Day 2O: CI-ranked "best X" callouts. Ranks by 95% CI lower bound of
+  // engagement rate — single outliers in tiny buckets can't win.
+  const bestFormat = bestByLowerBound(formatStats, (s) => s.er_summary);
+  const bestPillar = bestByLowerBound(pillarStats, (s) => s.er_summary);
+  const bestHook = bestByLowerBound(hookStats, (s) => s.er_summary);
+  const bestSpotlight = bestByLowerBound(spotlightStats, (s) => s.er_summary);
+
   // Engagement breakdown (overall)
   const totals = inRange.reduce(
     (acc, p) => {
@@ -61,6 +69,62 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
   return (
     <div>
       <PageHeader title="Engagement" subtitle="What drives interaction" dateLabel={range.label} />
+
+      {/* CI-ranked "best X" strip — uses 95% CI lower bound so low-n buckets can't win */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <Card className="!p-5">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Best Format</div>
+          <div className="text-2xl font-bold text-brand-cyan mt-2">{bestFormat?.key || "—"}</div>
+          <div className="text-xs text-slate-500 mt-1">
+            {(bestFormat?.er_summary.mean || 0).toFixed(2)}% avg eng rate
+          </div>
+          <div className="text-[11px] text-slate-400 mt-0.5">
+            {reliabilityLabel(bestFormat?.count || 0)}
+            {bestFormat && isFinite(bestFormat.er_summary.lowerBound95) && (
+              <> · reliable floor {Math.max(0, bestFormat.er_summary.lowerBound95).toFixed(2)}%</>
+            )}
+          </div>
+        </Card>
+        <Card className="!p-5">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Best Pillar</div>
+          <div className="text-2xl font-bold text-brand-pink mt-2">{bestPillar?.key || "—"}</div>
+          <div className="text-xs text-slate-500 mt-1">
+            {(bestPillar?.er_summary.mean || 0).toFixed(2)}% avg eng rate
+          </div>
+          <div className="text-[11px] text-slate-400 mt-0.5">
+            {reliabilityLabel(bestPillar?.count || 0)}
+            {bestPillar && isFinite(bestPillar.er_summary.lowerBound95) && (
+              <> · reliable floor {Math.max(0, bestPillar.er_summary.lowerBound95).toFixed(2)}%</>
+            )}
+          </div>
+        </Card>
+        <Card className="!p-5">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Best Hook</div>
+          <div className="text-2xl font-bold text-brand-green mt-2">{bestHook?.key || "—"}</div>
+          <div className="text-xs text-slate-500 mt-1">
+            {(bestHook?.er_summary.mean || 0).toFixed(2)}% avg eng rate
+          </div>
+          <div className="text-[11px] text-slate-400 mt-0.5">
+            {reliabilityLabel(bestHook?.count || 0)}
+            {bestHook && isFinite(bestHook.er_summary.lowerBound95) && (
+              <> · reliable floor {Math.max(0, bestHook.er_summary.lowerBound95).toFixed(2)}%</>
+            )}
+          </div>
+        </Card>
+        <Card className="!p-5">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Best Spotlight Type</div>
+          <div className="text-2xl font-bold text-brand-purple mt-2">{bestSpotlight?.key || "—"}</div>
+          <div className="text-xs text-slate-500 mt-1">
+            {(bestSpotlight?.er_summary.mean || 0).toFixed(2)}% avg eng rate
+          </div>
+          <div className="text-[11px] text-slate-400 mt-0.5">
+            {reliabilityLabel(bestSpotlight?.count || 0)}
+            {bestSpotlight && isFinite(bestSpotlight.er_summary.lowerBound95) && (
+              <> · reliable floor {Math.max(0, bestSpotlight.er_summary.lowerBound95).toFixed(2)}%</>
+            )}
+          </div>
+        </Card>
+      </div>
 
       <div className="grid lg:grid-cols-2 gap-4 mb-4">
         <ChartCard
