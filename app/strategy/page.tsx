@@ -32,12 +32,15 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
 
   return (
     <div>
-      <PageHeader title="Strategy" subtitle="Claude's diagnosis and recommended actions" dateLabel={range.label} />
+      <PageHeader title="Strategy" subtitle="Claude's diagnosis and recommended actions" dateLabel={`${range.label} · Funnel charts filtered; verdict = latest weekly snapshot`} />
 
       {/* Headline */}
       {diagnosis?.headline && (
         <Card className="mb-6 border-l-4 !border-l-slate-900">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Weekly verdict</div>
+          <div className="flex items-center justify-between">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Weekly verdict</div>
+            <div className="text-[10px] text-slate-400">Latest weekly run · not filtered by date range</div>
+          </div>
           <div className="text-xl text-slate-900 font-medium mt-2 leading-snug">{diagnosis.headline}</div>
           {diagnosis.exam_alert && (
             <div className="mt-3 pt-3 border-t border-slate-100 text-sm text-slate-600">

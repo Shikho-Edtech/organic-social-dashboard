@@ -1,5 +1,61 @@
 # Changelog
 
+## 2026-04-17 — Dashboard batch: Reels page, Timing KPI tightening, Strategy clarity, Login redesign
+
+Ships alongside pipeline Day 2G/2H/2I/2J. Six interrelated items from a
+diagnostic sweep after Run #15 produced an empty Content_Calendar and the
+team noticed a few pages had subtle bugs.
+
+**New: `/reels` page** ([app/reels/page.tsx](app/reels/page.tsx))
+- Surfaces `Raw_Video` tab (18 cols, populated by pipeline Day 2D).
+- KPI strip: Reels Posted, Total Plays, Avg Watch Time, Completion Rate,
+  Followers Gained.
+- Secondary metrics: Total Views, 15s Views, 30s Views, Sound On Rate.
+- Aggregate retention funnel chart (0s → 15s → 30s → complete).
+- Top 10 reels by plays, by avg watch time (filtered to ≥500 views to
+  avoid tiny-sample outliers), by followers gained.
+- Recent reels table (up to 25 rows, newest first) with caption preview,
+  pillar, plays, replays, watch time, completion %, sound-on, follows.
+- Added to `Nav.tsx` between Timing and Strategy.
+
+**Timing page KPI tightening** ([app/timing/page.tsx](app/timing/page.tsx))
+- `MIN_N` raised from 5 → 10 for the "best slot" selector. Early (5–9am)
+  was winning the KPI with 5–6 posts, one viral hit dragging the average
+  up and painting a misleading "post at dawn" conclusion.
+- All four KPI cards now show sample size (`n=X`) next to the metric.
+- Amber asterisk beside slot KPI titles when no slot meets the threshold
+  (all-slot fallback active).
+- Chart caption updated 5 → 10.
+
+**Strategy page date-range clarity** ([app/strategy/page.tsx](app/strategy/page.tsx))
+- The Weekly Verdict card reads from `getLatestDiagnosis()` — always
+  latest snapshot, unaffected by the date range picker. Funnel
+  distribution charts on the same page DO honor the range, which created
+  confusion.
+- Added inline label `"Latest weekly run · not filtered by date range"`
+  in the verdict card header.
+- Page subtitle updated: `"Funnel charts filtered; verdict = latest
+  weekly snapshot"`.
+
+**Login page redesign** ([app/login/page.tsx](app/login/page.tsx))
+- Replaced the generic `Weekly / Facebook / $0/mo` stats strip with four
+  workflow cadence bullets: Daily 09:00 BDT data refresh, Monday 10:00
+  BDT full Claude diagnosis, source-of-truth (Meta Graph API v21.0
+  → Sheets), 5 minute server cache.
+- Bottom-left attribution: `Prepared by Shahriar · Performance & Growth
+  Marketing`.
+- Form side cleaned up: uppercase "Team access" eyebrow, helper copy
+  under the submit button listing what pages are available and that all
+  times are BDT.
+
+Known gap after this batch: Top Performers / Underperformers on Strategy
+were blank because pipeline `_safe_cell` truncated JSON to 500 chars,
+corrupting the Full Diagnosis cell. Fixed upstream in pipeline Day 2J —
+see `facebook-pipeline/IMPROVEMENTS.md`. Dashboard reads will repopulate
+automatically after the next weekly run.
+
+---
+
 ## 2026-04-17 — Day 2E.4: Normalize post format on the getPosts read path (commit `5fe6ee7`)
 
 The pipeline's `Classifications` tab shrank 18 → 16 cols, dropping `Format`
