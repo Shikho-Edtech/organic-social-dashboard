@@ -105,21 +105,22 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
     ? avgWatchFromCurveNumerator / avgWatchFromCurveDenom
     : avgWatchTime;
 
-  // Bucket fields — populated for regular videos only, noted as N/A when 0
-  // across all reels in range.
+  // Bucket fields — populated for regular videos only. Kept so we can prefer
+  // Meta's own numbers when available and fall back to the per-second
+  // retention curve (which IS populated for reels) otherwise.
   const total15sBucket = reels.reduce((s, r) => s + (r.views_15s || 0), 0);
   const total30sBucket = reels.reduce((s, r) => s + (r.views_30s || 0), 0);
-  const totalCompletesBucket = reels.reduce((s, r) => s + (r.complete_views || 0), 0);
-  const totalSoundOn = reels.reduce((s, r) => s + (r.sound_on_views || 0), 0);
-  const soundOnAvailable = totalSoundOn > 0;
-
-  // Prefer derived retention values when Meta's buckets are empty (the common
-  // case for reels).
   const total15s = total15sBucket > 0 ? total15sBucket : retentionViews[15];
   const total30s = total30sBucket > 0 ? total30sBucket : retentionViews[30];
-  const totalCompletes = totalCompletesBucket > 0 ? totalCompletesBucket : 0;
-  const completionRate = totalViews ? (totalCompletes / totalViews) * 100 : 0;
-  const soundOnRate = soundOnAvailable && totalViews ? (totalSoundOn / totalViews) * 100 : 0;
+
+  // Replacement metrics (since Meta doesn't populate Completion Rate or
+  // Sound On Rate for reels):
+  //   Hook Retention (3s) — viewers still watching at second 3, the critical
+  //     hook window. Derived from per-second curve.
+  //   Replay Rate — replays as a share of total plays. Tells us which reels
+  //     are sticky enough to get rewatched.
+  const hookRetention3s = totalViews ? (retentionViews[3] / totalViews) * 100 : 0;
+  const replayRate = totalPlays ? (totalReplays / totalPlays) * 100 : 0;
 
   // Top 10 reels by plays
   const topByPlays = [...reels]
@@ -198,7 +199,9 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
     }
   }
 
-  // Reels table — newest first, cap at 25 rows
+  // Reels table — newest first, cap at 25 rows.
+  // Per-row metrics prefer derived retention + replay rate over Meta's empty
+  // completion / sound-on buckets, matching the KPI strip above.
   const tableRows = [...reels]
     .sort((a, b) => new Date(b.created_time).getTime() - new Date(a.created_time).getTime())
     .slice(0, 25)
@@ -207,17 +210,24 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
       const dateStr = r.created_time
         ? bdt(r.created_time).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })
         : "—";
-      const complRate = (r.total_views || 0) ? ((r.complete_views || 0) / r.total_views) * 100 : 0;
+      const curve = parseRetentionCurve(r.retention_graph);
+      const views = r.total_views || 0;
+      const hook3 = views && Object.keys(curve).length
+        ? retentionAt(curve, 3) * 100
+        : 0;
+      const plays = r.reel_plays || 0;
+      const replays = r.reel_replays || 0;
+      const rowReplayRate = plays ? (replays / plays) * 100 : 0;
       return {
         id: r.post_id,
         date: dateStr,
         caption: previewMessage(p?.message || "", 60),
         pillar: p?.content_pillar || "—",
-        plays: r.reel_plays || 0,
-        replays: r.reel_replays || 0,
+        plays,
+        replays,
         watch: (r.avg_watch_time || 0).toFixed(1),
-        completion: complRate.toFixed(1),
-        soundOn: r.sound_on_views || 0,
+        hook3: hook3.toFixed(1),
+        replayRate: rowReplayRate.toFixed(1),
         follows: r.followers_gained || 0,
       };
     });
@@ -244,15 +254,11 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
         <KpiCard label="Reels Posted" value={totalReels} sublabel="in range" />
         <KpiCard label="Total Plays" value={totalPlays} sublabel={`${totalReplays.toLocaleString()} replays`} />
         <KpiCard label="Avg Watch Time" value={`${weightedAvgWatch.toFixed(1)}s`} sublabel="view-weighted" />
-        {totalCompletes > 0 ? (
-          <KpiCard label="Completion Rate" value={`${completionRate.toFixed(1)}%`} sublabel={`${totalCompletes.toLocaleString()} completes`} />
-        ) : (
-          <Card className="!p-5">
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Completion Rate</div>
-            <div className="text-3xl font-bold text-slate-400 mt-2">N/A</div>
-            <div className="mt-2 min-h-[18px] text-xs text-slate-400">Not provided by Meta for reels</div>
-          </Card>
-        )}
+        <KpiCard
+          label="Hook Retention (3s)"
+          value={`${hookRetention3s.toFixed(1)}%`}
+          sublabel="past the critical hook window"
+        />
         <KpiCard label="Followers Gained" value={totalFollowersGained} sublabel="from reels" />
       </div>
 
@@ -276,19 +282,13 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
             {totalViews ? ((total30s / totalViews) * 100).toFixed(1) : "0"}% · {total30sBucket > 0 ? "Meta bucket" : "derived from curve"}
           </div>
         </Card>
-        {soundOnAvailable ? (
-          <Card className="!p-4">
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Sound On Rate</div>
-            <div className="text-xl font-bold text-brand-purple mt-1">{soundOnRate.toFixed(1)}%</div>
-            <div className="text-[10px] text-slate-400 mt-0.5">{totalSoundOn.toLocaleString()} sound-on views</div>
-          </Card>
-        ) : (
-          <Card className="!p-4">
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Sound On Rate</div>
-            <div className="text-xl font-bold text-slate-400 mt-1">N/A</div>
-            <div className="text-[10px] text-slate-400 mt-0.5">Not provided by Meta for reels</div>
-          </Card>
-        )}
+        <Card className="!p-4">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Replay Rate</div>
+          <div className="text-xl font-bold text-brand-purple mt-1">{replayRate.toFixed(1)}%</div>
+          <div className="text-[10px] text-slate-400 mt-0.5">
+            {totalReplays.toLocaleString()} replays / {totalPlays.toLocaleString()} plays
+          </div>
+        </Card>
       </div>
 
       {/* Retention funnel — derived from per-second curve */}
@@ -370,8 +370,8 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
                 <th className="text-right px-4 py-2 font-semibold">Plays</th>
                 <th className="text-right px-4 py-2 font-semibold">Replays</th>
                 <th className="text-right px-4 py-2 font-semibold">Watch (s)</th>
-                <th className="text-right px-4 py-2 font-semibold">Compl %</th>
-                <th className="text-right px-4 py-2 font-semibold">Sound On</th>
+                <th className="text-right px-4 py-2 font-semibold">Hook 3s %</th>
+                <th className="text-right px-4 py-2 font-semibold">Replay %</th>
                 <th className="text-right px-4 py-2 font-semibold">Follows</th>
               </tr>
             </thead>
@@ -384,8 +384,8 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
                   <td className="px-4 py-2 text-right tabular-nums">{row.plays.toLocaleString()}</td>
                   <td className="px-4 py-2 text-right tabular-nums text-slate-500">{row.replays.toLocaleString()}</td>
                   <td className="px-4 py-2 text-right tabular-nums">{row.watch}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{row.completion}%</td>
-                  <td className="px-4 py-2 text-right tabular-nums text-slate-500">{row.soundOn.toLocaleString()}</td>
+                  <td className="px-4 py-2 text-right tabular-nums">{row.hook3}%</td>
+                  <td className="px-4 py-2 text-right tabular-nums text-slate-500">{row.replayRate}%</td>
                   <td className="px-4 py-2 text-right tabular-nums font-semibold text-brand-green">{row.follows > 0 ? `+${row.follows}` : "0"}</td>
                 </tr>
               ))}

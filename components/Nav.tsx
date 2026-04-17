@@ -22,8 +22,8 @@ export default function Nav() {
         <div className="flex items-center justify-between h-14">
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 p-1 flex items-center justify-center">
-                <Image src="/shikho-logo.png" alt="Shikho" width={28} height={28} className="object-contain" />
+              <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center overflow-hidden">
+                <Image src="/shikho-bird.png" alt="Shikho" width={30} height={30} className="object-contain" />
               </div>
               <div className="leading-tight">
                 <div className="text-sm font-semibold text-brand-shikho-indigo">Shikho</div>

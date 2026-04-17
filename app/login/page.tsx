@@ -39,25 +39,28 @@ export default function LoginPage() {
 
         {/* Top: logo + wordmark */}
         <div className="relative z-10 flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-white p-1.5 shadow-md flex items-center justify-center">
-            <Image src="/shikho-logo.png" alt="Shikho" width={40} height={40} className="object-contain" />
+          <div className="w-14 h-14 rounded-xl bg-white shadow-md flex items-center justify-center overflow-hidden">
+            <Image src="/shikho-bird.png" alt="Shikho" width={48} height={48} className="object-contain" />
           </div>
           <div>
             <div className="text-white font-bold text-lg leading-tight">Shikho</div>
-            <div className="text-white/70 text-xs leading-tight">Organic Social Intelligence</div>
+            <div className="text-white/70 text-xs leading-tight tracking-wide">Organic Social Intelligence</div>
           </div>
         </div>
 
         {/* Middle: tagline + workflow cadence */}
         <div className="relative z-10 max-w-lg">
-          <h1 className="text-white text-3xl lg:text-5xl font-bold leading-tight tracking-tight">
-            Know what&apos;s <span className="text-brand-shikho-pink">working</span>.<br />
-            Know why it&apos;s <span className="text-brand-shikho-orange">working</span>.
+          <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-brand-shikho-pink mb-3">
+            Facebook performance, diagnosed weekly
+          </div>
+          <h1 className="text-white text-3xl lg:text-[44px] font-bold leading-[1.05] tracking-tight">
+            Every post, <span className="text-brand-shikho-pink">measured</span>.<br />
+            Every pattern, <span className="text-brand-shikho-orange">surfaced</span>.
           </h1>
-          <p className="text-white/75 text-sm lg:text-base mt-4 lg:mt-6 leading-relaxed">
-            A living diagnosis of Shikho&apos;s organic Facebook performance. Reach,
-            engagement, timing, content patterns, and reel retention, refreshed on
-            a predictable cadence.
+          <p className="text-white/75 text-sm lg:text-base mt-5 leading-relaxed">
+            A living diagnosis of Shikho&apos;s organic Facebook presence.
+            Reach, engagement, timing, content format, and reel retention,
+            refreshed on a predictable cadence.
           </p>
 
           {/* Workflow cadence bullets */}
