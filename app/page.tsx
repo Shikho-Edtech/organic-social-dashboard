@@ -78,17 +78,19 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
         <ChartCard
           title="Reach Trend"
           subtitle="Daily unique reach"
+          definition="Sum of post-level unique reach for posts published that day. Attributed to post-publish date, not page impression date."
           caption="Daily unique users reached by posts in the selected period."
         >
-          <TrendChart data={trend} color="#06b6d4" />
+          <TrendChart data={trend} color="#06b6d4" metricName="Reach" valueAxisLabel="Unique reach" />
         </ChartCard>
 
         <ChartCard
           title="Format Distribution"
           subtitle="Post count by format"
-          caption="Share of total posts by format (Reel / Photo / Carousel / Video)."
+          definition="Count of posts by format (Reel / Photo / Carousel / Video). Format is pulled from the post's media type, cross-verified with the weekly classifier."
+          caption="Share of total posts by format. Heavy tilt toward one format may indicate under-diversification."
         >
-          <Donut data={formatDist} />
+          <Donut data={formatDist} metricName="Posts" />
         </ChartCard>
       </div>
 
@@ -96,17 +98,28 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
         <ChartCard
           title="Content Pillars"
           subtitle="Total reach by content pillar"
-          caption="Which pillars drive the most audience reach in this period."
+          definition="Sum of unique reach for all posts in each pillar. Pillars are assigned by the weekly classifier using the full pillar taxonomy."
+          sampleSize={`top ${pillarData.length} of ${groupStats(inRange, "content_pillar").length}`}
+          caption="Which pillars drive the most audience reach in this period. Percentage shown is share of total reach across the pillars displayed."
         >
-          <BarChartBase data={pillarData} horizontal height={Math.max(200, pillarData.length * 32)} colorByIndex />
+          <BarChartBase
+            data={pillarData}
+            horizontal
+            height={Math.max(200, pillarData.length * 32)}
+            colorByIndex
+            metricName="Reach"
+            valueAxisLabel="Unique reach"
+            showPercent
+          />
         </ChartCard>
 
         <ChartCard
           title="Engagement Mix"
           subtitle="Reactions vs comments vs shares"
+          definition="Total count of each interaction type across all posts in the period. Helps answer: is the audience passively reacting, actively discussing, or amplifying?"
           caption="How engagement is distributed across interaction types."
         >
-          <Donut data={engagementMix} />
+          <Donut data={engagementMix} metricName="Interactions" />
         </ChartCard>
       </div>
     </div>

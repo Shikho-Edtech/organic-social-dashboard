@@ -50,11 +50,22 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
 
       {/* Funnel distribution */}
       <div className="grid lg:grid-cols-2 gap-4 mb-4">
-        <ChartCard title="Funnel Distribution" subtitle="Posts by marketing stage" caption="Mix of Top/Middle/Bottom-of-funnel content. Heavy BOFU may limit new audience growth.">
-          <BarChartBase data={funnelDist} colorByIndex />
+        <ChartCard
+          title="Funnel Distribution"
+          subtitle="Posts by marketing stage"
+          definition="TOFU (top-of-funnel): awareness / education. MOFU (middle): consideration / demo. BOFU (bottom): direct conversion asks. Funnel stage is assigned by the weekly classifier."
+          sampleSize={`n = ${inRange.length} posts`}
+          caption="Heavy BOFU may limit new audience growth. Healthy mix is typically ~50% TOFU, ~30% MOFU, ~20% BOFU for organic."
+        >
+          <BarChartBase data={funnelDist} colorByIndex metricName="Posts" valueAxisLabel="Posts" categoryAxisLabel="Funnel stage" showPercent />
         </ChartCard>
-        <ChartCard title="Funnel Engagement" subtitle="Avg engagement rate by stage" caption="Which funnel stage resonates most in terms of interaction rate.">
-          <BarChartBase data={funnelEng} valueFormat="percent" colorByIndex />
+        <ChartCard
+          title="Funnel Engagement"
+          subtitle="Avg engagement rate by stage"
+          definition="For each funnel stage: total interactions ÷ total reach across all posts in that stage. Reach-weighted."
+          caption="Which funnel stage resonates most in terms of interaction rate."
+        >
+          <BarChartBase data={funnelEng} valueFormat="percent" colorByIndex metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Funnel stage" />
         </ChartCard>
       </div>
 

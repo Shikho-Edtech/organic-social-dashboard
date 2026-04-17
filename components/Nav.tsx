@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 
 const TABS = [
@@ -19,16 +20,16 @@ export default function Nav() {
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-center justify-between h-14">
           <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm">
-                S
+            <Link href="/" className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 p-1 flex items-center justify-center">
+                <Image src="/shikho-logo.png" alt="Shikho" width={28} height={28} className="object-contain" />
               </div>
               <div className="leading-tight">
-                <div className="text-sm font-semibold text-slate-900">Shikho</div>
+                <div className="text-sm font-semibold text-brand-shikho-indigo">Shikho</div>
                 <div className="text-[10px] text-slate-500 -mt-0.5">Organic Social</div>
               </div>
             </Link>
-            <span className="ml-2 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[11px] font-semibold">
+            <span className="ml-2 px-2 py-0.5 rounded-md bg-brand-shikho-indigo/10 text-brand-shikho-indigo text-[11px] font-semibold">
               Facebook Page
             </span>
           </div>

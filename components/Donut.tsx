@@ -9,6 +9,10 @@ type Props = {
   data: { label: string; value: number }[];
   height?: number;
   valueFormat?: FormatSpec;
+  /** Name of the metric in the tooltip (e.g. "Posts", "Reactions"). */
+  metricName?: string;
+  /** If true, show each slice value as "X (Y%)" in tooltip and append % to legend. Default true. */
+  showPercent?: boolean;
 };
 
 function makeFormatter(spec?: FormatSpec): (v: number) => string {
@@ -17,8 +21,16 @@ function makeFormatter(spec?: FormatSpec): (v: number) => string {
   return (v) => v.toLocaleString();
 }
 
-export default function Donut({ data, height = 220, valueFormat }: Props) {
+export default function Donut({ data, height = 220, valueFormat, metricName, showPercent = true }: Props) {
   const fmt = makeFormatter(valueFormat);
+  const total = data.reduce((s, d) => s + (d.value || 0), 0);
+  const pct = (v: number) => (total > 0 ? (v / total) * 100 : 0);
+
+  const tooltipFormatter = (v: number): [string, string] => {
+    if (showPercent && total > 0) return [`${fmt(v)} (${pct(v).toFixed(1)}% of total)`, metricName || "Value"];
+    return [fmt(v), metricName || "Value"];
+  };
+
   return (
     <ResponsiveContainer width="100%" height={height}>
       <PieChart>
@@ -38,14 +50,18 @@ export default function Donut({ data, height = 220, valueFormat }: Props) {
         </Pie>
         <Tooltip
           contentStyle={{ backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "12px" }}
-          formatter={(v: number) => fmt(v)}
+          formatter={tooltipFormatter}
         />
         <Legend
           layout="vertical"
           align="right"
           verticalAlign="middle"
           iconType="circle"
-          formatter={(v) => <span className="text-xs text-slate-600">{v}</span>}
+          formatter={(value: string) => {
+            const entry = data.find((d) => d.label === value);
+            const share = entry && total > 0 ? ` · ${pct(entry.value).toFixed(1)}%` : "";
+            return <span className="text-xs text-slate-600">{value}<span className="text-slate-400">{share}</span></span>;
+          }}
         />
       </PieChart>
     </ResponsiveContainer>

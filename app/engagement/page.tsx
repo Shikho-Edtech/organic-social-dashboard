@@ -57,26 +57,54 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
       <PageHeader title="Engagement" subtitle="What drives interaction" dateLabel={range.label} />
 
       <div className="grid lg:grid-cols-2 gap-4 mb-4">
-        <ChartCard title="Format Performance" subtitle="Avg engagement rate by format" caption="Engagement rate = (reactions + comments + shares) ÷ unique reach. Higher is better.">
-          <BarChartBase data={formatER} valueFormat="percent" colorByIndex />
+        <ChartCard
+          title="Format Performance"
+          subtitle="Avg engagement rate by format"
+          definition="Engagement rate = (reactions + comments + shares) ÷ unique reach, averaged per post. Formats with fewer than 2 posts are hidden."
+          sampleSize={`n = ${inRange.length} posts`}
+          caption="Higher is better. A format that consistently beats the average is worth doubling down on."
+        >
+          <BarChartBase data={formatER} valueFormat="percent" colorByIndex metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Format" />
         </ChartCard>
-        <ChartCard title="Shares per Post" subtitle="Avg shares by format" caption="Shares amplify reach beyond your audience — the strongest virality signal.">
-          <BarChartBase data={formatShares} colorByIndex />
+        <ChartCard
+          title="Shares per Post"
+          subtitle="Avg shares by format"
+          definition="Total shares in period ÷ number of posts in that format. Shares expand reach beyond the existing follower base — the strongest virality signal."
+          caption="A format averaging high shares is pulling in new audience, not just engaging the existing one."
+        >
+          <BarChartBase data={formatShares} colorByIndex metricName="Avg shares" valueAxisLabel="Avg shares / post" categoryAxisLabel="Format" />
         </ChartCard>
       </div>
 
       <div className="mb-4">
-        <ChartCard title="Pillar Performance" subtitle="Avg engagement rate by content pillar" caption="Identify which content themes resonate most with the audience. Min 2 posts per pillar.">
-          <BarChartBase data={pillarER} horizontal height={Math.max(240, pillarER.length * 32)} valueFormat="percent" colorByIndex />
+        <ChartCard
+          title="Pillar Performance"
+          subtitle="Avg engagement rate by content pillar"
+          definition="Average engagement rate per pillar. Only pillars with 2+ posts in the period are shown, to keep single outliers from misleading the ranking. Sorted by pillar name, not performance."
+          sampleSize={`${pillarStats.length} pillars shown (2+ posts)`}
+          caption="Identify which content themes resonate most with the audience. Use alongside the Strategy tab's top-performer list."
+        >
+          <BarChartBase data={pillarER} horizontal height={Math.max(240, pillarER.length * 32)} valueFormat="percent" colorByIndex metricName="Engagement rate" valueAxisLabel="Engagement rate" />
         </ChartCard>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
-        <ChartCard title="Hook Type Effectiveness" subtitle="Avg engagement rate by opening hook" caption="Which opening patterns (Question, Stat, Celebration, etc.) engage best.">
-          <BarChartBase data={hookER} horizontal height={Math.max(220, hookER.length * 32)} valueFormat="percent" colorByIndex />
+        <ChartCard
+          title="Hook Type Effectiveness"
+          subtitle="Avg engagement rate by opening hook"
+          definition="Posts grouped by classified hook type (Question, Stat, Celebration, etc.). Only hook types with 2+ posts are shown. Hook type is assigned by the weekly pipeline from the post's opening line."
+          sampleSize={`${hookStats.length} hook types shown`}
+          caption="If one hook dominates, try testing the same content with a different opening to see if it's the hook or the topic."
+        >
+          <BarChartBase data={hookER} horizontal height={Math.max(220, hookER.length * 32)} valueFormat="percent" colorByIndex metricName="Engagement rate" valueAxisLabel="Engagement rate" />
         </ChartCard>
-        <ChartCard title="Engagement Breakdown" subtitle="Volume by interaction type" caption="How engagement is distributed. High comment share suggests an active community dialogue.">
-          <Donut data={reactionDonut} />
+        <ChartCard
+          title="Engagement Breakdown"
+          subtitle="Volume by interaction type"
+          definition="Total count of each reaction / comment / share across all posts in the period. 'Like + Care' groups Facebook's Like and Care reactions together."
+          caption="High comment share suggests active community dialogue; high share ratio suggests virality potential."
+        >
+          <Donut data={reactionDonut} metricName="Interactions" />
         </ChartCard>
       </div>
     </div>

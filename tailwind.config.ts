@@ -15,6 +15,11 @@ const config: Config = {
           purple: "#8b5cf6",
           blue: "#3b82f6",
           teal: "#14b8a6",
+          // Shikho logo palette
+          "shikho-indigo": "#1e2a78",
+          "shikho-blue": "#2e47b8",
+          "shikho-pink": "#e6247d",
+          "shikho-orange": "#f79620",
         },
       },
     },

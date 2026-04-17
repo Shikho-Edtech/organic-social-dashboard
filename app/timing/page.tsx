@@ -94,20 +94,41 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4 mb-4">
-        <ChartCard title="Avg Reach by Time of Day" subtitle="Posts grouped into BDT time slots" caption="Which time windows drive the most audience reach in Bangladesh time.">
-          <BarChartBase data={slotReach} colorByIndex />
+        <ChartCard
+          title="Avg Reach by Time of Day"
+          subtitle="Posts grouped into BDT time slots"
+          definition="Posts are bucketed into 6 BDT time slots based on their publish hour. Each bar shows average unique reach per post in that slot. Slots with 0 posts in the period show as 0."
+          sampleSize={`${inRange.length} posts in range`}
+          caption="Which time windows drive the most audience reach in Bangladesh time."
+        >
+          <BarChartBase data={slotReach} colorByIndex metricName="Avg reach / post" valueAxisLabel="Avg reach / post" categoryAxisLabel="Time slot (BDT)" />
         </ChartCard>
-        <ChartCard title="Engagement Rate by Time of Day" subtitle="Interactions ÷ reach by BDT slot" caption="When the audience is most actively interacting — not just seeing — content.">
-          <BarChartBase data={slotEng} valueFormat="percent" colorByIndex />
+        <ChartCard
+          title="Engagement Rate by Time of Day"
+          subtitle="Interactions ÷ reach by BDT slot"
+          definition="For each BDT slot: total interactions in that slot ÷ total reach in that slot. Reach-weighted, so a single viral post in a slot will dominate."
+          caption="When the audience is most actively interacting — not just seeing — content."
+        >
+          <BarChartBase data={slotEng} valueFormat="percent" colorByIndex metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Time slot (BDT)" />
         </ChartCard>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
-        <ChartCard title="Avg Reach by Day of Week" subtitle="BDT days" caption="Day-level reach patterns. Sunday is often strong for ed-tech in Bangladesh.">
-          <BarChartBase data={dayReach} colorByIndex />
+        <ChartCard
+          title="Avg Reach by Day of Week"
+          subtitle="BDT days"
+          definition="Posts are bucketed by day-of-week (Sunday to Saturday, BDT). Each bar = average unique reach per post on that day."
+          caption="Day-level reach patterns. Sunday is often strong for ed-tech in Bangladesh."
+        >
+          <BarChartBase data={dayReach} colorByIndex metricName="Avg reach / post" valueAxisLabel="Avg reach / post" categoryAxisLabel="Day of week" />
         </ChartCard>
-        <ChartCard title="Engagement Rate by Day of Week" subtitle="BDT days" caption="When the audience is most active. Use to time your highest-value content.">
-          <BarChartBase data={dayEng} valueFormat="percent" colorByIndex />
+        <ChartCard
+          title="Engagement Rate by Day of Week"
+          subtitle="BDT days"
+          definition="For each day-of-week: total interactions ÷ total reach across all posts published that day. Reach-weighted."
+          caption="When the audience is most active. Use to time your highest-value content."
+        >
+          <BarChartBase data={dayEng} valueFormat="percent" colorByIndex metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Day of week" />
         </ChartCard>
       </div>
     </div>

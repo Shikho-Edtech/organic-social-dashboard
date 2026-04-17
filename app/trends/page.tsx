@@ -62,25 +62,47 @@ export default async function TrendsPage({ searchParams }: { searchParams: Recor
       <PageHeader title="Trends" subtitle="Time-based patterns across the period" dateLabel={range.label} />
 
       <div className="grid lg:grid-cols-2 gap-4 mb-4">
-        <ChartCard title="Daily Posting Volume" subtitle="Posts published per day" caption="Number of posts published each day in the selected period.">
-          <BarChartBase data={volumeData} color="#06b6d4" />
+        <ChartCard
+          title="Daily Posting Volume"
+          subtitle="Posts published per day"
+          definition="Count of posts published on each calendar day (BDT). Gaps mean no posts were published that day."
+          caption="Number of posts published each day in the selected period."
+        >
+          <BarChartBase data={volumeData} color="#06b6d4" metricName="Posts" valueAxisLabel="Posts published" categoryAxisLabel="Date (MM-DD)" />
         </ChartCard>
-        <ChartCard title="Daily Reach" subtitle="Unique reach per day" caption="Daily unique reach — spikes often indicate viral or boosted content.">
-          <TrendChart data={reachData} color="#10b981" variant="area" />
+        <ChartCard
+          title="Daily Reach"
+          subtitle="Unique reach per day"
+          definition="Sum of post-level unique reach for posts published that day. Not lifetime page reach — reach attributed to posts. Spikes typically mean a single post went viral."
+          caption="Daily unique reach — spikes often indicate viral or boosted content."
+        >
+          <TrendChart data={reachData} color="#10b981" variant="area" metricName="Reach" valueAxisLabel="Unique reach" />
         </ChartCard>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
-        <ChartCard title="Weekly Engagement Rate" subtitle="Interactions per unique reach" caption="Interactions ÷ unique reach. Week-over-week stability indicates healthy audience relationship.">
+        <ChartCard
+          title="Weekly Engagement Rate"
+          subtitle="Interactions per unique reach"
+          definition="For each ISO week: (total reactions + comments + shares) ÷ (total unique reach). This is reach-weighted, not averaged per post, so a few high-reach posts dominate the signal — which is what you want."
+          caption="Week-over-week stability indicates healthy audience relationship. Big drops warrant investigating what changed."
+        >
           <TrendChart
             data={weeklyEng}
             color="#ec4899"
             variant="line"
             valueFormat="percent1"
+            metricName="Engagement rate"
+            valueAxisLabel="Engagement rate"
           />
         </ChartCard>
-        <ChartCard title="Weekly Shares" subtitle="Share volume over time" caption="Shares are the strongest virality signal — they expand reach beyond your existing audience.">
-          <BarChartBase data={sharesData} color="#f59e0b" />
+        <ChartCard
+          title="Weekly Shares"
+          subtitle="Share volume over time"
+          definition="Total shares across all posts published in each ISO week."
+          caption="Shares are the strongest virality signal — they expand reach beyond your existing audience."
+        >
+          <BarChartBase data={sharesData} color="#f59e0b" metricName="Shares" valueAxisLabel="Shares" />
         </ChartCard>
       </div>
     </div>
