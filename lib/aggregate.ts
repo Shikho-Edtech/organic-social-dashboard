@@ -1,5 +1,6 @@
 // Aggregation and filtering helpers for dashboard views
 import type { Post, DailyMetric } from "./types";
+import { summarize, type Summary } from "./stats";
 
 // ─── Date helpers (Bangladesh time, UTC+6) ───
 
@@ -150,12 +151,41 @@ export function groupBy<K extends keyof Post>(
   return out;
 }
 
-export function groupStats(posts: Post[], dim: keyof Post) {
+export type GroupStatRow = {
+  key: string;
+  count: number;
+  posts: number;
+  total_reach: number;
+  total_interactions: number;
+  total_shares: number;
+  total_clicks: number;
+  avg_engagement_rate: number;
+  avg_reach_per_post: number;
+  // Day 2O: CI-based ranking fields. Use `reach_summary.lowerBound95` to rank
+  // "best X" selections; a group with n=1 has lowerBound95 = -Infinity and
+  // will never win, so a single viral post can't promote its pillar/format/
+  // teacher into a recommendation.
+  reach_summary: Summary;
+  er_summary: Summary;
+};
+
+export function groupStats(posts: Post[], dim: keyof Post): GroupStatRow[] {
   const groups = groupBy(posts, dim);
   return Object.entries(groups)
     .map(([key, items]) => {
       const k = computeKpis(items);
-      return { key, count: items.length, ...k };
+      const reachValues = items.map((p) => reach(p));
+      const erValues = items.map((p) => {
+        const r = reach(p);
+        return r ? (totalInteractions(p) / r) * 100 : 0;
+      });
+      return {
+        key,
+        count: items.length,
+        ...k,
+        reach_summary: summarize(reachValues),
+        er_summary: summarize(erValues),
+      };
     })
     .sort((a, b) => b.total_reach - a.total_reach);
 }
