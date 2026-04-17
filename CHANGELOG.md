@@ -1,5 +1,85 @@
 # Changelog
 
+## 2026-04-17 — Day 2E.4: Normalize post format on the getPosts read path (commit `5fe6ee7`)
+
+The pipeline's `Classifications` tab shrank 18 → 16 cols, dropping `Format`
+and `Featured Entity`. The dashboard used to read `c["Format"]` directly
+and fall back to `r["Type"]`, but that fallback produced `"video"` (from
+Raw_Posts lowercase) while the classifier used to write `"Video"`
+(titlecase), so old and new rows landed in different aggregation buckets.
+
+`getPosts()` in [lib/sheets.ts](lib/sheets.ts) now derives format
+defensively:
+
+```ts
+format: (() => {
+  if (c["Format"]) return c["Format"];               // legacy rows
+  if (toBool(r["Is Reel"])) return "Reel";
+  const t = (r["Type"] || "") as string;
+  return t ? t.charAt(0).toUpperCase() + t.slice(1).toLowerCase() : "";
+})()
+```
+
+Legacy rows with a populated `Format` column still win. Post-2E.4 rows
+derive `"Reel"` from `Is Reel`, else titlecase the `Type`. Pillar/format
+aggregations in `lib/aggregate.ts` now see a single format taxonomy.
+
+No type changes — `Post.format` is still optional string. Commit:
+`5fe6ee7`.
+
+---
+
+## 2026-04-17 — Day 2E.3: Plan page reads v2 calendar (commit `f29609c`)
+
+The pipeline's calendar writer (Day 2E.2) widened `Content_Calendar` from
+16 → 18 cols, adding `Spotlight Type` and `Spotlight Name` alongside the
+legacy `Featured Entity`.
+
+Dashboard changes:
+
+- [lib/types.ts](lib/types.ts) — `CalendarSlot` gained optional
+  `spotlight_type` and `spotlight_name`.
+- [lib/sheets.ts](lib/sheets.ts) — `getCalendar()` reads the two new
+  columns with empty-string fallback for pre-v2 rows.
+- [app/plan/page.tsx](app/plan/page.tsx) — renderer prefers
+  `spotlight_name`, appends `(spotlight_type)` in muted text when
+  present, falls back to `featured_entity` for rows written before the
+  writer upgrade.
+
+This is a forward-compatible read path — old calendars still render;
+new calendars get richer display.
+
+---
+
+## 2026-04-17 — Day 2D: Dashboard read path for v2.2 classifier schema (commit `4a8cdc5`)
+
+Pipeline-side `Classifications` schema widened 13 → 18 cols (Day 2A-2C)
+splitting the old free-text `featured_entity` into the new pair:
+
+- `spotlight_type` — strict 5-value enum
+  (Teacher / Product / Program / Campaign / None)
+- `spotlight_name` — canonical entity name
+
+Plus three new cache/confidence fields: `prompt_version`,
+`classifier_confidence`, `manual_override`.
+
+Dashboard changes:
+
+- [lib/types.ts](lib/types.ts) — `Post` type gained six optional v2
+  fields (`spotlight_type`, `spotlight_name`, `classifier_confidence`,
+  `prompt_version`, `manual_override`) alongside the preserved legacy
+  `featured_entity`.
+- [lib/sheets.ts](lib/sheets.ts) — `getPosts()` reads the new columns
+  with empty-string fallback. `classifier_confidence` is parsed to
+  number with `undefined` when the cell is blank or unparseable, so
+  the UI can tell "no confidence reported" apart from "0.0 confidence".
+
+No aggregator changes in this commit — the new fields are available
+but not yet surfaced. Later passes light them up on `/strategy` and
+`/explore`.
+
+---
+
 ## 2026-04-17 — Explore filter dropdowns + footer alignment
 
 ### Changed: Explore page — filter chips replaced with multi-select dropdowns
