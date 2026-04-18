@@ -213,6 +213,178 @@ export async function getLatestDiagnosis(): Promise<Diagnosis | null> {
   }
 }
 
+// ─── Run status / staleness ───
+
+// Day 2O: Analysis_Log is the pipeline's audit trail. The most recent row
+// tells us whether Strategy (diagnosis) and Plan (calendar) data is fresh
+// or if recent runs fell back because of API credit / rate-limit issues.
+// Strategy and Plan pages render a banner when staleness > warn threshold,
+// so users don't silently consume week-old "latest" analysis.
+
+export type ArtifactStatus = "success" | "fallback" | "skipped" | "failed" | "n/a" | "unknown";
+
+export interface RunStatus {
+  // When the most recent run finished. ISO string or "" if log is empty.
+  last_run_at: string;
+  // Status of each stage in that most recent run.
+  classify_status: ArtifactStatus;
+  diagnosis_status: ArtifactStatus;
+  calendar_status: ArtifactStatus;
+  // ISO timestamps of the most recent SUCCESSFUL diagnosis / calendar writes,
+  // carried forward across runs by the pipeline. "" when never succeeded.
+  last_successful_diagnosis_at: string;
+  last_successful_calendar_at: string;
+}
+
+const EMPTY_RUN_STATUS: RunStatus = {
+  last_run_at: "",
+  classify_status: "unknown",
+  diagnosis_status: "unknown",
+  calendar_status: "unknown",
+  last_successful_diagnosis_at: "",
+  last_successful_calendar_at: "",
+};
+
+export async function getRunStatus(): Promise<RunStatus> {
+  const rows = await readTab("Analysis_Log");
+  const objects = rowsToObjects(rows);
+  if (objects.length === 0) return EMPTY_RUN_STATUS;
+  const last = objects[objects.length - 1];
+  const normalize = (v: any): ArtifactStatus => {
+    const s = String(v || "").toLowerCase().trim();
+    if (["success", "fallback", "skipped", "failed", "n/a"].includes(s)) {
+      return s as ArtifactStatus;
+    }
+    return "unknown";
+  };
+  return {
+    last_run_at: last["Run Date"] || "",
+    classify_status: normalize(last["Classify Status"]),
+    diagnosis_status: normalize(last["Diagnosis Status"]),
+    calendar_status: normalize(last["Calendar Status"]),
+    last_successful_diagnosis_at: last["Last Successful Diagnosis At"] || "",
+    last_successful_calendar_at: last["Last Successful Calendar At"] || "",
+  };
+}
+
+// Derive staleness from a status + timestamp. Returns a UI-ready summary:
+//   severity: "ok"   — fresh within warn threshold, no banner needed
+//             "warn" — stale or last refresh fell back; yellow banner
+//             "crit" — very stale or never succeeded; red banner
+//   days_since: integer days since the last successful update, or -1 if unknown
+//   reason: human-readable explanation (short)
+export interface StalenessInfo {
+  severity: "ok" | "warn" | "crit";
+  days_since: number;
+  reason: string;
+  last_successful_at: string;
+  last_run_at: string;
+  last_status: ArtifactStatus;
+}
+
+function daysBetween(iso: string, now: Date): number {
+  if (!iso) return -1;
+  const then = new Date(iso);
+  if (isNaN(then.getTime())) return -1;
+  const ms = now.getTime() - then.getTime();
+  return Math.floor(ms / (1000 * 60 * 60 * 24));
+}
+
+export function computeStaleness(
+  artifact: "diagnosis" | "calendar",
+  run: RunStatus,
+  opts: { warnDays?: number; critDays?: number; now?: Date } = {}
+): StalenessInfo {
+  const warnDays = opts.warnDays ?? 7;
+  const critDays = opts.critDays ?? 14;
+  const now = opts.now ?? new Date();
+  const lastSuccessful =
+    artifact === "diagnosis"
+      ? run.last_successful_diagnosis_at
+      : run.last_successful_calendar_at;
+  const status =
+    artifact === "diagnosis" ? run.diagnosis_status : run.calendar_status;
+  const days = daysBetween(lastSuccessful, now);
+
+  // No successful run ever — blank state. Crit so the page shows the banner
+  // and the user understands why the tab looks empty.
+  if (!lastSuccessful || days < 0) {
+    return {
+      severity: "crit",
+      days_since: -1,
+      reason:
+        artifact === "diagnosis"
+          ? "No successful Strategy refresh has been recorded yet. Run the weekly pipeline to populate this view."
+          : "No successful Plan refresh has been recorded yet. Run the weekly pipeline to populate this view.",
+      last_successful_at: "",
+      last_run_at: run.last_run_at,
+      last_status: status,
+    };
+  }
+
+  // Fresh success — check age.
+  if (status === "success" && days <= warnDays) {
+    return {
+      severity: "ok",
+      days_since: days,
+      reason: "",
+      last_successful_at: lastSuccessful,
+      last_run_at: run.last_run_at,
+      last_status: status,
+    };
+  }
+
+  // Last attempt fell back (API error) — warn regardless of age.
+  if (status === "fallback") {
+    return {
+      severity: days > critDays ? "crit" : "warn",
+      days_since: days,
+      reason:
+        `Last refresh attempt hit a Claude API error and reused cached data. ` +
+        `Showing data from ${days} day${days === 1 ? "" : "s"} ago. ` +
+        `Top up credits or re-run the weekly pipeline.`,
+      last_successful_at: lastSuccessful,
+      last_run_at: run.last_run_at,
+      last_status: status,
+    };
+  }
+
+  // Stale by age alone (probably no recent weekly run, or stages were skipped).
+  if (days > critDays) {
+    return {
+      severity: "crit",
+      days_since: days,
+      reason:
+        `Data is ${days} days old (threshold: ${critDays}). ` +
+        `Trigger a weekly run to refresh.`,
+      last_successful_at: lastSuccessful,
+      last_run_at: run.last_run_at,
+      last_status: status,
+    };
+  }
+  if (days > warnDays) {
+    return {
+      severity: "warn",
+      days_since: days,
+      reason:
+        `Data is ${days} days old (weekly cadence, threshold: ${warnDays}). ` +
+        `Next Monday's run will refresh it.`,
+      last_successful_at: lastSuccessful,
+      last_run_at: run.last_run_at,
+      last_status: status,
+    };
+  }
+
+  return {
+    severity: "ok",
+    days_since: days,
+    reason: "",
+    last_successful_at: lastSuccessful,
+    last_run_at: run.last_run_at,
+    last_status: status,
+  };
+}
+
 // ─── Content calendar ───
 
 export async function getCalendar(): Promise<CalendarSlot[]> {

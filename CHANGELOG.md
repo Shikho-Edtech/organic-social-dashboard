@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-04-18 — Staleness banner on Strategy + Plan (Day 2O, dashboard side)
+
+Strategy and Plan pages now show an amber (7–14d / fallback) or rose
+(14+ days / never succeeded) banner above the PageHeader when the
+upstream Claude pipeline has fallen back to cached data. Matters
+because the pipeline gracefully degrades on API credit exhaustion
+(Day 2M/2O), so without a visibility layer the dashboard silently
+serves stale verdicts + calendars. New `getRunStatus()` +
+`computeStaleness(artifact, run)` in `lib/sheets.ts` read per-stage
+status from `Analysis_Log`; new `components/StalenessBanner.tsx`
+renders the warning with accessible `role="status"` + aria-live.
+Project `CLAUDE.md` now documents the pattern so any future
+Claude-powered page inherits it.
+
 ## 2026-04-18 — Date picker consistency + right-edge overflow audit + project CLAUDE.md
 
 User reported the date-range selector appeared left/right/center aligned on

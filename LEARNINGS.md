@@ -95,3 +95,86 @@ scrolls. For nav specifically, don't rely on overflow-x-auto below the
 Caught this only because the user happened to open the site on a phone
 after a month of desktop-only testing. Add "viewport < 400px" to the
 stress-test checklist for any nav/header work.
+
+## 2026-04-18 — Claude-powered analysis stages silently go stale when API credits run out
+
+The pipeline has three Claude stages: classify (Haiku), diagnose (Sonnet,
+powers the Strategy page's weekly verdict + top/under performers), and
+calendar (Sonnet streaming, powers the Plan page's next-week calendar).
+If Anthropic credits hit zero mid-week, each stage raises `APIError`.
+Day 2M added graceful fallback in the pipeline: classify reuses cached
+Sheet rows, diagnose/calendar skip the write so the previous week's
+values stay in place. The pipeline keeps running. **The dashboard
+doesn't notice.**
+
+Symptom: Strategy page shows "Week Ending Apr 11" and confident verdict
+prose; Plan page shows the same calendar it had 3 weeks ago. User acts
+on stale recommendations assuming they're current. No visible signal
+anything is wrong.
+
+Root cause class: **any graceful-degradation layer that doesn't include
+a visibility layer converts a loud failure into a silent lie.** The
+pipeline's try/except made it resilient; the dashboard's trusting read
+made it misleading.
+
+Fix shape: the pipeline's `Analysis_Log` sheet gained per-stage status
+columns (`success / fallback / skipped / failed / n/a`) and
+carry-forward `Last Successful Diagnosis At` / `Last Successful Calendar
+At` timestamps. The dashboard has a new `computeStaleness(artifact,
+run)` helper and a `StalenessBanner` component rendered above the
+PageHeader on both `/strategy` and `/plan`:
+
+- **Hidden** when the most recent run succeeded within 7 days.
+- **Amber banner** when the last run fell back, or data is 7–14 days
+  old. Explains the last successful date + suggests the next weekly
+  run.
+- **Rose banner** when data is 14+ days old, or never succeeded. Makes
+  it unmistakable the displayed analysis is not current.
+
+Thresholds chosen from the weekly cadence: 7d warn = one cycle missed,
+14d crit = two cycles missed (i.e., the weekly pipeline has been
+falling back for a fortnight — almost certainly a real credit/auth
+problem, not a transient blip).
+
+Rule of thumb for this codebase going forward: **any dashboard view
+backed by a Claude-generated artifact must have a staleness check.**
+Pattern exists; re-use it. If a new page surfaces Claude output (reel
+intelligence, content pillar summaries, future Instagram analysis),
+add an `artifact` case to `computeStaleness` and render the banner at
+the top of that page.
+
+Anti-pattern seen in early Day 2M: wrapping the entire run in a single
+`DEGRADED` flag. Too coarse — if diagnose failed but calendar
+succeeded, the user reading Plan shouldn't see a warning about a
+problem that didn't affect Plan. Per-artifact status is the right
+granularity.
+
+## 2026-04-18 — Transient Anthropic errors need retry, not fallback
+
+Closely related but distinct: `APIError` is a broad base class covering
+everything from "your credit card expired" (permanent) to "you hit a
+per-minute rate limit for 3 seconds" (transient). If the pipeline
+treats all APIError the same way (Day 2M did — always fall back),
+transient rate-limit bursts during a 2-minute weekly run become silent
+fallback-to-stale-cache events on a completely healthy account.
+
+Anthropic's Python SDK exposes typed subclasses for exactly this:
+`RateLimitError`, `APIConnectionError`, `APITimeoutError`,
+`InternalServerError` → retry with backoff (schedule used:
+2s → 8s → 30s). `AuthenticationError`, `PermissionDeniedError`,
+`BadRequestError`, `NotFoundError`, `UnprocessableEntityError` → never
+retry (these are config or prompt bugs; retrying wastes credits).
+Unclassified `APIError` → don't retry (fail loud so we notice new
+categories).
+
+Gotcha: the SDK does its own retry at the transport layer by default.
+If you wrap calls in your own retry, disable the SDK's
+(`anthropic.Anthropic(max_retries=0)`) or you get layered retries that
+compound delays unpredictably. **Never disable SDK retries without
+wrapping in your own retry** — doing one without the other makes the
+system strictly less reliable.
+
+Streaming calls (`client.messages.stream`) need their whole context
+manager re-entered on retry. Wrap the stream body in an inner function
+and pass that to the retry helper; partial stream state from a failed
+attempt is not recoverable.

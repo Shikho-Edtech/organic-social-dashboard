@@ -112,6 +112,53 @@ class of bug doesn't keep reappearing.
 
 ---
 
+## Claude-powered views need staleness awareness
+
+Pages that surface artifacts produced by the upstream Claude pipeline
+(Strategy's weekly verdict, Plan's content calendar, and any future
+view backed by `Analysis_Log`-written data) **must** render a
+`StalenessBanner` above the `PageHeader`. The canonical pattern lives
+in `app/strategy/page.tsx` and `app/plan/page.tsx`:
+
+```tsx
+import { getRunStatus, computeStaleness } from "@/lib/sheets";
+import StalenessBanner from "@/components/StalenessBanner";
+
+const [..., runStatus] = await Promise.all([..., getRunStatus()]);
+const staleness = computeStaleness("<artifact>", runStatus);
+
+return (
+  <div>
+    <StalenessBanner info={staleness} artifact="<artifact>" />
+    <PageHeader ... />
+    ...
+  </div>
+);
+```
+
+Why this exists: the pipeline has a graceful-degradation layer
+(Day 2M/2O in `facebook-pipeline/IMPROVEMENTS.md`) that falls back to
+cached data when Anthropic credits run out or the API errors. Without
+a banner, the dashboard silently shows week-old verdicts + calendar
+as if they were fresh. Any new page that reads Claude output inherits
+that failure mode and must wire in the same banner.
+
+When adding a new artifact:
+
+1. Extend `computeStaleness` in `lib/sheets.ts` to accept the new
+   artifact name.
+2. Make sure the pipeline writes a corresponding `<artifact>_status` +
+   `Last Successful <artifact> At` column to `Analysis_Log` (pipeline
+   side: `src/sheets.py write_run_log`).
+3. Render the banner at the top of the page, matching the pattern
+   above.
+
+See `DECISIONS.md` (2026-04-18 "Staleness banner for Claude-powered
+pages") and `LEARNINGS.md` (2026-04-18 "Claude-powered analysis
+stages silently go stale...") for the rationale and failure mode.
+
+---
+
 ## Build + test
 
 - `npm run build` — the only verification that matters pre-commit. Compiles

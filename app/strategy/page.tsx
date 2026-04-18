@@ -1,10 +1,11 @@
-import { getPosts, getLatestDiagnosis } from "@/lib/sheets";
+import { getPosts, getLatestDiagnosis, getRunStatus, computeStaleness } from "@/lib/sheets";
 import { filterPosts, groupStats, daysBetween } from "@/lib/aggregate";
 import { minPostsForRange } from "@/lib/stats";
 import { resolveRange } from "@/lib/daterange";
 import PageHeader from "@/components/PageHeader";
 import { Card, ChartCard } from "@/components/Card";
 import BarChartBase from "@/components/BarChart";
+import StalenessBanner from "@/components/StalenessBanner";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -90,7 +91,12 @@ function HeadlineWithMetrics({ text, metricClass }: { text: string; metricClass:
 
 export default async function StrategyPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   const range = resolveRange(searchParams);
-  const [posts, diagnosis] = await Promise.all([getPosts(), getLatestDiagnosis()]);
+  const [posts, diagnosis, runStatus] = await Promise.all([
+    getPosts(),
+    getLatestDiagnosis(),
+    getRunStatus(),
+  ]);
+  const staleness = computeStaleness("diagnosis", runStatus);
   const inRange = filterPosts(posts, { start: range.start, end: range.end });
 
   // Funnel distribution
@@ -121,6 +127,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
 
   return (
     <div>
+      <StalenessBanner info={staleness} artifact="diagnosis" />
       <PageHeader title="Strategy" subtitle="Claude's diagnosis and recommended actions" dateLabel={`${range.label} · Funnel charts filtered; verdict = latest weekly snapshot`} />
 
       {/* Weekly verdict — hero, click to reveal the full sentence */}

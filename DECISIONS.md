@@ -95,3 +95,63 @@ Picked a labelled dropdown ("Page — Overview") over two alternatives:
 Dropdown wins: discoverable without icons, shows current state in-line,
 reveals the full 8-route list on tap. Desktop (md+) keeps the horizontal
 tab strip — plenty of room at that width.
+
+## 2026-04-18 — Staleness banner for Claude-powered pages, not a silent refresh
+
+When the upstream pipeline falls back to cached data (API credits
+exhausted, rate limits, transient errors — see
+facebook-pipeline/IMPROVEMENTS.md Day 2M/2O), Strategy and Plan pages
+would otherwise continue rendering last week's verdict and calendar
+with zero indication anything was off. Three options considered:
+
+- **Do nothing, trust the pipeline to alert.** Rejected — the pipeline
+  only writes to GitHub Actions logs, which the user doesn't check
+  daily. The dashboard is the consumption surface; the warning belongs
+  there.
+- **Toast / ephemeral notification on load.** Rejected — easy to
+  dismiss accidentally, doesn't persist when switching between pages,
+  and gives the wrong mental model ("one-time problem") when the
+  underlying state is "this view is actually stale."
+- **Persistent banner at the top of the affected page.** Shipped.
+  Amber for warn (fallback or 7–14 days old), rose for crit (14+ days
+  or never succeeded). Always visible while the condition holds,
+  disappears automatically when the next successful run lands.
+
+Per-artifact, not per-run: diagnosis and calendar can fall back
+independently (diagnose fails on a long prompt, calendar stream
+succeeds). Strategy banner reflects diagnosis freshness; Plan banner
+reflects calendar freshness. A single global "something's wrong"
+banner was rejected because it would under-inform (which view?) and
+over-warn (users reading Plan shouldn't see a warning about a
+Strategy-only failure).
+
+Thresholds: 7d warn / 14d crit. The pipeline is weekly, so 7d = one
+cycle missed (next Monday's run will catch it); 14d = two cycles
+missed (likely a persistent credit/auth issue that needs attention).
+
+Implementation deliberately thin: `getRunStatus()` reads the last
+Analysis_Log row; `computeStaleness(artifact, run)` returns a shape
+the `StalenessBanner` component renders. ~80 LOC across helper +
+component. No client-side state, no polling — Server Component
+renders on each page load with the freshest sheet read.
+
+## 2026-04-18 — Retry policy for Anthropic SDK: 2→8→30s, 3 retries, own the schedule
+
+Owned the Claude call-retry policy in the pipeline (`src/classify.py`
+`_call_with_retry`) instead of relying on the SDK's built-in retries.
+Three reasons:
+
+- **Typed error differentiation.** SDK retries all retryable errors
+  the same way. We distinguish `RateLimitError` (wait it out),
+  `InternalServerError` (retry), from `AuthenticationError` / `BadRequestError`
+  (permanent, fail fast). SDK doesn't expose per-type retry policy.
+- **Logging.** Per-attempt logs labeled per call site
+  (`classify-batch-N`, `diagnosis`, `calendar-stream`) make outages
+  diagnosable from GitHub Actions logs. SDK retries are silent.
+- **Schedule control.** 2→8→30 (40s total cap) is tuned for the
+  weekly run's overall budget. Most rate-limit windows clear in ≤30s;
+  anything longer is an outage that no retry schedule will rescue.
+
+Gotcha captured in LEARNINGS: disabling SDK retries (`max_retries=0`)
+without wrapping in your own retry is strictly worse than either
+default. Always replace, don't just disable.
