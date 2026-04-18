@@ -76,7 +76,6 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
   const avgWatchTime = reels.length
     ? reels.reduce((s, r) => s + (r.avg_watch_time || 0), 0) / reels.length
     : 0;
-  const totalViews = reels.reduce((s, r) => s + (r.total_views || 0), 0);
 
   // Meta's bucket fields (Complete Views, 15s Views, 30s Views, Sound On Views)
   // are NOT populated for reels — they're only set for older video posts.
@@ -129,20 +128,12 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
     ? avgWatchFromCurveNumerator / avgWatchFromCurveDenom
     : avgWatchTime;
 
-  // Bucket fields — populated for regular videos only. Kept so we can prefer
-  // Meta's own numbers when available and fall back to the per-second
-  // retention curve (which IS populated for reels) otherwise.
-  const total15sBucket = reels.reduce((s, r) => s + (r.views_15s || 0), 0);
-  const total30sBucket = reels.reduce((s, r) => s + (r.views_30s || 0), 0);
-  const total15s = total15sBucket > 0 ? total15sBucket : retentionViews[15];
-  const total30s = total30sBucket > 0 ? total30sBucket : retentionViews[30];
-
-  // Denominator for retention percentages. When we use Meta's bucket fields,
-  // divide by the full totalViews (all reels). When we derive from the curve,
-  // divide by viewsWithCurve so numerator and denominator come from the same
-  // pool of reels.
-  const denom15s = total15sBucket > 0 ? totalViews : viewsWithCurve;
-  const denom30s = total30sBucket > 0 ? totalViews : viewsWithCurve;
+  // Batch 3d (#19): the 15s/30s bucket-vs-curve reconciliation and its
+  // two denominators were only used by the now-dropped secondary metric
+  // strip. The Retention Funnel chart uses retentionViews[15] / [30]
+  // directly from the curve, so the bucket-prefer logic is dead weight.
+  // Left here as a note in case a future view wants per-bucket numbers
+  // back — read the Day 2U comments above for the reconciliation rules.
 
   // Replacement metrics (since Meta doesn't populate Completion Rate or
   // Sound On Rate for reels):
@@ -286,46 +277,31 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
     <div>
       <PageHeader title="Reels" subtitle="Video watch time, retention, and follower conversion" dateLabel={`${range.label} · Bangladesh Time (UTC+6)`} />
 
-      {/* KPI strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+      {/* Canonical KPI strip (Batch 3d, #19). Previously two stacked
+          strips (5 cards then 4) duplicated the hierarchy. The secondary
+          strip (Total Views / 15s / 30s / Replay Rate) folded back into
+          the primary chart: 15s+30s live inside the Retention Funnel
+          bars below, Total Views is the funnel sample-size, Replay Rate
+          moved onto the Total Plays sublabel. Net result: one 5-card
+          strip, no information lost. */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
         <KpiCard label="Reels Posted" value={totalReels} sublabel="in range" />
-        <KpiCard label="Total Plays" value={totalPlays} sublabel={`${totalReplays.toLocaleString()} replays`} />
-        <KpiCard label="Avg Watch Time" value={`${weightedAvgWatch.toFixed(1)}s`} sublabel={haveCurveData ? "view-weighted" : "unweighted (no curve data)"} />
+        <KpiCard
+          label="Total Plays"
+          value={totalPlays}
+          sublabel={`${totalReplays.toLocaleString()} replays · ${replayRate.toFixed(1)}% replay rate`}
+        />
+        <KpiCard
+          label="Avg Watch Time"
+          value={`${weightedAvgWatch.toFixed(1)}s`}
+          sublabel={haveCurveData ? "view-weighted" : "unweighted (no curve data)"}
+        />
         <KpiCard
           label="Hook Retention (3s)"
           value={`${hookRetention3s.toFixed(1)}%`}
           sublabel={reelsWithCurve ? `past 3s · ${reelsWithCurve}/${totalReels} reels with curves` : "no curve data in range"}
         />
         <KpiCard label="Followers Gained" value={totalFollowersGained} sublabel="from reels" />
-      </div>
-
-      {/* Secondary metric row — derived retention from per-second curve */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <Card className="!p-4">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Total Views</div>
-          <div className="text-xl font-bold text-brand-cyan mt-1">{totalViews.toLocaleString()}</div>
-        </Card>
-        <Card className="!p-4">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">15s Retention</div>
-          <div className="text-xl font-bold text-brand-green mt-1">{total15s.toLocaleString()}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">
-            {denom15s ? ((total15s / denom15s) * 100).toFixed(1) : "0"}% · {total15sBucket > 0 ? "Meta bucket" : "derived from curve"}
-          </div>
-        </Card>
-        <Card className="!p-4">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">30s Retention</div>
-          <div className="text-xl font-bold text-brand-pink mt-1">{total30s.toLocaleString()}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">
-            {denom30s ? ((total30s / denom30s) * 100).toFixed(1) : "0"}% · {total30sBucket > 0 ? "Meta bucket" : "derived from curve"}
-          </div>
-        </Card>
-        <Card className="!p-4">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Replay Rate</div>
-          <div className="text-xl font-bold text-brand-purple mt-1">{replayRate.toFixed(1)}%</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">
-            {totalReplays.toLocaleString()} replays / {totalPlays.toLocaleString()} plays
-          </div>
-        </Card>
       </div>
 
       {/* Retention funnel — derived from per-second curve */}

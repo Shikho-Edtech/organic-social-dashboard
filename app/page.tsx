@@ -85,11 +85,14 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
     <div>
       <PageHeader title="Overview" subtitle="Key performance at a glance" dateLabel={range.label} />
 
-      {/* KPIs — 6 cards in a row */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+      {/* KPIs — canonical template caps at 5 cards (Batch 3d, #19). Dropped
+          "Interactions" because Engagement Rate is the same signal normalized
+          — raw count encourages the wrong read (a reach-up/rate-down period
+          shows as interactions-up, which is misleading). ER % is the post-
+          quality metric a planner actually targets. */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
         <KpiCard label="Posts" value={kpis.posts} delta={postsDelta} sublabel="vs prev" />
         <KpiCard label="Total Reach" value={kpis.total_reach} delta={reachDelta} sublabel="vs prev" />
-        <KpiCard label="Interactions" value={kpis.total_interactions} />
         <KpiCard label="Engagement Rate" value={kpis.avg_engagement_rate.toFixed(2) + "%"} delta={engDelta} sublabel="vs prev · reach-weighted" />
         <KpiCard label="Avg Reach/Post" value={kpis.avg_reach_per_post} />
         <KpiCard label="Followers" value={currentFollowers} sublabel={`${netFollowers >= 0 ? "+" : ""}${netFollowers.toLocaleString()} in range`} />
