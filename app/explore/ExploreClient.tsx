@@ -1,9 +1,8 @@
 "use client";
 import { useMemo, useState, useRef, useEffect } from "react";
 import type { Post, DailyMetric } from "@/lib/types";
-import { computeKpis, filterPosts, dailyReach, topByReach, groupStats, bdt, reach, engagementRate, daysAgo } from "@/lib/aggregate";
+import { computeKpis, filterPosts, dailyReach, groupStats, bdt, reach, engagementRate, daysAgo } from "@/lib/aggregate";
 import { Card, ChartCard } from "@/components/Card";
-import KpiCard from "@/components/KpiCard";
 import TrendChart from "@/components/TrendChart";
 import BarChartBase from "@/components/BarChart";
 import { canonicalColor, type ColorField } from "@/lib/colors";
@@ -64,6 +63,12 @@ export default function ExploreClient({ posts }: Props) {
   const [entities, setEntities] = useState<string[]>([]);
   const [groupByDim, setGroupByDim] = useState<keyof Post>("content_pillar");
 
+  // Pagination for the promoted Top Posts list. Pg-Ex rebuild (Batch 3b):
+  // was hardcoded to top 10, now pageable 25/50/100 so users can actually
+  // scan deeper than the obvious winners — the point of a workbench.
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<25 | 50 | 100>(25);
+
   const { start, end, rangeLabel } = useMemo(() => {
     const end = new Date();
     if (preset === "7d") return { start: daysAgo(7), end, rangeLabel: "Last 7 days" };
@@ -90,8 +95,23 @@ export default function ExploreClient({ posts }: Props) {
 
   const kpis = computeKpis(filtered);
   const trend = dailyReach(filtered).map((d) => ({ date: d.date.slice(5), value: d.reach }));
-  const top = topByReach(filtered, 10);
+  // Full sorted list so pagination can walk past the top 10.
+  const sortedByReach = useMemo(
+    () => [...filtered].sort((a, b) => reach(b) - reach(a)),
+    [filtered]
+  );
   const grouped = groupStats(filtered, groupByDim);
+
+  // Reset to page 1 whenever the filter set changes — otherwise an 8-post
+  // filter with page=3 silently renders an empty list.
+  useEffect(() => {
+    setPage(1);
+  }, [filtered.length, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedByReach.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * pageSize;
+  const pagePosts = sortedByReach.slice(pageStart, pageStart + pageSize);
 
   const totalFilters = pillars.length + formats.length + audiences.length + entities.length;
   const groupByLabel = GROUP_BY_OPTIONS.find((o) => o.key === groupByDim)?.label || String(groupByDim);
@@ -129,20 +149,14 @@ export default function ExploreClient({ posts }: Props) {
         </div>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-        <KpiCard label="Posts" value={kpis.posts} />
-        <KpiCard label="Total Reach" value={kpis.total_reach} />
-        <KpiCard label="Avg Reach/Post" value={kpis.avg_reach_per_post} />
-        <KpiCard label="Interactions" value={kpis.total_interactions} />
-        <KpiCard label="Engagement Rate" value={kpis.avg_engagement_rate.toFixed(2) + "%"} />
-      </div>
-
-      {/* Filter toolbar. Mobile: stacks as a vertical list of full-width
-          tap targets so every control clears the 44×44 WCAG 2.5.5 minimum.
-          sm+: single flex-wrap row, same density as desktop today. */}
-      <Card className="mb-6 !p-0">
-        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 px-4 py-3">
+      {/* Sticky filter toolbar — filter-first workbench. The nav sits at
+          z-50 from 0 to ~96px (desktop) / ~104px (mobile), so the toolbar
+          pins just below it. Z-30 keeps it above chart content without
+          fighting nav. Wraps to multi-row on narrow widths. Background is
+          the page slate-50 so the sticky edge blends with the scroll
+          surface instead of looking like a floating pill. */}
+      <div className="sticky top-[104px] md:top-24 z-30 -mx-6 px-6 py-3 mb-6 bg-slate-50/95 backdrop-blur border-b border-slate-200">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 sm:mr-1">Filter</span>
           <MultiSelect label="Content Pillar" options={pillarOptions} selected={pillars} onChange={setPillars} />
           <MultiSelect label="Format" options={formatOptions} selected={formats} onChange={setFormats} />
@@ -165,6 +179,20 @@ export default function ExploreClient({ posts }: Props) {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Compact KPI strip — demoted from 5 full cards to a single
+          divided row. Explore is filter-first; the numbers are a summary
+          of the result set, not the headline. Big numbers stole attention
+          from the workbench work (filter → find post). */}
+      <Card className="mb-6 !p-0">
+        <div className="grid grid-cols-2 sm:grid-cols-5 divide-x divide-slate-100">
+          <StatCell label="Posts" value={kpis.posts.toLocaleString()} />
+          <StatCell label="Total Reach" value={kpis.total_reach.toLocaleString()} />
+          <StatCell label="Avg Reach/Post" value={Math.round(kpis.avg_reach_per_post).toLocaleString()} />
+          <StatCell label="Interactions" value={kpis.total_interactions.toLocaleString()} />
+          <StatCell label="Engagement Rate" value={kpis.avg_engagement_rate.toFixed(2) + "%"} />
+        </div>
       </Card>
 
       {filtered.length === 0 ? (
@@ -182,6 +210,97 @@ export default function ExploreClient({ posts }: Props) {
         </Card>
       ) : (
         <>
+          {/* Promoted: Top Posts (was last, now first output). Workbench
+              users scan posts to find winners — put them right under the
+              filter controls, not after two charts. */}
+          <Card className="mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4">
+              <div>
+                <h3 className="text-base font-semibold text-slate-900">Top Posts</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Ranked by unique reach · {sortedByReach.length.toLocaleString()} matching
+                </p>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <span>Show</span>
+                {([25, 50, 100] as const).map((size) => (
+                  <button
+                    key={size}
+                    onClick={() => setPageSize(size)}
+                    className={`px-2.5 py-1 rounded-md border transition-colors ${
+                      pageSize === size
+                        ? "bg-brand-shikho-indigo/5 border-brand-shikho-indigo/30 text-brand-shikho-indigo font-semibold"
+                        : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {pagePosts.map((p, idx) => (
+                <div key={p.id} className="border-l-2 border-brand-shikho-pink pl-3 py-1">
+                  <div className="text-sm font-medium text-slate-900">
+                    <span className="text-slate-400 font-semibold mr-2 tabular-nums">#{pageStart + idx + 1}</span>
+                    <span className="text-brand-shikho-indigo font-semibold">{Math.round(reach(p)).toLocaleString()}</span> reach
+                    <span className="text-slate-300 mx-1.5">·</span>
+                    <span>{engagementRate(p).toFixed(2)}% engagement</span>
+                    <span className="text-slate-300 mx-1.5">·</span>
+                    <span>{p.shares} shares</span>
+                  </div>
+                  <div className="text-xs text-slate-600 mt-1 line-clamp-2">{p.message.slice(0, 200)}</div>
+                  <div className="text-[11px] text-slate-500 mt-1.5 flex flex-wrap items-center gap-x-1.5">
+                    <span className="text-brand-shikho-pink font-medium">{p.content_pillar || "—"}</span>
+                    <span>·</span>
+                    <span className="text-slate-500">{p.format || p.type}</span>
+                    <span>·</span>
+                    <span>{bdt(p.created_time).toISOString().slice(0, 10)}</span>
+                    {p.spotlight_name && (
+                      <>
+                        <span>·</span>
+                        <span className="text-brand-shikho-orange">
+                          {p.spotlight_name}
+                          {p.spotlight_type && p.spotlight_type !== "None" && (
+                            <span className="text-slate-500 font-normal"> ({p.spotlight_type})</span>
+                          )}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Page nav. Only shows when there's more than one page — a
+                single-page filter shouldn't carry the UI overhead. */}
+            {totalPages > 1 && (
+              <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between gap-3 text-xs">
+                <button
+                  onClick={() => setPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 rounded-md border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  ← Previous
+                </button>
+                <div className="text-slate-500 tabular-nums">
+                  Page <span className="font-semibold text-slate-700">{currentPage}</span> of {totalPages}
+                  <span className="hidden sm:inline">
+                    {" · "}showing {pageStart + 1}–{Math.min(pageStart + pageSize, sortedByReach.length)}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 rounded-md border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next →
+                </button>
+              </div>
+            )}
+          </Card>
+
           <div className="mb-6">
             <ChartCard
               title="Reach Over Time"
@@ -214,49 +333,20 @@ export default function ExploreClient({ posts }: Props) {
               />
             </ChartCard>
           </div>
-
-          <Card>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-base font-semibold text-slate-900">Top 10 Posts</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Ranked by unique reach in the current filter set</p>
-              </div>
-            </div>
-            <div className="space-y-3">
-              {top.map((p) => (
-                <div key={p.id} className="border-l-2 border-brand-shikho-pink pl-3 py-1">
-                  <div className="text-sm font-medium text-slate-900">
-                    <span className="text-brand-shikho-indigo font-semibold">{Math.round(reach(p)).toLocaleString()}</span> reach
-                    <span className="text-slate-300 mx-1.5">·</span>
-                    <span>{engagementRate(p).toFixed(2)}% engagement</span>
-                    <span className="text-slate-300 mx-1.5">·</span>
-                    <span>{p.shares} shares</span>
-                  </div>
-                  <div className="text-xs text-slate-600 mt-1 line-clamp-2">{p.message.slice(0, 200)}</div>
-                  <div className="text-[11px] text-slate-500 mt-1.5 flex flex-wrap items-center gap-x-1.5">
-                    <span className="text-brand-shikho-pink font-medium">{p.content_pillar || "—"}</span>
-                    <span>·</span>
-                    <span className="text-slate-500">{p.format || p.type}</span>
-                    <span>·</span>
-                    <span>{bdt(p.created_time).toISOString().slice(0, 10)}</span>
-                    {p.spotlight_name && (
-                      <>
-                        <span>·</span>
-                        <span className="text-brand-shikho-orange">
-                          {p.spotlight_name}
-                          {p.spotlight_type && p.spotlight_type !== "None" && (
-                            <span className="text-slate-500 font-normal"> ({p.spotlight_type})</span>
-                          )}
-                        </span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
         </>
       )}
+    </div>
+  );
+}
+
+/* -------- Compact stat cell (KPI strip) -------- */
+function StatCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="px-4 py-3">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{label}</div>
+      <div className="text-base sm:text-lg font-bold text-slate-900 mt-0.5 break-words leading-tight tabular-nums">
+        {value}
+      </div>
     </div>
   );
 }
