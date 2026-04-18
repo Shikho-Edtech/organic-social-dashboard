@@ -1,5 +1,68 @@
 # Learnings
 
+## 2026-04-18 — The display layer hides data-integrity issues under false precision
+
+A full data-sanity audit across every view found six distinct bugs, and
+the pattern across all six was the same: the math was correct, but the
+display layer was taking a null / zero / low-confidence / single-cut
+result and rendering it with confident typography that read like a real
+measurement.
+
+Examples from the audit:
+
+- A label said "Like + Care" but the value was just `like`. The typed
+  formatting "12,345 Like + Care reactions" reads as a composite even
+  when the sum is one term.
+- A recommendation card averaged format-ER and pillar-ER and displayed
+  "combined engagement rate of X%". The arithmetic works; the claim
+  doesn't — the two cuts are measured on different post sets.
+- Best-X cards fell through to `(winner?.rate || 0).toFixed(2)` with no
+  winner, rendering "Best Format: — · 0.00% eng rate". The zero looks
+  like data.
+- "Reliable floor 0" from `Math.max(0, lowerBound95)` where the actual
+  lower bound was negative. Reads as a guaranteed minimum; is actually
+  "variance is too wide to commit to a floor".
+- "1 pillars shown", "1 weeks", "n = 1 posts" — not wrong, but the
+  plural form makes a one-data-point chart feel like a trend.
+
+Takeaways for next time:
+
+1. **When labels name multiple things, the value must sum them.** Every
+   "A + B" / "A & B" / "A and B" label needs a grep of the computed
+   value to confirm both terms are included. Treat any multi-term label
+   as a claim that can lie.
+2. **Composition of group-by statistics is almost always invalid.**
+   Averaging `ER_by_format` with `ER_by_pillar` is not a combined ER —
+   it's the mean of two means measured on different cuts. If you find
+   yourself writing `(x.rate + y.rate) / 2` on grouped output, stop.
+3. **Fallback values should fail loudly, not silently.** `x || 0`
+   rendered in bold typography is worse than showing "—" or a null-state
+   card. The zero inherits the confidence of the real numbers next to
+   it.
+4. **Every CI lower bound display needs a ≤ 0 guard.** Clamping to zero
+   before display turns "variance too wide to call a floor" into "the
+   floor is zero". Let the reliability label carry the variance story;
+   suppress the numeric floor when the CI crosses zero.
+5. **Plural-aware copy is a sanity check, not a polish pass.** "1
+   weeks" and "1 reels" don't just read awkwardly — they erode trust in
+   the rest of the numbers on the page. Do the guard at the site where
+   the count is interpolated, not in a helper; the conditional is
+   one-liner overhead.
+6. **Audit display copy against source columns.** Anytime a label names
+   a raw field (Like, Care, Sad, Wow), grep `lib/sheets.ts` to confirm
+   the column actually exists in Raw_Posts. Labels drift when upstream
+   schemas change and downstream copy doesn't.
+
+The audit also surfaced two issues that were noted but deferred (not
+shipped in commit 994a0b6): (a) timezone asymmetry in Overview where
+post filters use BDT wall-clock but daily-metrics filters parse
+`YYYY-MM-DD` as UTC, producing ~6h boundary fuzziness at range edges;
+(b) Trends' `weekKeys` dedupe parses date strings as UTC while
+`weekBuckets` uses BDT, so a Sunday post in BDT that's Saturday in UTC
+can land in two different week keys. Both are edge-case and not worth
+a separate fix pass yet — flagged here so the next touch on those files
+catches them.
+
 ## 2026-04-18 — Functions cannot cross the RSC boundary in Next 14 production
 
 `/timing` crashed with a generic Server Component error on every production

@@ -1,5 +1,42 @@
 # Changelog
 
+## 2026-04-18 — Data-integrity audit: labels, pluralization, false-precision, CI floor
+
+Sweep across every view for number / calculation / source-fidelity /
+cross-page-consistency / logic-appropriateness issues. Six distinct
+classes of display-layer bugs were hiding data-integrity concerns under
+polished typography. All fixes are cosmetic (no aggregation logic
+changed); upstream pipeline + `lib/aggregate.ts` were confirmed correct.
+
+- **Engagement "Like + Care"**: label claimed two reactions but value
+  was `totals.like` only. No Care column exists anywhere in the pipeline
+  (Raw_Posts → `getPosts` → Post type). Relabeled; definition string
+  corrected.
+- **Engagement fake "combined engagement rate"**: averaged two
+  independent group-by rates (format + pillar) and presented the mean as
+  a composite metric. The two cuts are measured on different post sets,
+  so the intersection is unknown. Replaced with prose that names each
+  rate separately and flags the combination as a test.
+- **Pluralization**: "1 pillars shown", "n = 1 posts", "1 weeks", "1
+  reels have retention curves", etc. — fixed across 5 files with inline
+  singular/plural guards.
+- **Best-X false 0.00%**: Engagement's Best Format/Pillar/Hook/Spotlight
+  cards fell through to `(x?.rate || 0).toFixed(2)` when no bucket
+  qualified, showing "0.00% eng rate" as if it were a real measurement.
+  Now conditionally rendered; empty state says "Not enough posts in
+  range to rank (N+ needed per …)".
+- **Timing "reliable floor 0"**: four Best-X cards clamped
+  `lowerBound95` to zero and displayed the clamped value as a floor —
+  "we expect at least 0" reads as meaningful but is trivially true when
+  the real CI lower bound is negative. Suppressed when `lb <= 0`; the
+  reliability label already carries the variance message.
+- **Explore shares formatting**: `{p.shares} shares` → locale-formatted
+  with null-guard and plural-aware unit, matching the rest of the app.
+
+Commit 994a0b6. Pattern captured in LEARNINGS — display layer hides
+data-integrity issues under false precision far more often than the
+underlying math is wrong.
+
 ## 2026-04-18 — Fix /timing RSC-boundary crash (real root cause)
 
 `/timing` was passing inline arrow functions as `valueFormat` to the
