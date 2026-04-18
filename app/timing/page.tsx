@@ -36,15 +36,22 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
     return ((p.reactions || 0) + (p.comments || 0) + (p.shares || 0)) / r * 100;
   };
 
-  // Day of week (BDT) — still computed for the Best-Day KPIs above the heatmap
+  // Day of week (BDT) — still computed for the Best-Day KPIs above the heatmap.
+  // Guard against unparseable created_time: filterPosts lets posts with NaN
+  // dates through (d < f.start and d > f.end both return false for NaN), so
+  // bdt() here can return Invalid Date → getDay() returns NaN → dayNames[NaN]
+  // is undefined → postsByDayOfWeek[undefined].push crashes the server render.
+  // One production row with a malformed timestamp and this page 500s.
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const postsByDayOfWeek: Record<string, typeof inRange> = {};
   dayNames.forEach((d) => (postsByDayOfWeek[d] = []));
   for (const p of inRange) {
     if (!p.created_time) continue;
     const d = bdt(p.created_time);
-    const day = dayNames[d.getDay()];
-    postsByDayOfWeek[day].push(p);
+    if (isNaN(d.getTime())) continue;
+    const dayIdx = d.getDay();
+    if (!Number.isInteger(dayIdx) || dayIdx < 0 || dayIdx > 6) continue;
+    postsByDayOfWeek[dayNames[dayIdx]].push(p);
   }
   const dayData: DayRow[] = dayNames.map((d) => {
     const bucket = postsByDayOfWeek[d];
@@ -66,8 +73,11 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
   for (const p of inRange) {
     if (!p.created_time) continue;
     const d = bdt(p.created_time);
+    if (isNaN(d.getTime())) continue;
     const day = d.getDay();
     const hour = d.getHours();
+    if (!Number.isInteger(day) || day < 0 || day > 6) continue;
+    if (!Number.isInteger(hour) || hour < 0 || hour > 23) continue;
     const r = reach(p);
     grid[day][hour].posts += 1;
     grid[day][hour].reach += r;
