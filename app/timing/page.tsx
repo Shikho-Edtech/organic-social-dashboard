@@ -129,6 +129,43 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
   const totalCellsWithPosts = erCells.filter((c) => c.n > 0).length;
   const totalCellsReliable = erCells.filter((c) => c.n >= CELL_MIN_N).length;
 
+  // Accessible "View data" tables for both heatmaps. Rows are only the
+  // non-empty cells (a 7×24 grid with mostly zeros is noise for a
+  // screen reader). Formatted with localeString / fixed precision so
+  // the table renders as human-readable text rather than raw floats.
+  const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const formatHour12 = (h: number) => {
+    const suffix = h >= 12 ? "pm" : "am";
+    const display = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return `${display}${suffix}`;
+  };
+  const nonEmptyCells = erCells
+    .map((c, i) => ({ er: c, reach: reachCells[i] }))
+    .filter((pair) => pair.er.n > 0)
+    .sort((a, b) => b.er.value - a.er.value);
+  const erViewData = {
+    columns: ["Day", "Hour", "Posts", "Eng Rate", "Total Reach"],
+    rows: nonEmptyCells.map(({ er }) => [
+      DAY_LABELS[er.day],
+      formatHour12(er.hour),
+      er.n,
+      `${er.value.toFixed(2)}%`,
+      Math.round(er.totalReach),
+    ]),
+  };
+  const reachViewData = {
+    columns: ["Day", "Hour", "Posts", "Avg Reach", "Total Reach"],
+    rows: [...nonEmptyCells]
+      .sort((a, b) => b.reach.value - a.reach.value)
+      .map(({ reach }) => [
+        DAY_LABELS[reach.day],
+        formatHour12(reach.hour),
+        reach.n,
+        Math.round(reach.value),
+        Math.round(reach.totalReach),
+      ]),
+  };
+
   return (
     <div>
       <PageHeader title="Timing" subtitle="When to post for max reach and engagement" dateLabel={`${range.label} · Bangladesh Time (UTC+6)`} />
@@ -198,6 +235,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
           definition={`For each (day, hour) cell: (Σ interactions ÷ Σ reach) × 100 across all posts that cell. Color saturation encodes the rate — darker = stronger engagement. Cells with fewer than ${CELL_MIN_N} posts are dimmed (still visible so zero-post slots are distinguishable from low-confidence ones). Reach-weighted so a single viral post can't hijack a cell's color.`}
           sampleSize={`${totalCellsReliable} / ${totalCellsWithPosts} cells reliable (n≥${CELL_MIN_N}), ${inRange.length} posts total`}
           caption={`Read left-to-right for daily patterns, top-to-bottom for weekday patterns. Dark diagonal bands suggest consistent "best time" windows. Bangladesh Time (UTC+6).`}
+          viewData={erViewData}
         >
           {totalCellsWithPosts === 0 ? (
             <EmptyChart
@@ -226,6 +264,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
           definition={`For each (day, hour) cell: Σ reach ÷ N posts that cell. Color encodes average reach per post; cells with fewer than ${CELL_MIN_N} posts are dimmed. Pair with the engagement rate heatmap above — reach and ER can diverge (a cell can deliver high reach with low ER, or vice versa).`}
           sampleSize={`${totalCellsReliable} / ${totalCellsWithPosts} cells reliable (n≥${CELL_MIN_N})`}
           caption={`Dark cells here + dark cells above = that day/hour is your best publish window on both axes.`}
+          viewData={reachViewData}
         >
           {totalCellsWithPosts === 0 ? (
             <EmptyChart
