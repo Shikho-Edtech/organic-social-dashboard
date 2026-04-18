@@ -1,5 +1,38 @@
 # Learnings
 
+## 2026-04-18 — `justify-between` + `flex-wrap` makes alignment content-dependent
+
+When you put `flex justify-between flex-wrap` on a row with two items, the
+positioning of the second item is no longer predictable — it depends on
+whether both items fit on one line. Narrow content → side-by-side with
+space-between. Wide content → wraps, and the wrapped item drifts to whatever
+the browser decides for a single item on a flex line with `justify-between`
+(often the start/left).
+
+Symptom: the date picker on this dashboard appeared left-aligned on pages
+with long titles and right-aligned on pages with short titles. Same
+component, same classes, different pages. Felt like a bug in one place but
+it was the CSS working as specified.
+
+Rule: **never use `flex-wrap` for an alignment that needs to be
+deterministic.** If you want "side-by-side on desktop, stacked on mobile",
+write it explicitly: `flex-col sm:flex-row`. The cost is 2 extra words in
+the class list. The payoff is the layout is the same on every page and every
+viewport width.
+
+## 2026-04-18 — Absolute popups need a viewport clamp regardless of positioning
+
+An absolute-positioned popup with `w-72` (288px) looks fine in a vacuum, but
+the moment the popup is wider than the viewport minus padding, it spills
+off one edge — typically the left (when `right-0`'d to a button that isn't
+all the way at the right). Doesn't matter how carefully the button is
+positioned; the data underneath changes, titles get longer, layouts shift,
+and sooner or later the popup is somewhere unexpected.
+
+Standard mitigation: `max-w-[calc(100vw-2rem)]` on every popup, full stop.
+CSS-only, covers every failure mode, no JavaScript. The 2rem matches the
+layout's body padding. One line on each popup beats a popover library.
+
 ## 2026-04-18 — "Fix mobile by picking smaller constants" regresses desktop
 
 Two regressions from today's mobile pass had the same shape: I

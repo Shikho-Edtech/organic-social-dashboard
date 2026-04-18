@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-04-18 — Date picker consistency + right-edge overflow audit + project CLAUDE.md
+
+User reported the date-range selector appeared left/right/center aligned on
+different pages from mobile, and asked for a system-wide check on text
+overflowing card/viewport right edges.
+
+- **PageHeader + ExploreClient header**: `flex-wrap` swapped for
+  `flex-col sm:flex-row` with `self-end` on the picker container. Picker is
+  now always at the top-right on desktop and bottom-right on mobile — no
+  more drifting based on title length.
+- **All popups constrained**: DateRangePicker, Explore's RangeDropdown, and
+  Explore's GroupBySelect all got `max-w-[calc(100vw-2rem)]` so they
+  physically can't spill off-screen on a 360px phone.
+- **KpiCard**: `text-3xl` → `text-2xl sm:text-3xl` + `break-words` so 7-digit
+  numbers don't overflow 2-col mobile cards.
+- **ChartCard title row**: added `flex-wrap` + `min-w-0` + `break-words` so
+  long titles ("Spotlight Performance — Engagement") stop colliding with the
+  sample-size / kind badges.
+- **"Best X" cards** on Engagement + Timing: `text-2xl` → `text-xl sm:text-2xl`
+  + `break-words leading-tight`. Long pillar names wrap inside the card.
+- **New [CLAUDE.md](CLAUDE.md)**: project-level rulebook so mobile-first is
+  the default for every future change. Pre-commit checklist, 360px floor,
+  canonical copy-paste patterns, anti-patterns to never ship. Answers the
+  "how do we ensure future changes are mobile-responsive" question
+  structurally, not by Claude remembering each time.
+
 ## 2026-04-18 — Desktop regression fixes from the mobile pass
 
 Two regressions introduced by today's mobile audit. (1)
