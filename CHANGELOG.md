@@ -1,5 +1,59 @@
 # Changelog
 
+## 2026-04-18 — Batch 3 design pass: Timing heatmap, Explore workbench, a11y sweep, page template
+
+Final of three design-roadmap batches. Batch 1 fixed foundation,
+Batch 2 unified color/rhythm/callouts, Batch 3 rebuilds the two
+outlier pages (Timing, Explore) and closes the a11y gaps that every
+popover in the app shared.
+
+**3a — Timing heatmap (#13).** The 2x2 bar-chart grid (slot-reach /
+slot-ER / day-reach / day-ER) that made readers cross-reference four
+charts to answer "when to post?" replaced by a single 7x24 day-by-hour
+heatmap. New `components/Heatmap.tsx` with RGB-linear color
+interpolation, keyboard-focusable cells (each is a button with
+aria-label + tooltip on focus), Escape-to-dismiss, and per-cell min-N
+threshold scaled down from the page-level min-N (cells see fewer
+posts than whole-day buckets). Two heatmaps — ER in pink, avg reach
+in indigo — because those metrics can diverge. "Best X (Slot)" KPIs
+replaced by "Best X (Hour)" using CI-ranked hourly buckets.
+
+**3b — Explore workbench (Pg-Ex).** Was three stacked outputs
+(KPIs, reach trend, group chart, then Top 10 last) with filters
+buried at the top. Now filter-first: sticky filter toolbar pinned
+below the nav (backdrop-blurred, full-bleed via `-mx-6 px-6`),
+demoted KPI strip (5 full cards -> single `divide-x` row), promoted
+Top Posts as the first output with pagination 25/50/100 and per-row
+rank numbers, trend + group charts pushed below as deeper-dive
+context. Page resets to 1 on filter change so users don't land on
+empty pages.
+
+**3c — Accessibility sweep (#20).** InfoTooltip gets
+`aria-describedby` (useId-generated) announcing the definition on
+focus, plus global Escape handler. DateRangePicker and all three
+Explore popovers (RangeDropdown, MultiSelect, GroupBySelect) get
+`aria-haspopup` + `aria-expanded` + descriptive `aria-label`
+announcing current state, plus Escape to close. ChartCard gains a
+`viewData?: { columns, rows }` prop that renders a native
+`<details>/<summary>` disclosure below the chart — both Timing
+heatmaps now expose their full grid as a sortable-ready HTML table
+for screen-reader and keyboard users. No rewiring of existing
+tooltips or buttons; all changes are additive.
+
+**3d — Canonical page template (#19).** Overview trimmed from 6
+KPIs to 5 (dropped Interactions, which Engagement Rate normalizes).
+Reels merged two stacked strips (5+4 = 9 cards) into one 5-card
+strip, with Replay Rate folded onto the Total Plays sublabel and
+15s/30s retention reabsorbed by the Retention Funnel chart's bars
+(which already carried those numbers). Trends / Engagement /
+Strategy / Plan deliberately NOT reshuffled — their non-canonical
+structure is intentional (small-multiples summary, Best-X narrative,
+verdict hero, calendar). The template is a default, not a mandate.
+
+Build green across all four commits, 13 routes, no regressions. Each
+commit passed the seven-perspective QA gate; Batch 3 rationale +
+recurring gotchas captured in DECISIONS + LEARNINGS (below).
+
 ## 2026-04-18 — Batch 2 design pass: color system, visual family, data states, per-page callouts
 
 Four thematic commits landing the second of three design-roadmap batches.

@@ -1,5 +1,126 @@
 # Learnings
 
+## 2026-04-18 — Sticky toolbars need to know how tall the nav is (Batch 3b)
+
+Explore's sticky filter toolbar at first was `sticky top-0 z-30`. The
+nav is `sticky top-0 z-50`. Both fire sticky at the viewport top — the
+higher z-index wins the pixel, so the toolbar slid BEHIND the nav and
+became invisible once scrolled. The symptom was "I scrolled past the
+nav and my filter is gone."
+
+Fix: measure the nav's full rendered height. Desktop Nav stacks a
+`h-14` (56px) logo row above a `py-2.5 text-sm` tab row (~40px) = ~96px.
+Mobile Nav stacks logo row (56) + dropdown button row (~48) = ~104px.
+Set `sticky top-[104px] md:top-24 z-30` — toolbar pins immediately
+below the nav, still below nav in z-order so it can't fight for the
+top edge.
+
+Second gotcha: the Explore page body is inside `<main class="px-6">`.
+Applying the sticky toolbar inside that container means background
+color stops at the padding gutters, looking like a floating pill. Fix
+with `-mx-6 px-6` — negative margin extends to the main edges, padding
+puts content back where it was. The toolbar now reads as a full-bleed
+bar flush with the page edges.
+
+Takeaway: sticky positioning is relative to the nearest scrolling
+ancestor, and it doesn't KNOW about other sticky siblings. If the
+header is sticky at top-0, every OTHER sticky below it needs an
+explicit `top` greater than the header's height. For full-bleed sticky
+bars inside a padded container, `-mx-{n} px-{n}` is the one-liner.
+
+## 2026-04-18 — React's useId is the right primitive for aria-describedby (Batch 3c)
+
+InfoTooltip's (i) button needed to announce its definition to screen
+readers on focus. The typical broken versions:
+
+1. `role="tooltip"` on the popup text span, nothing else. Screen
+   readers never associate the tooltip with the button — the role is
+   semantically orphaned.
+2. Hardcoded `aria-describedby="tooltip-1"`. Works for one tooltip.
+   The MOMENT a page has two (e.g., two ChartCards), both share the
+   same id and the association breaks in HTML-spec terms.
+3. `Math.random()` id in state. Works, but mismatches between SSR
+   and hydration fire a warning and occasionally detach the tooltip.
+
+`useId()` is the exact primitive for this — it returns a stable,
+SSR-safe unique id string per component instance. Set
+`aria-describedby={open ? id : undefined}` on the button and
+`id={id}` on the tooltip; the association is one-line and hydrate-
+safe.
+
+Takeaway: when an ARIA attribute references an id, use `useId`. Not
+a counter, not a random string, not a hardcoded value. React 18+
+ships the primitive specifically for this.
+
+## 2026-04-18 — Heatmap cells need a LOWER min-N than day/slot buckets (Batch 3a)
+
+Per-day/slot KPIs use `minPostsForRange(rangeDays)` — returns 3 for
+7d, 5 for 14d, 10 for 30d. A whole day bucket aggregates ~5-10 posts
+per day. Applying the same threshold to heatmap CELLS (day × hour
+pairs) silently muted most cells: at 30d, a cell needs n>=10, but a
+given (Monday, 3pm) cell across 30 days gets ~4 posts at best. The
+first render was a sea of dimmed cells.
+
+Fix: `CELL_MIN_N = Math.max(2, Math.floor(MIN_N / 2))` — half the
+per-day threshold, floored at 2 so we at least demand two posts
+before calling a cell "reliable." Cells now surface meaningful
+patterns; genuinely single-post cells are still muted.
+
+Takeaway: if a reliability threshold was calibrated against one
+aggregation granularity, it will be too strict at any finer
+granularity. Divide the threshold by the relative bucket-size shrink
+(here, 24 hours of spread → ~halved min-N works empirically).
+
+## 2026-04-18 — Removed UI leaves ghost variables unless you clean up (Batch 3d)
+
+Collapsing Reels's two-strip layout into one strip deleted 4 Card
+elements. The variables feeding those cards — `total15s`, `total30s`,
+`denom15s`, `denom30s`, `total15sBucket`, `total30sBucket`,
+`totalViews` — were still declared at the top of the component. TS
+didn't error (those are just `const` declarations with no specific
+type use after), and Next.js's build didn't warn. They'd silently
+bit-rot and confuse the next person who edits the file.
+
+Process fix: after removing UI, `grep` the variable names that lived
+only in the removed JSX. Remove the dead `const` declarations. Add
+a comment where the logic was non-trivial (the bucket-vs-curve
+reconciliation here is subtle and might be wanted again) so it's
+discoverable instead of lost.
+
+Takeaway: deleting UI is only half of the delete. The compute layer
+feeding it is dead too — unless the same values power something
+else on the page. Run `grep` on the variables. If they're orphaned,
+remove them or leave a pointer comment.
+
+## 2026-04-18 — `<details>` + `group-open:rotate-90` is a free disclosure widget (Batch 3c)
+
+ChartCard's "View data as table" disclosure could've been a
+`useState` + `<button aria-expanded>` + conditional render + CSS
+transition for the caret. 15+ lines of React, state management, and
+keyboard handling.
+
+Native `<details>/<summary>` does all of it for free: keyboard
+toggle via Enter/Space, announces expanded state to screen readers,
+no JS needed. The one missing piece (caret rotation on open) is a
+single-line CSS rule thanks to Tailwind's `group-open:` variant:
+
+```
+<details class="group">
+  <summary>
+    <svg class="transition-transform group-open:rotate-90" />
+    View data
+  </summary>
+  <div>...</div>
+</details>
+```
+
+No JS, no state, no a11y plumbing. Works in every browser shipped
+since 2020.
+
+Takeaway: before reaching for `useState` + `aria-*` to build a
+disclosure, check if `<details>` fits. It's a semantic primitive
+that's been waiting to be used since Chrome 12.
+
 ## 2026-04-18 — Tailwind's `!` override is the escape hatch for component-default classes (Batch 2b)
 
 KpiCard wraps `Card`, which emits a fixed `p-6 bg-white rounded-xl

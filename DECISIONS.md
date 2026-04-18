@@ -1,5 +1,155 @@
 # Decisions
 
+## 2026-04-18 — One heatmap beats a 2x2 bar grid (Batch 3a, #13)
+
+Timing asked "when should we post?" with four separate charts: bars
+of reach by slot, bars of ER by slot, bars of reach by day, bars of
+ER by day. Readers had to remember slot-1 reach, slot-2 reach, slot-3
+reach, then switch axis to day-1 reach, etc., and mentally overlay
+the two to find (day, slot) hotspots. The answer to the question
+only exists at the intersection — the 1D projections hid it.
+
+Decided to replace all four with a 7x24 day-by-hour heatmap. Color
+saturation = the metric; position = the (day, hour) pair. Two grids
+(ER in pink, avg reach in indigo) because reach and ER diverge: a
+cell can have high reach with meh ER (broad-audience post) or low
+reach with high ER (niche but sticky). The dual view is the ONLY way
+to see both simultaneously.
+
+Alternatives considered:
+
+- **3D surface plot**: perceptually dense but Cleveland-&-McGill-wrong
+  for sequential data (position on a common scale beats color beats
+  angle; 3D surfaces ruin "common scale"). Nobody reads these.
+- **Small-multiples of 7 day-bars**: 7 tiny bar charts at 24 values
+  each. 360px wide, wouldn't fit horizontally and stacking kills the
+  compare-across-days story. Heatmap's grid layout is the compact form.
+- **Keep bars, add annotations**: lipstick. The 1D projections still
+  hide 2D patterns.
+
+Tradeoff: Recharts has no native heatmap, so custom CSS grid
+(`grid-template-columns: auto repeat(24, minmax(0, 1fr))`). RGB linear
+interpolation between minColor and maxColor — not perceptually
+uniform (LAB/OKLab would be), but for a sequential 0-max scale across
+168 cells, the perceptual deficit is invisible and the compute cost
+is a few hundred JS cycles per render. Not worth the import.
+
+Takeaway: when a question only has answers at the intersection of two
+dimensions, don't show two 1D projections. Show the 2D space directly,
+even if the chart library doesn't ship with it.
+
+## 2026-04-18 — Explore is a workbench, not a dashboard (Batch 3b, Pg-Ex)
+
+Pre-Batch-3 Explore was a dashboard that happened to have filters:
+KPI strip (5 big cards) → reach trend → group chart → Top 10 last.
+The hierarchy said "here are summary numbers, then some charts, oh
+and there's a list of posts at the bottom." But the USE CASE is "let
+me slice my content and find what worked" — a workbench, not a
+dashboard. The post list IS the output.
+
+Decided: make filter the primary control (sticky toolbar pinned
+below nav), demote summary numbers to a compact strip (same info,
+less visual weight), promote Top Posts to the first output with
+pagination so users can scan beyond the top 10. Trend and group
+charts move below as deeper-dive context.
+
+Alternatives considered:
+
+- **Collapse filters into a sidebar**: the classic workbench
+  pattern, but at 360px a sidebar becomes a modal which adds taps.
+  Sticky horizontal toolbar is one-tap-from-anywhere.
+- **Infinite scroll Top Posts**: keyboard-unfriendly (no jump-to-
+  page-7), no "how many total" signal, and scroll hijacking on mobile.
+  Page-size selector + prev/next is predictable.
+- **Fixed toolbar (`position: fixed`)**: would escape the max-w-7xl
+  container and need manual width management. `position: sticky`
+  stays in flow, no layout surgery.
+
+Tradeoff: sticky toolbar eats ~40px of vertical real estate all the
+time. Acceptable — users scrolling the post list always need access
+to filter tweaks, and the prior "scroll up to re-filter" pattern was
+the main pain point flagged when the page was reviewed.
+
+Takeaway: the hierarchy of a page should match the user's JTBD, not
+the dashboard-template convention. If the "output" is a table, put
+the table first.
+
+## 2026-04-18 — aria-describedby + <details> are the free-lunch a11y wins (Batch 3c, #20)
+
+An info-tooltip with `role="tooltip"` is still invisible to screen
+readers unless the ELEMENT BEING DESCRIBED references it. The common
+mistake is to set `role="tooltip"` on the popup text and assume
+announce-on-focus works — it doesn't; the tooltip is semantically
+orphaned. The fix is a one-line `aria-describedby={open ? id :
+undefined}` on the (i) button, with a matching `id={id}` on the
+tooltip span, and React's `useId` generates the stable id. Now when
+the button gets focus, screen readers announce "What is this metric?
+[definition text]."
+
+Similarly, the "View data as table" disclosure was a candidate for
+hand-rolled `useState` + `<button aria-expanded>` + `<div role=region>`.
+Native `<details>/<summary>` does all of that for free: keyboard-
+accessible (Enter/Space toggles), announces expanded state to screen
+readers, works without JS. The CSS-only bit was the caret rotation:
+`group-open:rotate-90` on the svg inside a `<details class=group>` is
+a single-line CSS animation tied to the native open state.
+
+Alternatives considered:
+
+- **Headless UI Disclosure**: overkill — adds a peer dependency and
+  state plumbing for what the platform does natively.
+- **Custom hook + ARIA**: 20+ lines of code prone to regressions. If
+  the platform ships a semantic primitive, use it.
+
+Tradeoff: `<details>` comes with default browser styling we don't
+want (the disclosure triangle). Stripped with `list-style: none` on
+summary (implicit via `select-none` and no explicit `::marker`
+override needed — the caret svg replaces it).
+
+Takeaway: before building a custom ARIA widget, check if the
+platform already ships the semantics. `<details>`, `<dialog>`, and
+`<input list>` are all under-used primitives that get screen-reader
+support for free.
+
+## 2026-04-18 — Canonical page template is a default, not a mandate (Batch 3d, #19)
+
+Roadmap #19 said "consistent page template: header → KPI strip (max
+5) → primary chart → secondary charts → detail." Audit showed 4
+pages comply cleanly (Timing, Explore, ~Reels, ~Overview) and 4
+don't (Trends, Engagement, Strategy, Plan).
+
+Forcing the template across all 8 would break intentional design:
+
+- **Trends** is a trends page; the small-multiples strip IS the KPI
+  summary layer. Adding a separate 4-card KPI strip on top would
+  duplicate and compete with the sparklines.
+- **Engagement** has Best X + Recommendations as a deliberate
+  narrative (here are 4 signals, here's what they mean). Templating
+  them as "KPI → chart → chart" erases the synthesis move.
+- **Strategy** leads with the Weekly Verdict hero because the
+  verdict IS the point; a KPI strip below it would shift attention
+  away from the synthesis.
+- **Plan** is a calendar, not a metrics view.
+
+Decided: apply the template only where the page's domain naturally
+fits (metric dashboards), and document the exceptions explicitly.
+Templates exist to prevent inconsistency where it doesn't serve the
+reader — not to override page-specific structural choices.
+
+Alternatives considered:
+
+- **Rewrite all 4 holdouts to fit the template**: would strip the
+  actual value those pages provide. Roadmap priority was "consistency"
+  but consistency-for-its-own-sake is worse than intentional variation.
+- **Split the template into two (dashboard vs narrative)**: overkill
+  for 4 pages; a documented exception per page is simpler.
+
+Takeaway: design-system rules are usually defaults, not mandates.
+When a page has a reason to break the rule, document WHY — that's
+what DECISIONS.md is for. Applying the rule blindly converts
+intentional designs into templated ones and destroys information
+density in the process.
+
 ## 2026-04-18 — Categorical color is a product concept, not a chart setting (Batch 2a)
 
 Pre-Batch-2, every chart component had its own `colorByIndex` toggle and
