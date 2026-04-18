@@ -9,10 +9,14 @@ no Claude API calls happen in the dashboard.
 
 ## Views
 
-- **/** — This Week: weekly verdict, KPIs, red flags, top performers, reach trend
-- **/plan** — Next week's content calendar with hook lines, visual direction, expected reach
-- **/playbook** — Winning pillar × format × entity patterns, hook type effectiveness, visual style winners
-- **/explore** — Filter by any dimension, group by any dimension, interactive chart + table
+- **/** — Overview: 5 headline KPIs, reach trend, format mix, content-pillar reach, biggest movers
+- **/trends** — Time-based patterns: posting volume, daily reach, week-over-week deltas
+- **/engagement** — What drives interaction: format performance, hook types, engagement mix
+- **/reels** — Video watch time, retention funnel, follower conversion (Bangladesh Time)
+- **/timing** — Day × hour heatmap for engagement rate and reach (Bangladesh Time)
+- **/strategy** — Claude's weekly diagnosis and recommended actions (staleness-aware)
+- **/plan** — Next week's content calendar with hook lines and expected reach (staleness-aware)
+- **/explore** — Filter-first workbench: sticky filters, paginated top posts, slice-and-dice charts
 
 ## Deploy to Vercel (5 minutes)
 
