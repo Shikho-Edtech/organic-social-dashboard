@@ -188,6 +188,45 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
         </Card>
       </div>
 
+      {/* Recommendations — synthesizes the 4 Best X signals above into
+          2-3 sentences a human can act on. Prior layout assumed the
+          reader would eyeball the four cards and mentally compose the
+          recommendation; in practice the cards were treated as
+          standalone trivia. Putting the synthesis directly under them
+          closes the loop from "here are the winners" to "so do this". */}
+      {(bestFormat || bestPillar || bestHook || bestSpotlight) && (
+        <Card className="!p-5 mb-6 border-l-4 border-l-brand-shikho-indigo bg-gradient-to-br from-white to-indigo-50/30">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-brand-shikho-indigo mb-2">
+            Recommended this period
+          </div>
+          <ul className="space-y-2 text-sm text-slate-800 leading-relaxed">
+            {bestFormat && bestPillar && (
+              <li>
+                <span className="font-semibold">Lead with </span>
+                <span className="font-semibold" style={{ color: canonicalColor("format", bestFormat.key) }}>{bestFormat.key}</span>
+                <span className="font-semibold"> on </span>
+                <span className="font-semibold" style={{ color: canonicalColor("pillar", bestPillar.key) }}>{bestPillar.key}</span>
+                <span> — combined engagement rate of roughly {((bestFormat.avg_engagement_rate + bestPillar.avg_engagement_rate) / 2).toFixed(2)}% across {bestFormat.count + bestPillar.count} posts ({reliabilityLabel(Math.min(bestFormat.count, bestPillar.count))}).</span>
+              </li>
+            )}
+            {bestHook && (
+              <li>
+                <span>Open with a </span>
+                <span className="font-semibold" style={{ color: canonicalColor("hook", bestHook.key) }}>{bestHook.key}</span>
+                <span> hook — {bestHook.avg_engagement_rate.toFixed(2)}% engagement across {bestHook.count} posts. Test it on the other pillars to see if the hook or the topic is carrying.</span>
+              </li>
+            )}
+            {bestSpotlight && (
+              <li>
+                <span>Feature </span>
+                <span className="font-semibold" style={{ color: canonicalColor("spotlight", bestSpotlight.key) }}>{bestSpotlight.key}</span>
+                <span> — the spotlight category driving the highest reach-weighted engagement ({bestSpotlight.avg_engagement_rate.toFixed(2)}%).</span>
+              </li>
+            )}
+          </ul>
+        </Card>
+      )}
+
       <div className="grid lg:grid-cols-2 gap-4 mb-6">
         <ChartCard
           title="Format Performance"

@@ -63,36 +63,79 @@ export default function LoginPage() {
             refreshed on a predictable cadence.
           </p>
 
-          {/* Workflow cadence bullets */}
-          <div className="mt-6 lg:mt-8 space-y-3">
-            <div className="flex items-start gap-3">
-              <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-brand-shikho-pink shrink-0" />
-              <div>
-                <div className="text-white text-sm font-semibold">Daily 09:00 BDT</div>
-                <div className="text-white/65 text-xs leading-snug">Raw posts, page metrics, reel data refreshed. Dashboard charts reflect yesterday.</div>
+          {/* Data flow illustration — replaces the earlier bullet-list cadence
+              block. Three-stop pipeline (Source → Store → Surface) with the
+              two refresh cadences labelled on the arrows, so the reader can
+              see *how* the data gets here at a glance instead of parsing
+              four parallel bullets. Kept to a single horizontal row on lg+
+              and a compact vertical stack on mobile. */}
+          <div className="mt-6 lg:mt-8">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/50 mb-3">
+              How the data gets here
+            </div>
+            <div className="flex flex-col lg:flex-row lg:items-stretch gap-3 lg:gap-0">
+              {/* Stop 1: Meta Graph API */}
+              <div className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-3 lg:rounded-r-none backdrop-blur-sm">
+                <div className="flex items-center gap-2 text-brand-shikho-pink text-[11px] font-semibold uppercase tracking-wider">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <path d="M3 12h18M3 6h18M3 18h18" strokeLinecap="round" />
+                  </svg>
+                  Source
+                </div>
+                <div className="text-white text-sm font-semibold mt-1">Meta Graph API v21.0</div>
+                <div className="text-white/60 text-xs mt-0.5 leading-snug">Posts, page metrics, reel retention</div>
+              </div>
+
+              {/* Arrow 1: daily cadence */}
+              <div className="flex lg:flex-col items-center justify-center px-3 lg:px-2 text-white/50">
+                <div className="flex flex-col items-center">
+                  <div className="text-[10px] font-semibold tracking-widest uppercase text-brand-shikho-pink whitespace-nowrap">Daily 09:00</div>
+                  <svg className="w-8 h-4 lg:w-6 lg:h-5 rotate-90 lg:rotate-0 mt-0.5" viewBox="0 0 24 8" fill="none" aria-hidden="true">
+                    <path d="M0 4h22M18 1l4 3-4 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Stop 2: Google Sheets */}
+              <div className="flex-1 bg-white/5 border border-white/10 rounded-lg lg:rounded-none px-4 py-3 backdrop-blur-sm">
+                <div className="flex items-center gap-2 text-brand-shikho-orange text-[11px] font-semibold uppercase tracking-wider">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <path d="M3 9h18M3 15h18M9 3v18M15 3v18" />
+                  </svg>
+                  Store
+                </div>
+                <div className="text-white text-sm font-semibold mt-1">Google Sheets</div>
+                <div className="text-white/60 text-xs mt-0.5 leading-snug">Raw tables + Claude-written verdicts</div>
+              </div>
+
+              {/* Arrow 2: weekly diagnosis */}
+              <div className="flex lg:flex-col items-center justify-center px-3 lg:px-2 text-white/50">
+                <div className="flex flex-col items-center">
+                  <div className="text-[10px] font-semibold tracking-widest uppercase text-brand-shikho-orange whitespace-nowrap">Mon 10:00</div>
+                  <svg className="w-8 h-4 lg:w-6 lg:h-5 rotate-90 lg:rotate-0 mt-0.5" viewBox="0 0 24 8" fill="none" aria-hidden="true">
+                    <path d="M0 4h22M18 1l4 3-4 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Stop 3: Dashboard */}
+              <div className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-3 lg:rounded-l-none backdrop-blur-sm">
+                <div className="flex items-center gap-2 text-brand-shikho-blue text-[11px] font-semibold uppercase tracking-wider">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <rect x="3" y="3" width="18" height="14" rx="2" />
+                    <path d="M3 21h18M8 13V9M12 13V6M16 13v-3" strokeLinecap="round" />
+                  </svg>
+                  Surface
+                </div>
+                <div className="text-white text-sm font-semibold mt-1">This dashboard</div>
+                <div className="text-white/60 text-xs mt-0.5 leading-snug">5-min cache · hard-refresh to re-read</div>
               </div>
             </div>
-            <div className="flex items-start gap-3">
-              <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-brand-shikho-orange shrink-0" />
-              <div>
-                <div className="text-white text-sm font-semibold">Monday 10:00 BDT</div>
-                <div className="text-white/65 text-xs leading-snug">Full weekly diagnosis by Claude Sonnet. Strategy verdict and Plan calendar repopulate.</div>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-brand-shikho-blue shrink-0" />
-              <div>
-                <div className="text-white text-sm font-semibold">Source of truth</div>
-                <div className="text-white/65 text-xs leading-snug">Meta Graph API v21.0 directly to Google Sheets. No manual exports, no third party intermediate.</div>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-white/60 shrink-0" />
-              <div>
-                <div className="text-white text-sm font-semibold">Cache freshness</div>
-                <div className="text-white/65 text-xs leading-snug">5 minute server cache. Hard refresh to force a re-read from Sheets.</div>
-              </div>
-            </div>
+
+            <p className="text-white/55 text-xs mt-3 leading-snug">
+              Daily raw refresh keeps KPIs current; Monday diagnosis regenerates Strategy &amp; Plan.
+            </p>
           </div>
         </div>
 

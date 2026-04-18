@@ -2,7 +2,7 @@ import { getPosts, getDailyMetrics } from "@/lib/sheets";
 import { filterPosts, dailyReach, reach, bdt } from "@/lib/aggregate";
 import { resolveRange } from "@/lib/daterange";
 import PageHeader from "@/components/PageHeader";
-import { ChartCard } from "@/components/Card";
+import { Card, ChartCard } from "@/components/Card";
 import TrendChart from "@/components/TrendChart";
 import BarChartBase from "@/components/BarChart";
 
@@ -57,9 +57,107 @@ export default async function TrendsPage({ searchParams }: { searchParams: Recor
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([k, v]) => ({ label: k.slice(5), value: v }));
 
+  // Small-multiples: four synchronized weekly series — reach, volume, shares,
+  // engagement rate — laid out as a 2×2 grid of mini cards. Purpose is
+  // at-a-glance pattern matching: a user should be able to tell within two
+  // seconds whether the week's reach dip coincided with a volume drop (cadence
+  // problem) or held steady (content problem). Each mini chart uses the same
+  // x-axis (week) so patterns line up vertically across the grid.
+  const weekKeys = Array.from(
+    new Set([
+      ...Object.keys(byDay).map((d) => {
+        const dd = new Date(d);
+        return `${dd.getFullYear()}-W${String(getWeek(dd)).padStart(2, "0")}`;
+      }),
+      ...Object.keys(weekBuckets),
+      ...Object.keys(weekShares),
+    ])
+  ).sort();
+  const weeklyVolume: Record<string, number> = {};
+  const weeklyReach: Record<string, number> = {};
+  for (const p of inRange) {
+    if (!p.created_time) continue;
+    const d = bdt(p.created_time);
+    const weekKey = `${d.getFullYear()}-W${String(getWeek(d)).padStart(2, "0")}`;
+    weeklyVolume[weekKey] = (weeklyVolume[weekKey] || 0) + 1;
+    weeklyReach[weekKey] = (weeklyReach[weekKey] || 0) + reach(p);
+  }
+  const multiples = weekKeys.map((wk) => ({
+    week: wk.slice(5), // "W14" etc
+    reach: weeklyReach[wk] || 0,
+    volume: weeklyVolume[wk] || 0,
+    shares: weekShares[wk] || 0,
+    er: weekBuckets[wk]?.reach ? ((weekBuckets[wk].eng / weekBuckets[wk].reach) * 100) : 0,
+  }));
+
   return (
     <div>
       <PageHeader title="Trends" subtitle="Time-based patterns across the period" dateLabel={range.label} />
+
+      {/* Small multiples — four weekly series stacked on the same x-axis so
+          the eye can match shapes across metrics. Sparkline height is 40px
+          so the whole strip stays under 200px and doesn't steal focus from
+          the full-size charts below. */}
+      {multiples.length >= 2 && (
+        <Card className="!p-5 mb-6">
+          <div className="flex items-baseline justify-between mb-3">
+            <div>
+              <h3 className="text-base font-semibold text-slate-900">Weekly at-a-glance</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Four series across the same weeks — read vertically for correlated dips/spikes</p>
+            </div>
+            <div className="text-[11px] text-slate-500">{multiples.length} weeks</div>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { key: "reach", label: "Reach", color: "#4f46e5", fmt: (v: number) => v.toLocaleString() },
+              { key: "volume", label: "Posts", color: "#06b6d4", fmt: (v: number) => v.toString() },
+              { key: "shares", label: "Shares", color: "#f59e0b", fmt: (v: number) => v.toLocaleString() },
+              { key: "er", label: "Eng. rate", color: "#ec4899", fmt: (v: number) => v.toFixed(2) + "%" },
+            ].map((m) => {
+              const vals = multiples.map((w) => w[m.key as keyof typeof w] as number);
+              const max = Math.max(...vals, 0.0001);
+              const last = vals[vals.length - 1] || 0;
+              const prev = vals.length > 1 ? vals[vals.length - 2] : 0;
+              const delta = prev > 0 ? ((last - prev) / prev) * 100 : 0;
+              // Build a simple SVG polyline sparkline. Width-normalized so
+              // all four grid cells render the same horizontal span
+              // regardless of how many weeks are in range.
+              const W = 160;
+              const H = 40;
+              const step = vals.length > 1 ? W / (vals.length - 1) : 0;
+              const pts = vals
+                .map((v, i) => `${(i * step).toFixed(1)},${(H - (v / max) * H).toFixed(1)}`)
+                .join(" ");
+              return (
+                <div key={m.key}>
+                  <div className="flex items-baseline justify-between">
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{m.label}</div>
+                    <div
+                      className={`text-[11px] font-semibold tabular-nums ${
+                        delta > 0 ? "text-brand-green" : delta < 0 ? "text-brand-red" : "text-slate-500"
+                      }`}
+                    >
+                      {delta >= 0 ? "+" : ""}{delta.toFixed(1)}%
+                    </div>
+                  </div>
+                  <div className="text-lg font-bold text-slate-900 tabular-nums mt-0.5">{m.fmt(last)}</div>
+                  <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-10 mt-1" preserveAspectRatio="none" aria-hidden="true">
+                    <polyline
+                      points={pts}
+                      fill="none"
+                      stroke={m.color}
+                      strokeWidth="2"
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  </svg>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
 
       <div className="grid lg:grid-cols-2 gap-4 mb-6">
         <ChartCard

@@ -54,15 +54,32 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
     color: canonicalColor("pillar", s.key),
   }));
 
-  // Engagement mix
-  const totalReactions = inRange.reduce((s, p) => s + (p.reactions || 0), 0);
-  const totalComments = inRange.reduce((s, p) => s + (p.comments || 0), 0);
-  const totalShares = inRange.reduce((s, p) => s + (p.shares || 0), 0);
-  const engagementMix = [
-    { label: "Reactions", value: totalReactions },
-    { label: "Comments", value: totalComments },
-    { label: "Shares", value: totalShares },
-  ];
+  // Biggest movers — pillar-level reach deltas vs the previous equal-length
+  // period. The old "Engagement Mix" donut (reactions vs comments vs shares)
+  // was aesthetically pleasing but non-actionable: the mix rarely shifts
+  // meaningfully and doesn't inform a decision about what to post next.
+  // Movers answer the question someone actually opens Overview for: "what
+  // changed this period, and is it good or bad?" Top 3 risers + top 3
+  // fallers, ranked by absolute % delta (so a -40% -> +10% swing reads
+  // correctly even if the absolute reach number is small).
+  const prevPillarStats = groupStats(prevRange, "content_pillar");
+  const prevPillarMap = new Map(prevPillarStats.map((s) => [s.key, s]));
+  type Mover = { key: string; current: number; previous: number; pct: number };
+  const moverRaw: Mover[] = groupStats(inRange, "content_pillar")
+    .map((s) => {
+      const prev = prevPillarMap.get(s.key)?.total_reach ?? 0;
+      return {
+        key: s.key || "Unknown",
+        current: s.total_reach,
+        previous: prev,
+        pct: wowDelta(s.total_reach, prev).pct,
+      };
+    })
+    // Ignore tiny-base pillars; a jump from 50 → 200 reach is a 300% rise
+    // that would dominate the list and obscure the pillars that matter.
+    .filter((m) => (m.previous >= 5000 || m.current >= 5000));
+  const risers = [...moverRaw].sort((a, b) => b.pct - a.pct).filter((m) => m.pct > 0).slice(0, 3);
+  const fallers = [...moverRaw].sort((a, b) => a.pct - b.pct).filter((m) => m.pct < 0).slice(0, 3);
 
   return (
     <div>
@@ -121,13 +138,71 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
         </ChartCard>
 
         <ChartCard
-          title="Engagement Mix"
-          kind="observed"
-          subtitle="Reactions vs comments vs shares"
-          definition="Total count of each interaction type across all posts in the period. Helps answer: is the audience passively reacting, actively discussing, or amplifying?"
-          caption="How engagement is distributed across interaction types."
+          title="Biggest Movers"
+          kind="derived"
+          subtitle="Pillar reach vs previous period"
+          definition="For each content pillar: total unique reach this period vs the same number of days immediately preceding it. Tiny-base pillars (< 5k reach either side) are excluded so small pillars with noisy % deltas don't drown out real shifts. Ranked by absolute % change."
+          sampleSize={`top ${risers.length + fallers.length} of ${moverRaw.length} pillars`}
+          caption="Which pillars gained ground this period, which lost it. Lean into the risers, diagnose the fallers before next week's plan."
         >
-          <Donut data={engagementMix} metricName="Interactions" />
+          {risers.length + fallers.length === 0 ? (
+            <div className="py-8 text-center text-sm text-slate-500">
+              Not enough pillars clear the 5k-reach threshold in either period to rank movers. Widen the date range.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {risers.length > 0 && (
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-brand-green mb-2">Risers</div>
+                  <ul className="space-y-2">
+                    {risers.map((m) => (
+                      <li key={m.key} className="flex items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div
+                            className="text-sm font-semibold truncate"
+                            style={{ color: canonicalColor("pillar", m.key) }}
+                          >
+                            {m.key}
+                          </div>
+                          <div className="text-[11px] text-slate-500 tabular-nums">
+                            {m.current.toLocaleString()} reach (was {m.previous.toLocaleString()})
+                          </div>
+                        </div>
+                        <div className="text-sm font-semibold text-brand-green tabular-nums shrink-0">
+                          {m.pct > 0 ? "+" : ""}{m.pct.toFixed(1)}%
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {fallers.length > 0 && (
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-brand-red mb-2">Fallers</div>
+                  <ul className="space-y-2">
+                    {fallers.map((m) => (
+                      <li key={m.key} className="flex items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div
+                            className="text-sm font-semibold truncate"
+                            style={{ color: canonicalColor("pillar", m.key) }}
+                          >
+                            {m.key}
+                          </div>
+                          <div className="text-[11px] text-slate-500 tabular-nums">
+                            {m.current.toLocaleString()} reach (was {m.previous.toLocaleString()})
+                          </div>
+                        </div>
+                        <div className="text-sm font-semibold text-brand-red tabular-nums shrink-0">
+                          {m.pct.toFixed(1)}%
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
         </ChartCard>
       </div>
     </div>
