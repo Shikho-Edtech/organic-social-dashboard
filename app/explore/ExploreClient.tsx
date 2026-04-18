@@ -149,23 +149,27 @@ export default function ExploreClient({ posts }: Props) {
         </div>
       </div>
 
-      {/* Sticky filter toolbar — filter-first workbench. The nav sits at
-          z-50 from 0 to ~96px (desktop) / ~104px (mobile), so the toolbar
-          pins just below it. Z-30 keeps it above chart content without
-          fighting nav. Wraps to multi-row on narrow widths. Background is
-          the page slate-50 so the sticky edge blends with the scroll
-          surface instead of looking like a floating pill. */}
-      <div className="sticky top-[104px] md:top-24 z-30 -mx-6 px-6 py-3 mb-6 bg-slate-50/95 backdrop-blur border-b border-slate-200">
-        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2">
+      {/* Filter toolbar — filter-first workbench.
+          Desktop (sm+): sticky at top-[104px]→top-24 under the nav so the
+          workbench controls stay reachable while scrolling the result list.
+          Z-30 keeps it above chart content without fighting nav (z-50).
+          Mobile (< sm): NOT sticky. A stacked filter bar + an opened dropdown
+          previously ate ~550px of chrome under a 104px nav on 780px phones —
+          the filter bar was taller than the remaining content. Mobile users
+          scroll-to-top to refine filters; the tradeoff is worth the page not
+          being swallowed. Chips wrap horizontally (flex-wrap) so the bar is
+          ~2-3 rows on mobile instead of 10 stacked rows. */}
+      <div className="sm:sticky sm:top-[104px] md:top-24 z-30 -mx-6 px-6 py-3 mb-6 bg-slate-50/95 sm:backdrop-blur border-b border-slate-200">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 sm:mr-1">Filter</span>
           <MultiSelect label="Content Pillar" options={pillarOptions} selected={pillars} onChange={setPillars} />
           <MultiSelect label="Format" options={formatOptions} selected={formats} onChange={setFormats} />
           <MultiSelect label="Audience" options={audienceOptions} selected={audiences} onChange={setAudiences} />
           <MultiSelect label="Spotlight" options={entityOptions} selected={entities} onChange={setEntities} searchable />
           <div className="hidden sm:block h-6 w-px bg-slate-200 mx-1" />
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mt-2 sm:mt-0">Group by</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Group by</span>
           <GroupBySelect value={groupByDim} onChange={setGroupByDim} />
-          <div className="sm:ml-auto flex items-center justify-between sm:justify-end gap-3 text-xs text-slate-500 mt-2 sm:mt-0 w-full sm:w-auto">
+          <div className="sm:ml-auto flex items-center justify-between sm:justify-end gap-3 text-xs text-slate-500 w-full sm:w-auto">
             <span>
               <span className="font-semibold text-slate-700">{filtered.length.toLocaleString()}</span> posts match
             </span>
