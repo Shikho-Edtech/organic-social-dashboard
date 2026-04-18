@@ -1,7 +1,7 @@
-import { getPosts } from "@/lib/sheets";
+import { getPosts, getRunStatus } from "@/lib/sheets";
 import { filterPosts, bdt, reach, totalInteractions } from "@/lib/aggregate";
 import { summarize, bestByLowerBound, reliabilityLabel, minPostsForRange, type Summary } from "@/lib/stats";
-import { resolveRange } from "@/lib/daterange";
+import { resolveRange, rangeDays as computeRangeDays } from "@/lib/daterange";
 import PageHeader from "@/components/PageHeader";
 import { Card, ChartCard } from "@/components/Card";
 import Heatmap, { type HeatmapCell } from "@/components/Heatmap";
@@ -25,7 +25,7 @@ type DayRow = {
 
 export default async function TimingPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   const range = resolveRange(searchParams);
-  const posts = await getPosts();
+  const [posts, runStatus] = await Promise.all([getPosts(), getRunStatus()]);
   const inRange = filterPosts(posts, { start: range.start, end: range.end });
 
   // Helpers for per-post metrics
@@ -99,17 +99,19 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
   // Day 2S: adaptive min-N per range. Heatmap cells below MIN_N render
   // dimmed (not hidden — a blank cell is still information), so a
   // single-post cell can't visually dominate the grid.
-  const rangeDays = Math.max(
-    1,
-    Math.round((range.end.getTime() - range.start.getTime()) / 86_400_000)
-  );
+  const rangeDays = computeRangeDays(range);
   const MIN_N = minPostsForRange(rangeDays);
 
-  // Use per-hour minimum (scaled down from the per-day/slot minimum): a
-  // day×hour cell sees far fewer posts than a whole day bucket, so the
-  // bar for "reliable" has to be lower or every cell would be muted. Cap
-  // at 2 so we at least demand two posts before saying a cell is real.
-  const CELL_MIN_N = Math.max(2, Math.floor(MIN_N / 2));
+  // Per-cell threshold for a 7×24 = 168-cell grid. The whole-day bucket
+  // (Timing KPIs above) sees all posts for a weekday, so MIN_N makes sense.
+  // A (day,hour) cell sees ~1/24 of that, so using MIN_N/2 still leaves most
+  // cells greyed out on any realistic posting volume (30-day, 50 posts, ER
+  // threshold of 5+ per cell hides 95% of the grid). Drop the floor to 2 and
+  // rely on opacity-weighted color inside Heatmap to communicate confidence
+  // continuously — "more posts in this cell = more saturated color" — instead
+  // of a hard reliable/not-reliable cutoff that hides the signal entirely on
+  // sparse windows.
+  const CELL_MIN_N = 2;
 
   const eligibleDays = dayData.filter((d) => d.posts >= MIN_N);
   const bestDayReach = bestByLowerBound(eligibleDays, (d) => d.reachSum);
@@ -178,7 +180,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
 
   return (
     <div>
-      <PageHeader title="Timing" subtitle="When to post for max reach and engagement" dateLabel={`${range.label} · Bangladesh Time (UTC+6)`} />
+      <PageHeader title="Timing" subtitle="When to post for max reach and engagement" dateLabel={`${range.label} · Bangladesh Time (UTC+6)`} lastScrapedAt={runStatus.last_run_at} />
 
       {/* Best slots summary — ranked by 95% CI lower bound */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">

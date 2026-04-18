@@ -1,6 +1,7 @@
-import { getVideoMetrics, getPosts } from "@/lib/sheets";
+import { getVideoMetrics, getPosts, getRunStatus } from "@/lib/sheets";
 import { bdt } from "@/lib/aggregate";
 import { resolveRange } from "@/lib/daterange";
+import { canonicalColor } from "@/lib/colors";
 import PageHeader from "@/components/PageHeader";
 import { Card, ChartCard } from "@/components/Card";
 import KpiCard from "@/components/KpiCard";
@@ -58,7 +59,7 @@ function retentionAt(curve: Record<number, number>, sec: number): number {
 
 export default async function ReelsPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   const range = resolveRange(searchParams);
-  const [videos, posts] = await Promise.all([getVideoMetrics(), getPosts()]);
+  const [videos, posts, runStatus] = await Promise.all([getVideoMetrics(), getPosts(), getRunStatus()]);
 
   // Index posts by id so we can surface the caption + pillar/format next to each reel
   const postById = new Map<string, any>();
@@ -263,7 +264,7 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
   if (totalReels === 0) {
     return (
       <div>
-        <PageHeader title="Reels" subtitle="Video watch time, retention, and follower conversion" dateLabel={`${range.label} · Bangladesh Time (UTC+6)`} />
+        <PageHeader title="Reels" subtitle="Video watch time, retention, and follower conversion" dateLabel={`${range.label} · Bangladesh Time (UTC+6)`} lastScrapedAt={runStatus.last_run_at} />
         <Card>
           <p className="text-sm text-slate-600">
             No reels in this date range. Try expanding the range or check that Raw_Video is populated.
@@ -382,54 +383,95 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
           laid out in a 3-column metric grid. Desktop keeps the dense
           table because it's great at scanning. */}
       <Card className="!p-0 overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100">
+        <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-br from-white to-slate-50/50">
           <h3 className="text-base font-semibold text-slate-900">Recent Reels</h3>
           <p className="text-xs text-slate-500 mt-0.5">Newest first · up to 25 rows</p>
         </div>
 
-        {/* Desktop / tablet table (md+) */}
+        {/* Desktop / tablet table (md+). Visual polish pass:
+            - zebra striping (slate-50/30 on odd rows) for scannability
+            - colored pillar pill (canonicalColor) instead of pale grey text
+            - darker hero column (Plays) vs dimmer supporting columns
+              (Replays, Replay %) to create a clear primary→secondary hierarchy
+            - Hook 3s column tinted green/amber/rose based on thresholds so
+              underperforming retention reads red at a glance
+            - Follows column keeps its brand-green emphasis */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500">
+            <thead className="bg-slate-100/70 text-[11px] uppercase tracking-wider text-slate-600">
               <tr>
-                <th className="text-left px-4 py-2 font-semibold">Date</th>
-                <th className="text-left px-4 py-2 font-semibold">Caption</th>
-                <th className="text-left px-4 py-2 font-semibold">Pillar</th>
-                <th className="text-right px-4 py-2 font-semibold">Plays</th>
-                <th className="text-right px-4 py-2 font-semibold">Replays</th>
-                <th className="text-right px-4 py-2 font-semibold">Watch (s)</th>
-                <th className="text-right px-4 py-2 font-semibold">Hook 3s %</th>
-                <th className="text-right px-4 py-2 font-semibold">Replay %</th>
-                <th className="text-right px-4 py-2 font-semibold">Follows</th>
+                <th className="text-left px-4 py-2.5 font-semibold">Date</th>
+                <th className="text-left px-4 py-2.5 font-semibold">Caption</th>
+                <th className="text-left px-4 py-2.5 font-semibold">Pillar</th>
+                <th className="text-right px-4 py-2.5 font-semibold">Plays</th>
+                <th className="text-right px-4 py-2.5 font-semibold">Replays</th>
+                <th className="text-right px-4 py-2.5 font-semibold">Watch (s)</th>
+                <th className="text-right px-4 py-2.5 font-semibold">Hook 3s %</th>
+                <th className="text-right px-4 py-2.5 font-semibold">Replay %</th>
+                <th className="text-right px-4 py-2.5 font-semibold">Follows</th>
               </tr>
             </thead>
             <tbody>
-              {tableRows.map((row, i) => (
-                <tr key={row.id + i} className="border-t border-slate-100 hover:bg-slate-50/60">
-                  <td className="px-4 py-2 text-slate-500 whitespace-nowrap">{row.date}</td>
-                  <td className="px-4 py-2 text-slate-800 max-w-[360px] truncate" title={row.caption}>{row.caption}</td>
-                  <td className="px-4 py-2 text-slate-500">{row.pillar}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{row.plays.toLocaleString()}</td>
-                  <td className="px-4 py-2 text-right tabular-nums text-slate-500">{row.replays.toLocaleString()}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{row.watch}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{row.hook3}%</td>
-                  <td className="px-4 py-2 text-right tabular-nums text-slate-500">{row.replayRate}%</td>
-                  <td className="px-4 py-2 text-right tabular-nums font-semibold text-brand-green">{row.follows > 0 ? `+${row.follows}` : "0"}</td>
-                </tr>
-              ))}
+              {tableRows.map((row, i) => {
+                // Hook-3s retention thresholds: <40% = concerning (rose),
+                // 40-60% = ok (slate), >60% = strong (emerald). These match
+                // the industry rule-of-thumb for short-form retention and
+                // turn a row of black numbers into a scannable signal.
+                const hookNum = parseFloat(row.hook3);
+                const hookColor =
+                  hookNum >= 60
+                    ? "text-emerald-600 font-semibold"
+                    : hookNum < 40
+                    ? "text-rose-600 font-semibold"
+                    : "text-slate-700";
+                const pillarBg = canonicalColor("pillar", row.pillar);
+                return (
+                  <tr
+                    key={row.id + i}
+                    className={`border-t border-slate-100 transition-colors hover:bg-indigo-50/30 ${
+                      i % 2 === 1 ? "bg-slate-50/40" : ""
+                    }`}
+                  >
+                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap tabular-nums">{row.date}</td>
+                    <td className="px-4 py-3 text-slate-800 max-w-[360px] truncate" title={row.caption}>{row.caption}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium text-white"
+                        style={{ backgroundColor: pillarBg }}
+                      >
+                        {row.pillar}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums font-semibold text-slate-900">{row.plays.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-400">{row.replays.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-700">{row.watch}</td>
+                    <td className={`px-4 py-3 text-right tabular-nums ${hookColor}`}>{row.hook3}%</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-400">{row.replayRate}%</td>
+                    <td className={`px-4 py-3 text-right tabular-nums font-semibold ${row.follows > 0 ? "text-brand-green" : "text-slate-400"}`}>
+                      {row.follows > 0 ? `+${row.follows}` : "0"}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
 
-        {/* Mobile card list (below md) */}
+        {/* Mobile card list (below md) — matching polish: colored pillar pill,
+            hook-3s retention tint, zebra striping. */}
         <ul className="md:hidden divide-y divide-slate-100">
           {tableRows.map((row, i) => (
-            <li key={row.id + i} className="px-4 py-3">
+            <li key={row.id + i} className={`px-4 py-3 ${i % 2 === 1 ? "bg-slate-50/40" : ""}`}>
               <div className="flex items-baseline justify-between gap-2 mb-1.5">
                 <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 whitespace-nowrap">
                   {row.date}
                 </div>
-                <div className="text-[11px] text-slate-500 truncate">{row.pillar}</div>
+                <span
+                  className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium text-white max-w-[60%] truncate"
+                  style={{ backgroundColor: canonicalColor("pillar", row.pillar) }}
+                >
+                  {row.pillar}
+                </span>
               </div>
               <div className="text-sm text-slate-800 line-clamp-2 mb-2" title={row.caption}>
                 {row.caption}
@@ -451,7 +493,17 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
                 </div>
                 <div>
                   <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Hook 3s</div>
-                  <div className="text-sm text-slate-700 tabular-nums">{row.hook3}%</div>
+                  <div
+                    className={`text-sm tabular-nums font-semibold ${
+                      parseFloat(row.hook3) >= 60
+                        ? "text-emerald-600"
+                        : parseFloat(row.hook3) < 40
+                        ? "text-rose-600"
+                        : "text-slate-700"
+                    }`}
+                  >
+                    {row.hook3}%
+                  </div>
                 </div>
                 <div>
                   <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Replay %</div>

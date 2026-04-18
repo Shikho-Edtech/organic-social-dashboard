@@ -1,5 +1,63 @@
 # Changelog
 
+## 2026-04-18 — UX + data-integrity Phase 1: off-by-one, freshness, heatmap density, visual polish
+
+User-surfaced review from a real user session flagged eight regressions
+and UX smells. All addressed in a single pass. Each fix is low-risk
+(component or page-local) but collectively they turn the dashboard from
+"technically correct" into "actually usable on a phone".
+
+- **rangeDays off-by-one** (`lib/daterange.ts` + 3 pages). Engagement
+  and Strategy computed `daysBetween + 1`, Timing used
+  `Math.round(...)`; a 30-day window came out as 31, which tipped the
+  adaptive `minPostsForRange` gate into the 60-day bucket (15 posts).
+  Most groupings never cleared that and charts rendered empty. New
+  centralized helper uses `Math.floor` so 30d → 30 → 10-post gate.
+- **Heatmap density** (`components/Heatmap.tsx` + `app/timing/page.tsx`).
+  Cell min-n dropped from `max(2, MIN_N/2)` to hardcoded 2, and cells
+  below threshold now render at reduced opacity (confidence blend:
+  0.4 at n=1, 1.0 at n≥minN) instead of flat slate. Turns a mostly-
+  empty 7×24 grid into a continuous signal where sparse data still
+  communicates direction but reads faded.
+- **Heatmap hours** (`components/Heatmap.tsx`). Hour axis now shows
+  "6a/6p" compact am/pm markers. Prior pass stripped the suffix thinking
+  "3" was unambiguous — but 3am vs 3pm matters when picking a publish
+  slot. Tooltip uses full "6am" form, cells aria-label it too.
+- **Plan "Today" badge** (`app/plan/page.tsx`). Matched only by day-of-
+  week, so Saturday-today was highlighting Saturday-next-week. Now
+  requires weekday match AND actual date match (BDT-aware via
+  `Intl.DateTimeFormat('en-CA')`).
+- **Staleness banner soft-fallback** (`components/StalenessBanner.tsx`).
+  When Weekly_Analysis has data but Analysis_Log never recorded a
+  "Last Successful X At" timestamp, the banner used to scream red
+  "No successful refresh recorded yet" alongside a fully rendered
+  verdict. Now: `hasData` prop → info-style slate banner reading
+  "pipeline freshness not recorded" instead of false crit.
+- **BarChart single-bar width** (`components/BarChart.tsx`). Added
+  `maxBarSize={56}` so a 1-category chart (e.g. only one pillar cleared
+  the reliability gate) doesn't stretch to ~900px and read as
+  "mandatory data". Multi-bar charts are unaffected — Recharts still
+  shrinks bars under the cap when many share the axis.
+- **PageHeader last-fetch** (`components/PageHeader.tsx` + all 7 pages).
+  Header showed `new Date()` at render time, formatted as "Data as of".
+  That's UI timing — meaningless for a pipeline on a weekly cadence.
+  New `lastScrapedAt` prop consumed from `RunStatus.last_run_at`
+  renders "Last Meta fetch: <timestamp>" — the honest answer. Falls
+  back to "Rendered <timestamp>" label when the prop isn't passed.
+- **Engagement Best-X card heights** (`app/engagement/page.tsx`).
+  `text-xl sm:text-2xl` on 4 cards with long winner labels wrapped to
+  3+ lines and pushed the KPI strip to ~160px per card — eating the
+  top half of the page on mobile. Dropped to `text-base sm:text-lg`,
+  added `line-clamp-2 + title` so the value caps at two lines with
+  full label discoverable on hover/long-press.
+- **Reels table polish** (`app/reels/page.tsx`). Pale grey text-on-white
+  was hard to scan. Added: zebra striping on odd rows, colored pillar
+  pill (canonicalColor hash) in place of grey text, Plays column
+  stronger/darker as the hero metric vs Replays/Replay% dimmed as
+  supporting, Hook-3s% tinted green (≥60) / amber / rose (<40) so
+  weak retention reads red at a glance. Mobile card list got matching
+  treatment.
+
 ## 2026-04-18 — Data-integrity audit: labels, pluralization, false-precision, CI floor
 
 Sweep across every view for number / calculation / source-fidelity /

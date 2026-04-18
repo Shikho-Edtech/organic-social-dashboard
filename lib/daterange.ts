@@ -36,6 +36,21 @@ function formatRangeLabel(start: Date, end: Date): string {
   return `${startStr} → ${endStr}`;
 }
 
+/**
+ * Calendar-day span of a resolved range (end 23:59 minus start 00:00, floored).
+ *
+ * Centralized because three pages (Engagement, Strategy, Timing) each computed
+ * their own rangeDays with a different formula — `daysBetween + 1`, `round`,
+ * `floor` — which meant "Last 30 days" hit different `minPostsForRange`
+ * thresholds on different pages (15-post gate vs 10-post gate). Use this helper
+ * everywhere so a single range selection produces one consistent reliability
+ * gate across the whole app.
+ */
+export function rangeDays(range: RangeSpec): number {
+  const ms = range.end.getTime() - range.start.getTime();
+  return Math.max(1, Math.floor(ms / 86_400_000));
+}
+
 export function resolveRange(searchParams: Record<string, string | string[] | undefined>): RangeSpec {
   const now = new Date();
   const key = (searchParams.range as string) || "30d";

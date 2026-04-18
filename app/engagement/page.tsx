@@ -1,7 +1,7 @@
-import { getPosts } from "@/lib/sheets";
-import { filterPosts, groupStats, daysBetween } from "@/lib/aggregate";
+import { getPosts, getRunStatus } from "@/lib/sheets";
+import { filterPosts, groupStats } from "@/lib/aggregate";
 import { minPostsForRange, reliabilityLabel } from "@/lib/stats";
-import { resolveRange } from "@/lib/daterange";
+import { resolveRange, rangeDays as computeRangeDays } from "@/lib/daterange";
 import { canonicalColor } from "@/lib/colors";
 import PageHeader from "@/components/PageHeader";
 import { Card, ChartCard } from "@/components/Card";
@@ -27,11 +27,15 @@ function rankByReachWeighted(items: GroupStatRow[]): GroupStatRow | undefined {
 
 export default async function EngagementPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   const range = resolveRange(searchParams);
-  const posts = await getPosts();
+  const [posts, runStatus] = await Promise.all([getPosts(), getRunStatus()]);
   const inRange = filterPosts(posts, { start: range.start, end: range.end });
 
-  const rangeDays = Math.max(1, daysBetween(range.start, range.end) + 1);
-  const MIN_N = minPostsForRange(rangeDays);
+  // Centralized via lib/daterange — prior inline `daysBetween(...) + 1` pushed
+  // the 30-day selection into the 60-day threshold (15 posts instead of 10),
+  // so pillar/hook/spotlight charts looked empty on a perfectly reasonable
+  // window. The single helper keeps Engagement, Strategy, Timing on the same
+  // interpretation of "Last 30 days".
+  const MIN_N = minPostsForRange(computeRangeDays(range));
 
   // Format × engagement rate. Each bar carries its canonical category
   // colour so "Reel" on this chart matches "Reel" on Plan's calendar pill
@@ -125,7 +129,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
 
   return (
     <div>
-      <PageHeader title="Engagement" subtitle="What drives interaction" dateLabel={range.label} />
+      <PageHeader title="Engagement" subtitle="What drives interaction" dateLabel={range.label} lastScrapedAt={runStatus.last_run_at} />
 
       {/* "Best X" strip — reach-weighted, with category-semantic colour on
           the winning value. A Reel winner reads pink (same as Plan's reel
@@ -139,12 +143,20 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           posts" line instead of a false precision number. The reliability
           label still gets a read so the user knows WHY nothing qualified
           (reads "no data" when count is zero). */}
+      {/* Best-X strip — compact variant. Prior pass used text-xl/2xl with
+          `break-words` which let long winners ("Study Tips & Exam Prep",
+          "Teacher Spotlight") wrap to 3+ lines, pushing each card to ~160px
+          tall and squeezing the charts below the fold on mobile. Now:
+          text-base/lg, line-clamp-2 + title attribute so the value never
+          occupies more than two lines but the full label is still
+          discoverable on hover/long-press. Cards now cap around ~100px. */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <Card className="!p-5">
+        <Card className="!p-4">
           <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Best Format</div>
           <div
-            className="text-xl sm:text-2xl font-bold mt-2 break-words leading-tight"
+            className="text-base sm:text-lg font-bold mt-1.5 break-words leading-snug line-clamp-2"
             style={{ color: canonicalColor("format", bestFormat?.key) }}
+            title={bestFormat?.key || undefined}
           >
             {bestFormat?.key || "—"}
           </div>
@@ -161,11 +173,12 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
             <div className="text-xs text-slate-500 mt-1">Not enough posts in range to rank ({MIN_N}+ needed per format).</div>
           )}
         </Card>
-        <Card className="!p-5">
+        <Card className="!p-4">
           <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Best Pillar</div>
           <div
-            className="text-xl sm:text-2xl font-bold mt-2 break-words leading-tight"
+            className="text-base sm:text-lg font-bold mt-1.5 break-words leading-snug line-clamp-2"
             style={{ color: canonicalColor("pillar", bestPillar?.key) }}
+            title={bestPillar?.key || undefined}
           >
             {bestPillar?.key || "—"}
           </div>
@@ -182,11 +195,12 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
             <div className="text-xs text-slate-500 mt-1">Not enough posts in range to rank ({MIN_N}+ needed per pillar).</div>
           )}
         </Card>
-        <Card className="!p-5">
+        <Card className="!p-4">
           <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Best Hook</div>
           <div
-            className="text-xl sm:text-2xl font-bold mt-2 break-words leading-tight"
+            className="text-base sm:text-lg font-bold mt-1.5 break-words leading-snug line-clamp-2"
             style={{ color: canonicalColor("hook", bestHook?.key) }}
+            title={bestHook?.key || undefined}
           >
             {bestHook?.key || "—"}
           </div>
@@ -203,11 +217,12 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
             <div className="text-xs text-slate-500 mt-1">Not enough posts in range to rank ({MIN_N}+ needed per hook type).</div>
           )}
         </Card>
-        <Card className="!p-5">
+        <Card className="!p-4">
           <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Best Spotlight Type</div>
           <div
-            className="text-xl sm:text-2xl font-bold mt-2 break-words leading-tight"
+            className="text-base sm:text-lg font-bold mt-1.5 break-words leading-snug line-clamp-2"
             style={{ color: canonicalColor("spotlight", bestSpotlight?.key) }}
+            title={bestSpotlight?.key || undefined}
           >
             {bestSpotlight?.key || "—"}
           </div>

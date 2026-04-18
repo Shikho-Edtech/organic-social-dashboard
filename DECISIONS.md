@@ -1,5 +1,90 @@
 # Decisions
 
+## 2026-04-18 — PageHeader.lastScrapedAt prefers pipeline timestamp over render time
+
+`PageHeader` previously displayed `new Date()` labeled "Data as of"
+— UI rendering time dressed up as a data-freshness claim. New
+`lastScrapedAt?: string` prop, expected to be passed `RunStatus.last_run_at`
+from `getRunStatus()`. When present, the header shows "Last Meta
+fetch: <BDT timestamp>". When absent, it falls back to "Rendered
+<timestamp>" — still honest about what the label means.
+
+Why the fallback instead of requiring the prop: every page should
+eventually pass `lastScrapedAt`, but the component is also used in
+one-off contexts (error boundaries, future experimental pages) where
+no run-status is available. A hard requirement would force every
+caller to plumb getRunStatus; the fallback removes the friction
+while keeping the label honest.
+
+Why "Last Meta fetch" not "Last Refreshed": the pipeline's Run Date
+is the moment Facebook was scraped. Users asking "how fresh is what
+I'm looking at?" mean exactly that — when did we last talk to Meta's
+API. "Refreshed" would also be true but ambiguous (refreshed what —
+the sheet? the view? the verdict?).
+
+## 2026-04-18 — Heatmap cells use confidence-weighted opacity, not binary cutoff
+
+Original design: cells with `n < minN` render flat slate ("below
+reliability threshold"). The problem is 168-cell grids with realistic
+posting volumes (~50 posts) hit that branch for ~95% of cells, so the
+grid visually communicated "no data" when it really had sparse but
+informative data.
+
+New design: cell min-n is hardcoded at 2 (below that = no posts →
+almost-blank `#fafbfc`). Above 2, color is the full value-driven
+interpolation blended back toward `minColor` by `(1 - confidence)`,
+where confidence linearly scales 0.4 (at n=1) → 1.0 (at n≥MIN_N).
+So a 1-post cell shows its metric direction at ~40% intensity, a
+3-post cell at ~70%, a qualifying cell at full.
+
+Tradeoff considered and rejected: a stricter threshold (`minN`
+varying by range length, as the bar charts use) would be more
+statistically honest, but in a 168-cell grid the visual cost of
+near-total blanking outweighs the claimed rigor. Summary stats
+ABOVE the heatmap (Best Day, Best Hour) still use the stricter
+`minPostsForRange` gate for ranking; the heatmap itself is a
+pattern-finder, not a ranker.
+
+## 2026-04-18 — Staleness banner gets a `hasData` soft-fallback branch
+
+`computeStaleness` returns crit+`days_since=-1` when no "Last
+Successful X At" timestamp was ever written to Analysis_Log. Previously
+this unconditionally produced a red banner: "No successful refresh
+recorded yet". In practice, Weekly_Analysis can have rows even when
+Analysis_Log doesn't have that column populated (pipeline can write
+content without writing status), so users saw a red "broken" banner
+above a fully rendered strategy verdict.
+
+New design: `hasData?: boolean` prop. When the page has content AND
+timestamp is unknown, the banner softens to info-style (slate colors,
+"pipeline freshness not recorded" headline, explanation in the sub-
+text). True crit (no data AND no record) stays red. Warn (stale
+timestamp) stays amber.
+
+Why a prop instead of probing the data upstream: keeps the component
+pure. The page already knows whether it's rendering content; passing
+a boolean is simpler than teaching `computeStaleness` about each
+artifact's row structure.
+
+## 2026-04-18 — Rangedays math centralized in lib/daterange
+
+Three separate pages (Engagement, Strategy, Timing) each had their
+own formula for "how many days is this range" — two used `+1`, one
+used `Math.round`. All three fed `minPostsForRange()` which keys its
+adaptive threshold on days. A 30d selection came out as 31 in two
+places, which tipped into the 60d bucket (15-post floor instead of 10),
+causing silent empty charts across the affected pages.
+
+Fix: `lib/daterange.ts` exports `rangeDays(range)` using
+`Math.floor(ms / 86_400_000)`. All pages import the same function
+and pass it to `minPostsForRange`. No more local formulas.
+
+Principle: any numeric input to an adaptive threshold must come from
+a single source of truth. An off-by-one in an input to `if (n >= X)`
+doesn't crash — it just quietly takes the wrong branch. These are
+the worst bugs to find because the UI looks complete and "empty chart"
+reads as "not enough data" rather than "wrong bucket".
+
 ## 2026-04-18 — Client-component format props are enums, not functions
 
 After the /timing RSC-boundary crash (see LEARNINGS for full diagnosis),

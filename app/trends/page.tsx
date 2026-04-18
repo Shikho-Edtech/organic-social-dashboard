@@ -1,4 +1,4 @@
-import { getPosts, getDailyMetrics } from "@/lib/sheets";
+import { getPosts, getDailyMetrics, getRunStatus } from "@/lib/sheets";
 import { filterPosts, dailyReach, reach, bdt } from "@/lib/aggregate";
 import { resolveRange } from "@/lib/daterange";
 import PageHeader from "@/components/PageHeader";
@@ -12,7 +12,7 @@ export const revalidate = 300;
 export default async function TrendsPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   const range = resolveRange(searchParams);
 
-  const [posts, daily] = await Promise.all([getPosts(), getDailyMetrics()]);
+  const [posts, daily, runStatus] = await Promise.all([getPosts(), getDailyMetrics(), getRunStatus()]);
   const inRange = filterPosts(posts, { start: range.start, end: range.end });
 
   // Daily posting volume
@@ -92,7 +92,7 @@ export default async function TrendsPage({ searchParams }: { searchParams: Recor
 
   return (
     <div>
-      <PageHeader title="Trends" subtitle="Time-based patterns across the period" dateLabel={range.label} />
+      <PageHeader title="Trends" subtitle="Time-based patterns across the period" dateLabel={range.label} lastScrapedAt={runStatus.last_run_at} />
 
       {/* Small multiples — four weekly series stacked on the same x-axis so
           the eye can match shapes across metrics. Sparkline height is 40px

@@ -143,7 +143,15 @@ export default function BarChartBase({
           formatter={tooltipFormatter}
           cursor={{ fill: "#f8fafc" }}
         />
-        <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+        {/*
+          maxBarSize caps each bar at ~56px so a 1-bar chart doesn't fill the
+          entire plot width (prior pass had no cap and a single pillar bar
+          stretched the full ~900px container — read as "mandatory data" when
+          it was just "only one category passed the reliability gate").
+          Recharts still shrinks the bar below the cap when many categories
+          share the axis, so multi-bar charts are unaffected.
+        */}
+        <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={56}>
           {data.map((d, i) => (
             <Cell
               key={i}

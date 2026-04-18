@@ -1,4 +1,4 @@
-import { getPosts, getDailyMetrics } from "@/lib/sheets";
+import { getPosts, getDailyMetrics, getRunStatus } from "@/lib/sheets";
 import { filterPosts, computeKpis, dailyReach, groupStats, wowDelta } from "@/lib/aggregate";
 import { resolveRange } from "@/lib/daterange";
 import PageHeader from "@/components/PageHeader";
@@ -15,7 +15,7 @@ export const revalidate = 300;
 export default async function OverviewPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   const range = resolveRange(searchParams);
 
-  const [posts, daily] = await Promise.all([getPosts(), getDailyMetrics()]);
+  const [posts, daily, runStatus] = await Promise.all([getPosts(), getDailyMetrics(), getRunStatus()]);
   const inRange = filterPosts(posts, { start: range.start, end: range.end });
   const kpis = computeKpis(inRange);
 
@@ -83,7 +83,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
 
   return (
     <div>
-      <PageHeader title="Overview" subtitle="Key performance at a glance" dateLabel={range.label} />
+      <PageHeader title="Overview" subtitle="Key performance at a glance" dateLabel={range.label} lastScrapedAt={runStatus.last_run_at} />
 
       {/* KPIs — canonical template caps at 5 cards (Batch 3d, #19). Dropped
           "Interactions" because Engagement Rate is the same signal normalized

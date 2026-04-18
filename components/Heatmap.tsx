@@ -116,7 +116,15 @@ export default function Heatmap({
   const maxRgb = hexToRgb(maxColor);
 
   // Ticks on the hour axis every 3 hours so 360px stays readable.
+  // Show the am/pm suffix — prior pass stripped it thinking "3" was
+  // unambiguous, but 3am vs 3pm matters when you're picking a publish slot.
+  // Uses the compact "3a"/"3p" form so the 24-column row still fits on mobile.
   const hourTicks = [0, 3, 6, 9, 12, 15, 18, 21];
+  const compactHour = (h: number): string => {
+    const suffix = h >= 12 ? "p" : "a";
+    const display = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return `${display}${suffix}`;
+  };
 
   return (
     <div ref={rootRef} className="relative">
@@ -128,14 +136,15 @@ export default function Heatmap({
       >
         {/* Empty corner */}
         <div />
-        {/* Hour axis (top) */}
+        {/* Hour axis (top) — compact 12h with a/p suffix so the reader
+            can distinguish a 6am publish from a 6pm one at a glance. */}
         {Array.from({ length: 24 }, (_, h) => (
           <div
             key={`h-${h}`}
             className="text-[10px] text-slate-400 text-center tabular-nums"
             aria-hidden="true"
           >
-            {hourTicks.includes(h) ? formatHour(h).replace("am", "").replace("pm", "") : ""}
+            {hourTicks.includes(h) ? compactHour(h) : ""}
           </div>
         ))}
 
@@ -148,12 +157,41 @@ export default function Heatmap({
             </div>
             {Array.from({ length: 24 }, (_, h) => {
               const cell = cellMap.get(`${d}-${h}`) || { day: d, hour: h, value: 0, n: 0, totalReach: 0 };
-              const eligible = cell.n >= minN;
-              const t = eligible && maxValue > 0 ? Math.min(1, cell.value / maxValue) : 0;
-              const color = eligible
-                ? interpolate(t, minRgb, maxRgb)
-                : cell.n > 0
-                ? "#f1f5f9" // slate-100 — posts exist but below gate
+              // Render every non-zero cell at its full color mapped from
+              // value, but blend toward the low-end color by an opacity
+              // factor that scales with posts-in-cell — n=1 reads as a hint,
+              // n>=minN reads as a full claim. Prior pass hard-cut cells
+              // below minN to a flat slate, which made sparse grids look
+              // almost entirely empty on reasonable posting volumes
+              // (50 posts / 168 cells = 0.3 posts per cell average).
+              // Zero-post cells still render almost blank so the eye can
+              // distinguish "no data" from "low-confidence data".
+              const hasPosts = cell.n > 0;
+              const t = hasPosts && maxValue > 0 ? Math.min(1, cell.value / maxValue) : 0;
+              // Confidence mix: 0.4 at n=1, 0.7 at n=minN-1, 1.0 at n>=minN.
+              // Interpolated linearly so an extra post in a sparse cell
+              // visibly darkens the color — continuous feedback instead of
+              // a hidden/shown binary.
+              const confidence = !hasPosts
+                ? 0
+                : cell.n >= minN
+                ? 1
+                : 0.4 + Math.min(1, (cell.n - 1) / Math.max(1, minN - 1)) * 0.6;
+              // Pull saturation toward minColor by (1 - confidence). A
+              // low-n cell still shows the metric's color direction
+              // (hot vs cool) but at reduced intensity.
+              const valueRgb: [number, number, number] = [
+                Math.round(minRgb[0] + (maxRgb[0] - minRgb[0]) * t),
+                Math.round(minRgb[1] + (maxRgb[1] - minRgb[1]) * t),
+                Math.round(minRgb[2] + (maxRgb[2] - minRgb[2]) * t),
+              ];
+              const fadedRgb: [number, number, number] = [
+                Math.round(minRgb[0] + (valueRgb[0] - minRgb[0]) * confidence),
+                Math.round(minRgb[1] + (valueRgb[1] - minRgb[1]) * confidence),
+                Math.round(minRgb[2] + (valueRgb[2] - minRgb[2]) * confidence),
+              ];
+              const color = hasPosts
+                ? `rgb(${fadedRgb[0]}, ${fadedRgb[1]}, ${fadedRgb[2]})`
                 : "#fafbfc"; // almost blank — no posts
               const isHover =
                 hovered && hovered.day === d && hovered.hour === h;
@@ -190,8 +228,7 @@ export default function Heatmap({
         </div>
         <div className="flex items-center gap-3 text-[11px] text-slate-500">
           <span className="flex items-center gap-1.5">
-            <span className="inline-block w-3 h-3 rounded-[2px] bg-[#f1f5f9]" aria-hidden="true" />
-            Below n≥{minN}
+            Color intensity = confidence (n≥{minN} = full, fewer = faded)
           </span>
           <span className="flex items-center gap-1.5">
             <span className="inline-block w-3 h-3 rounded-[2px] bg-[#fafbfc] border border-slate-200" aria-hidden="true" />

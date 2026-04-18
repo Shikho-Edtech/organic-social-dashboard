@@ -1,7 +1,7 @@
 import { getPosts, getLatestDiagnosis, getRunStatus, computeStaleness } from "@/lib/sheets";
-import { filterPosts, groupStats, daysBetween } from "@/lib/aggregate";
+import { filterPosts, groupStats } from "@/lib/aggregate";
 import { minPostsForRange } from "@/lib/stats";
-import { resolveRange } from "@/lib/daterange";
+import { resolveRange, rangeDays as computeRangeDays } from "@/lib/daterange";
 import PageHeader from "@/components/PageHeader";
 import { Card, ChartCard } from "@/components/Card";
 import BarChartBase from "@/components/BarChart";
@@ -105,7 +105,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
   // single BOFU post with 1 reach + 1 share can't produce a towering BOFU
   // bar. The distribution/count chart still shows everything — it's a
   // volume chart, not a rate chart, so low-n buckets are still honest.
-  const rangeDays = Math.max(1, daysBetween(range.start, range.end) + 1);
+  const rangeDays = computeRangeDays(range);
   const MIN_N_FUNNEL = minPostsForRange(rangeDays);
   const funnelStats = groupStats(inRange, "funnel_stage");
   const funnelOrder = ["TOFU", "MOFU", "BOFU"];
@@ -138,8 +138,8 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
 
   return (
     <div>
-      <StalenessBanner info={staleness} artifact="diagnosis" />
-      <PageHeader title="Strategy" subtitle="Claude's diagnosis and recommended actions" dateLabel={`${range.label} · Funnel charts filtered; verdict = latest weekly snapshot`} />
+      <StalenessBanner info={staleness} artifact="diagnosis" hasData={!!diagnosis} />
+      <PageHeader title="Strategy" subtitle="Claude's diagnosis and recommended actions" dateLabel={`${range.label} · Funnel charts filtered; verdict = latest weekly snapshot`} lastScrapedAt={runStatus.last_run_at} />
 
       {/* Weekly verdict — hero. Big gradient block, headline reads as the
           single most important sentence on the page. Click anywhere on the

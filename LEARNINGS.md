@@ -1,5 +1,89 @@
 # Learnings
 
+## 2026-04-18 — "Data as of" is a rendering timestamp lie
+
+`PageHeader` showed `new Date()` formatted into BDT under the label
+"Data as of". That read as "here's when the data was refreshed", but
+what it actually meant was "here's when Next.js rendered this HTML".
+For a pipeline on a weekly cadence, the gap between those two answers
+can be six days — and the header was actively misleading during every
+one of them. The root cause is using render time as a stand-in for any
+data-freshness question. Whenever a UI element implies "freshness",
+the source has to be the actual last-write timestamp of the data
+(`Analysis_Log.Run Date` in this case), not a `new Date()` anywhere
+in the render path. Render time is only honest when it's labeled as
+such — we now fall back to "Rendered <timestamp>" when no scrape
+timestamp is available.
+
+## 2026-04-18 — Off-by-one in rangeDays tipped charts into the wrong adaptive gate
+
+`minPostsForRange()` is an adaptive min-N floor keyed to the selected
+window. A 30d range should unlock the 10-post gate; a 60d range steps
+up to 15. But Engagement and Strategy computed range length as
+`daysBetween(start, end) + 1` and Timing used `Math.round`, both of
+which turned a 30-day window into 31 — pushing every computation into
+the 60d bucket. Most groupings never cleared 15 posts, so page after
+page rendered empty charts that LOOKED like "no data in range" when
+the data was actually there, just gated one bucket too high. The fix
+was trivial (a shared `rangeDays = Math.floor(ms/86_400_000)`); the
+lesson is that any off-by-one in an input to an adaptive threshold
+becomes invisible — the charts don't crash, they just quietly wrong-
+gate. Centralize range math so this can only happen in one place.
+
+## 2026-04-18 — Min-n thresholds in sparse grids hide more than they reveal
+
+The Day × Hour heatmap has 168 cells. A page with 50 posts in the
+range averages 0.3 posts per cell. At a floor of `max(2, MIN_N/2)`
+(which was 5 for 30d, 8 for 60d), the grid rendered ~95% grey. The
+lesson: a binary "above/below min-n → full color / flat slate" cutoff
+in a sparse grid visually communicates "we have no data" even when
+what we actually have is low-confidence data that's still informative.
+Fix: keep min-n for the summary stats above the heatmap, but render
+cells with opacity-weighted color (n=1 at 0.4 confidence, n≥minN at
+1.0). The eye still distinguishes strong from faded, sparse from dense,
+and zero from low — without blanking 160 of 168 cells.
+
+## 2026-04-18 — Staleness banner's null-timestamp branch screamed at users staring at data
+
+`computeStaleness` returns crit with `days_since = -1` when
+`Analysis_Log` never recorded a "Last Successful X At" timestamp. The
+banner rendered a red "No successful refresh recorded yet" warning
+— correct in the log sense, but surreal to a user looking at a page
+that was obviously rendering the latest weekly verdict. The failure
+mode is taking a meta-observation about logging ("we don't know when
+the last success was") and presenting it as a claim about content
+("the data is broken"). Fix was a `hasData` prop that re-reads the
+situation: if the page has something to show AND we can't verify
+freshness, that's "freshness unknown" (info-style slate), not "stale"
+(crit-style rose). The real crit — no data AND no record — stays rose.
+Principle: banners are a claim about content quality; when the signal
+is really about logging/observability, say that, in the language of
+logging, not in the language of stale data.
+
+## 2026-04-18 — Single-bar charts without maxBarSize read as "mandatory signal"
+
+When only one category cleared the reliability gate, Recharts drew
+that lone bar at the full width of its container (~900px on desktop).
+The visual result was a giant monochrome bar that read as "the one
+true answer" — when the underlying truth was "only one category had
+enough posts to rank, don't over-weight this". Capping `maxBarSize={56}`
+brings it back to a reasonable thickness so the reader correctly sees
+"one category in a chart that could hold many". Multi-bar charts are
+untouched — Recharts still shrinks bars below the cap when many share
+the axis. Generalizes: any viz that scales a visual mark with
+denominator needs a cap, or sparse denominators produce false
+emphasis.
+
+## 2026-04-18 — Day-of-week matching isn't enough for "Today" highlighting
+
+Plan shows next week's calendar (Sun → Sat). On a Saturday, matching
+"Today" by `day-of-week === currentDay` correctly identified Saturday
+in the calendar — but Saturday-in-the-calendar is NEXT Saturday, not
+today. The user saw "Today" highlighting a date a week away. Fix
+requires dual check: weekday match AND actual calendar date match via
+a BDT-formatted `YYYY-MM-DD` key. Weekday alone is never sufficient
+for recurring week views.
+
 ## 2026-04-18 — The display layer hides data-integrity issues under false precision
 
 A full data-sanity audit across every view found six distinct bugs, and
