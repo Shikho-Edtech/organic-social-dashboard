@@ -82,7 +82,10 @@ export default function BarChartBase({
               dataKey="label"
               axisLine={false}
               tickLine={false}
-              width={130}
+              // Was 130. On a 375px phone with card padding, 130px for labels
+              // left only ~160px of drawing area for bars. 100 is a compromise
+              // that still fits most pillar names and ~3-word hook types.
+              width={100}
               tick={{ fontSize: 11, fill: "#475569" }}
               label={
                 categoryAxisLabel

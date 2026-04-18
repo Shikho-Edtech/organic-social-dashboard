@@ -66,27 +66,36 @@ export default async function PlanPage() {
           return (
             <details key={day} className="group bg-white border border-slate-200 rounded-xl overflow-hidden">
               <summary className="list-none cursor-pointer">
-                <div className={`relative px-5 py-4 bg-gradient-to-r ${accent} text-white transition-opacity group-hover:opacity-95`}>
-                  <div className="flex items-center gap-4">
-                    {/* Chevron first — rotates on open */}
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-white/80 transition-transform group-open:rotate-90">
-                      <polyline points="9 18 15 12 9 6"></polyline>
-                    </svg>
-                    {/* Day + date */}
-                    <div className="flex-shrink-0">
-                      <div className="text-lg font-bold leading-tight">{day}</div>
-                      <div className="text-[11px] font-medium uppercase tracking-wider text-white/80 mt-0.5">{slots[0]?.date}</div>
+                <div className={`relative px-4 sm:px-5 py-4 bg-gradient-to-r ${accent} text-white transition-opacity group-hover:opacity-95`}>
+                  {/* Mobile: chevron + day + count on row 1, chips on row 2.
+                      sm+: single row with chips flexing in the middle. */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      {/* Chevron — rotates on open */}
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-white/80 transition-transform group-open:rotate-90">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                      </svg>
+                      {/* Day + date */}
+                      <div className="flex-shrink-0">
+                        <div className="text-lg font-bold leading-tight">{day}</div>
+                        <div className="text-[11px] font-medium uppercase tracking-wider text-white/80 mt-0.5">{slots[0]?.date}</div>
+                      </div>
+                      {/* Post count — on mobile it sits top-right next to date */}
+                      <div className="ml-auto sm:hidden flex-shrink-0 text-right leading-none">
+                        <div className="text-2xl font-bold">{slots.length}</div>
+                        <div className="text-[10px] font-semibold uppercase tracking-wider text-white/80 mt-1">post{slots.length > 1 ? "s" : ""}</div>
+                      </div>
                     </div>
-                    {/* Format chips — visible preview of the day */}
-                    <div className="flex-1 min-w-0 flex flex-wrap gap-1.5 justify-end items-center">
+                    {/* Format chips — full-width row on mobile, flex-1 middle on sm+ */}
+                    <div className="flex flex-wrap gap-1.5 items-center sm:flex-1 sm:min-w-0 sm:justify-end">
                       {formatEntries.map(([fmt, count]) => (
                         <span key={fmt} className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider bg-white/15 text-white/95 rounded-md px-2 py-1 ring-1 ring-white/20">
                           <span className="font-bold">{count}</span> {fmt}
                         </span>
                       ))}
                     </div>
-                    {/* Post count tile */}
-                    <div className="flex-shrink-0 text-right leading-none">
+                    {/* Post count — sm+ only; mobile version lives in the day/date row above */}
+                    <div className="hidden sm:block flex-shrink-0 text-right leading-none">
                       <div className="text-2xl font-bold">{slots.length}</div>
                       <div className="text-[10px] font-semibold uppercase tracking-wider text-white/80 mt-1">post{slots.length > 1 ? "s" : ""}</div>
                     </div>
@@ -99,11 +108,12 @@ export default async function PlanPage() {
                 {slots.map((slot, i) => {
                   const fc = formatColors[slot.format] || formatColors.Status;
                   return (
-                    <div key={i} className="relative px-5 py-5 hover:bg-slate-50/60 transition-colors">
+                    <div key={i} className="relative px-4 sm:px-5 py-5 hover:bg-slate-50/60 transition-colors">
                       <div className={`absolute left-0 top-0 bottom-0 w-1 ${fc.stripe}`} />
-                      <div className="flex items-start gap-4">
-                        {/* Time pill */}
-                        <div className="flex-shrink-0 w-20">
+                      {/* Mobile: time + format row ABOVE content. sm+: time+format LEFT of content. */}
+                      <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
+                        {/* Left group: time pill + format chip */}
+                        <div className="flex items-center gap-2 sm:gap-3 sm:flex-shrink-0">
                           <div className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700 bg-slate-100 rounded-md px-2 py-1">
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500">
                               <circle cx="12" cy="12" r="10"></circle>
@@ -111,9 +121,6 @@ export default async function PlanPage() {
                             </svg>
                             {slot.time_bdt || "—"}
                           </div>
-                        </div>
-                        {/* Format chip */}
-                        <div className="flex-shrink-0 pt-0.5">
                           <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-md ${fc.bg} ${fc.text} ring-1 ${fc.ring}`}>
                             {slot.format}
                           </span>
