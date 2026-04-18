@@ -338,7 +338,7 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
           sampleSize={`${reelsWithCurve} of ${totalReels} reels have retention curves`}
           caption="Biggest drop on Shikho reels is typically between 2s and 6s — the hook window. If 6s→15s survival is high, format is sticky. If 15s→30s drop is steep, middle loses people."
         >
-          <BarChartBase data={funnel} colorByIndex metricName="Viewers" valueAxisLabel="Viewers" categoryAxisLabel="Seconds watched" />
+          <BarChartBase data={funnel} color="#4f46e5" metricName="Viewers" valueAxisLabel="Viewers" categoryAxisLabel="Seconds watched" />
         </ChartCard>
         <ChartCard
           title="Average Retention Curve"
@@ -369,7 +369,7 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
           definition="Total reel plays (includes replays). Highest-distribution reels in the period. Tooltip shows avg watch time (seconds)."
           sampleSize={`top ${topByPlays.length}`}
         >
-          <BarChartBase data={topByPlays} horizontal height={340} colorByIndex metricName="Plays" valueAxisLabel="Plays" categoryAxisLabel="Reel caption (preview)" />
+          <BarChartBase data={topByPlays} horizontal height={340} color="#4f46e5" metricName="Plays" valueAxisLabel="Plays" categoryAxisLabel="Reel caption (preview)" />
         </ChartCard>
         <ChartCard
           title="Top 10 Reels by Avg Watch Time"
@@ -379,7 +379,7 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
           sampleSize={`top ${topByWatchTime.length}`}
           caption="Long watch time with decent plays = replicable format. Short watch time with high plays = good hook, weak middle."
         >
-          <BarChartBase data={topByWatchTime} horizontal height={340} colorByIndex valueFormat="number" metricName="Avg watch (s)" valueAxisLabel="Seconds" categoryAxisLabel="Reel caption (preview)" />
+          <BarChartBase data={topByWatchTime} horizontal height={340} color="#ec4899" valueFormat="number" metricName="Avg watch (s)" valueAxisLabel="Seconds" categoryAxisLabel="Reel caption (preview)" />
         </ChartCard>
       </div>
 
@@ -394,7 +394,7 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
             sampleSize={`${topByFollowers.length} reels gained followers`}
             caption="High plays with zero follower gain = viral but not sticky. Low plays with high gain = niche but converts."
           >
-            <BarChartBase data={topByFollowers} horizontal height={340} colorByIndex metricName="Followers gained" valueAxisLabel="Followers gained" categoryAxisLabel="Reel caption (preview)" />
+            <BarChartBase data={topByFollowers} horizontal height={340} color="#10b981" metricName="Followers gained" valueAxisLabel="Followers gained" categoryAxisLabel="Reel caption (preview)" />
           </ChartCard>
         </div>
       )}

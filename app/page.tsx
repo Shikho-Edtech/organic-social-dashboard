@@ -7,6 +7,7 @@ import { ChartCard } from "@/components/Card";
 import TrendChart from "@/components/TrendChart";
 import Donut from "@/components/Donut";
 import BarChartBase from "@/components/BarChart";
+import { canonicalColor } from "@/lib/colors";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -47,7 +48,11 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
 
   // Content pillars
   const pillarStats = groupStats(inRange, "content_pillar").slice(0, 10);
-  const pillarData = pillarStats.map((s) => ({ label: s.key || "Unknown", value: s.total_reach }));
+  const pillarData = pillarStats.map((s) => ({
+    label: s.key || "Unknown",
+    value: s.total_reach,
+    color: canonicalColor("pillar", s.key),
+  }));
 
   // Engagement mix
   const totalReactions = inRange.reduce((s, p) => s + (p.reactions || 0), 0);
@@ -109,7 +114,6 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
             data={pillarData}
             horizontal
             height={Math.max(200, pillarData.length * 32)}
-            colorByIndex
             metricName="Reach"
             valueAxisLabel="Unique reach"
             showPercent

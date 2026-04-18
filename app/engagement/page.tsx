@@ -2,6 +2,7 @@ import { getPosts } from "@/lib/sheets";
 import { filterPosts, groupStats, daysBetween } from "@/lib/aggregate";
 import { minPostsForRange, reliabilityLabel } from "@/lib/stats";
 import { resolveRange } from "@/lib/daterange";
+import { canonicalColor } from "@/lib/colors";
 import PageHeader from "@/components/PageHeader";
 import { Card, ChartCard } from "@/components/Card";
 import BarChartBase from "@/components/BarChart";
@@ -32,27 +33,52 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
   const rangeDays = Math.max(1, daysBetween(range.start, range.end) + 1);
   const MIN_N = minPostsForRange(rangeDays);
 
-  // Format × engagement rate
+  // Format × engagement rate. Each bar carries its canonical category
+  // colour so "Reel" on this chart matches "Reel" on Plan's calendar pill
+  // and the "Best Format" card above.
   const formatStats = groupStats(inRange, "format").filter((s) => s.count >= MIN_N);
-  const formatER = formatStats.map((s) => ({ label: s.key, value: Number(s.avg_engagement_rate.toFixed(2)) }));
+  const formatER = formatStats.map((s) => ({
+    label: s.key,
+    value: Number(s.avg_engagement_rate.toFixed(2)),
+    color: canonicalColor("format", s.key),
+  }));
   const formatShares = formatStats.map((s) => ({
     label: s.key,
     value: Math.round(inRange.filter((p) => p.format === s.key).reduce((sum, p) => sum + (p.shares || 0), 0) / s.count),
+    color: canonicalColor("format", s.key),
   }));
 
-  // Pillar × engagement rate (top 12 for readability)
+  // Pillar × engagement rate (top 12 for readability). Per-row colour from
+  // canonicalColor("pillar", ...) means the same pillar keeps the same
+  // colour across Overview → Engagement → Strategy.
   const pillarStats = groupStats(inRange, "content_pillar").filter((s) => s.count >= MIN_N).slice(0, 12);
-  const pillarER = pillarStats.map((s) => ({ label: s.key, value: Number(s.avg_engagement_rate.toFixed(2)) }));
+  const pillarER = pillarStats.map((s) => ({
+    label: s.key,
+    value: Number(s.avg_engagement_rate.toFixed(2)),
+    color: canonicalColor("pillar", s.key),
+  }));
 
   // Hook type effectiveness
   const hookStats = groupStats(inRange, "hook_type").filter((s) => s.count >= MIN_N).slice(0, 10);
-  const hookER = hookStats.map((s) => ({ label: s.key, value: Number(s.avg_engagement_rate.toFixed(2)) }));
+  const hookER = hookStats.map((s) => ({
+    label: s.key,
+    value: Number(s.avg_engagement_rate.toFixed(2)),
+    color: canonicalColor("hook", s.key),
+  }));
 
   // Spotlight type effectiveness (v2 classifier)
   const spotlightStats = groupStats(inRange, "spotlight_type")
     .filter((s) => s.count >= MIN_N && s.key && s.key !== "None" && s.key !== "Unknown");
-  const spotlightER = spotlightStats.map((s) => ({ label: s.key, value: Number(s.avg_engagement_rate.toFixed(2)) }));
-  const spotlightReach = spotlightStats.map((s) => ({ label: s.key, value: s.avg_reach_per_post }));
+  const spotlightER = spotlightStats.map((s) => ({
+    label: s.key,
+    value: Number(s.avg_engagement_rate.toFixed(2)),
+    color: canonicalColor("spotlight", s.key),
+  }));
+  const spotlightReach = spotlightStats.map((s) => ({
+    label: s.key,
+    value: s.avg_reach_per_post,
+    color: canonicalColor("spotlight", s.key),
+  }));
 
   // Day 2U: "Best X" now ranks by the SAME reach-weighted rate the chart
   // shows. Protection against single-post outliers comes from the
@@ -93,11 +119,21 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
     <div>
       <PageHeader title="Engagement" subtitle="What drives interaction" dateLabel={range.label} />
 
-      {/* "Best X" strip — same reach-weighted rate as the bars below */}
+      {/* "Best X" strip — reach-weighted, with category-semantic colour on
+          the winning value. A Reel winner reads pink (same as Plan's reel
+          pill); a Teacher spotlight winner reads violet; a pillar winner
+          hashes to a stable colour that persists across renders. The
+          colour is inline `style` because Tailwind can't compile a
+          dynamic `text-[#hex]`. */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <Card className="!p-5">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Best Format</div>
-          <div className="text-xl sm:text-2xl font-bold text-brand-cyan mt-2 break-words leading-tight">{bestFormat?.key || "—"}</div>
+          <div
+            className="text-xl sm:text-2xl font-bold mt-2 break-words leading-tight"
+            style={{ color: canonicalColor("format", bestFormat?.key) }}
+          >
+            {bestFormat?.key || "—"}
+          </div>
           <div className="text-xs text-slate-500 mt-1">
             {(bestFormat?.avg_engagement_rate || 0).toFixed(2)}% eng rate
           </div>
@@ -107,7 +143,12 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
         </Card>
         <Card className="!p-5">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Best Pillar</div>
-          <div className="text-xl sm:text-2xl font-bold text-brand-pink mt-2 break-words leading-tight">{bestPillar?.key || "—"}</div>
+          <div
+            className="text-xl sm:text-2xl font-bold mt-2 break-words leading-tight"
+            style={{ color: canonicalColor("pillar", bestPillar?.key) }}
+          >
+            {bestPillar?.key || "—"}
+          </div>
           <div className="text-xs text-slate-500 mt-1">
             {(bestPillar?.avg_engagement_rate || 0).toFixed(2)}% eng rate
           </div>
@@ -117,7 +158,12 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
         </Card>
         <Card className="!p-5">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Best Hook</div>
-          <div className="text-xl sm:text-2xl font-bold text-brand-green mt-2 break-words leading-tight">{bestHook?.key || "—"}</div>
+          <div
+            className="text-xl sm:text-2xl font-bold mt-2 break-words leading-tight"
+            style={{ color: canonicalColor("hook", bestHook?.key) }}
+          >
+            {bestHook?.key || "—"}
+          </div>
           <div className="text-xs text-slate-500 mt-1">
             {(bestHook?.avg_engagement_rate || 0).toFixed(2)}% eng rate
           </div>
@@ -127,7 +173,12 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
         </Card>
         <Card className="!p-5">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Best Spotlight Type</div>
-          <div className="text-xl sm:text-2xl font-bold text-brand-purple mt-2 break-words leading-tight">{bestSpotlight?.key || "—"}</div>
+          <div
+            className="text-xl sm:text-2xl font-bold mt-2 break-words leading-tight"
+            style={{ color: canonicalColor("spotlight", bestSpotlight?.key) }}
+          >
+            {bestSpotlight?.key || "—"}
+          </div>
           <div className="text-xs text-slate-500 mt-1">
             {(bestSpotlight?.avg_engagement_rate || 0).toFixed(2)}% eng rate
           </div>
@@ -146,7 +197,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           sampleSize={`n = ${inRange.length} posts`}
           caption="Higher is better. A format that consistently beats the average is worth doubling down on."
         >
-          <BarChartBase data={formatER} valueFormat="percent" colorByIndex metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Format" />
+          <BarChartBase data={formatER} valueFormat="percent" metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Format" />
         </ChartCard>
         <ChartCard
           title="Shares per Post"
@@ -155,7 +206,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           definition="Total shares in period ÷ number of posts in that format. Shares expand reach beyond the existing follower base — the strongest virality signal."
           caption="A format averaging high shares is pulling in new audience, not just engaging the existing one."
         >
-          <BarChartBase data={formatShares} colorByIndex metricName="Avg shares" valueAxisLabel="Avg shares / post" categoryAxisLabel="Format" />
+          <BarChartBase data={formatShares} metricName="Avg shares" valueAxisLabel="Avg shares / post" categoryAxisLabel="Format" />
         </ChartCard>
       </div>
 
@@ -168,7 +219,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           sampleSize={`${pillarStats.length} pillars shown (${MIN_N}+ posts)`}
           caption="Identify which content themes resonate most with the audience. Use alongside the Strategy tab's top-performer list."
         >
-          <BarChartBase data={pillarER} horizontal height={Math.max(240, pillarER.length * 32)} valueFormat="percent" colorByIndex metricName="Engagement rate" valueAxisLabel="Engagement rate" />
+          <BarChartBase data={pillarER} horizontal height={Math.max(240, pillarER.length * 32)} valueFormat="percent" metricName="Engagement rate" valueAxisLabel="Engagement rate" />
         </ChartCard>
       </div>
 
@@ -182,7 +233,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
             sampleSize={`${spotlightStats.length} spotlight types, n = ${spotlightStats.reduce((s, x) => s + x.count, 0)} posts`}
             caption="Which spotlight category the audience engages with most. If Teacher posts outperform Product posts, lean into the faculty."
           >
-            <BarChartBase data={spotlightER} horizontal height={Math.max(180, spotlightER.length * 36)} valueFormat="percent" colorByIndex metricName="Engagement rate" valueAxisLabel="Engagement rate" />
+            <BarChartBase data={spotlightER} horizontal height={Math.max(180, spotlightER.length * 36)} valueFormat="percent" metricName="Engagement rate" valueAxisLabel="Engagement rate" />
           </ChartCard>
           <ChartCard
             title="Spotlight Performance — Reach"
@@ -191,7 +242,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
             definition="Average unique reach per post for each spotlight type. Pairs with the engagement-rate view to surface the full picture: a type can have high engagement on small reach, or vice versa."
             caption="High reach + high engagement means the spotlight type is working on both axes."
           >
-            <BarChartBase data={spotlightReach} horizontal height={Math.max(180, spotlightReach.length * 36)} colorByIndex metricName="Avg reach" valueAxisLabel="Avg reach / post" />
+            <BarChartBase data={spotlightReach} horizontal height={Math.max(180, spotlightReach.length * 36)} metricName="Avg reach" valueAxisLabel="Avg reach / post" />
           </ChartCard>
         </div>
       )}
@@ -205,7 +256,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           sampleSize={`${hookStats.length} hook types shown`}
           caption="If one hook dominates, try testing the same content with a different opening to see if it's the hook or the topic."
         >
-          <BarChartBase data={hookER} horizontal height={Math.max(220, hookER.length * 32)} valueFormat="percent" colorByIndex metricName="Engagement rate" valueAxisLabel="Engagement rate" />
+          <BarChartBase data={hookER} horizontal height={Math.max(220, hookER.length * 32)} valueFormat="percent" metricName="Engagement rate" valueAxisLabel="Engagement rate" />
         </ChartCard>
         <ChartCard
           title="Engagement Breakdown"

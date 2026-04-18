@@ -6,6 +6,7 @@ import PageHeader from "@/components/PageHeader";
 import { Card, ChartCard } from "@/components/Card";
 import BarChartBase from "@/components/BarChart";
 import StalenessBanner from "@/components/StalenessBanner";
+import { canonicalColor } from "@/lib/colors";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -108,14 +109,24 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
   const MIN_N_FUNNEL = minPostsForRange(rangeDays);
   const funnelStats = groupStats(inRange, "funnel_stage");
   const funnelOrder = ["TOFU", "MOFU", "BOFU"];
+  // Per-bar canonical colours so TOFU is always cyan, MOFU indigo, BOFU
+  // pink — matches any future funnel illustration or Plan pill.
   const funnelDist = funnelOrder.map((stage) => {
     const s = funnelStats.find((x) => x.key === stage);
-    return { label: stage, value: s?.count || 0 };
+    return {
+      label: stage,
+      value: s?.count || 0,
+      color: canonicalColor("funnel", stage),
+    };
   });
   const funnelEng = funnelOrder.map((stage) => {
     const s = funnelStats.find((x) => x.key === stage);
     const eligible = s && s.count >= MIN_N_FUNNEL;
-    return { label: stage, value: eligible ? Number(s.avg_engagement_rate.toFixed(2)) : 0 };
+    return {
+      label: stage,
+      value: eligible ? Number(s.avg_engagement_rate.toFixed(2)) : 0,
+      color: canonicalColor("funnel", stage),
+    };
   });
 
   const whatHappened: string[] = diagnosis?.what_happened || [];
@@ -207,7 +218,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
           sampleSize={`n = ${inRange.length} posts`}
           caption="Heavy BOFU may limit new audience growth. Healthy mix is typically ~50% TOFU, ~30% MOFU, ~20% BOFU for organic."
         >
-          <BarChartBase data={funnelDist} colorByIndex metricName="Posts" valueAxisLabel="Posts" categoryAxisLabel="Funnel stage" showPercent />
+          <BarChartBase data={funnelDist} metricName="Posts" valueAxisLabel="Posts" categoryAxisLabel="Funnel stage" showPercent />
         </ChartCard>
         <ChartCard
           title="Funnel Engagement"
@@ -217,7 +228,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
           sampleSize={`min ${MIN_N_FUNNEL} posts per stage · ${rangeDays}d window`}
           caption="Which funnel stage resonates most in terms of interaction rate."
         >
-          <BarChartBase data={funnelEng} valueFormat="percent" colorByIndex metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Funnel stage" />
+          <BarChartBase data={funnelEng} valueFormat="percent" metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Funnel stage" />
         </ChartCard>
       </div>
 

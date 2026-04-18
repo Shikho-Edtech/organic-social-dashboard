@@ -214,7 +214,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
           caption={`Only slots with at least ${MIN_N} posts in a ${rangeDays}-day window are shown — a single viral post can't promote a time slot on its own.`}
         >
           {slotsShown > 0 ? (
-            <BarChartBase data={slotReachChart} colorByIndex metricName="Avg reach / post" valueAxisLabel="Avg reach / post" categoryAxisLabel="Time slot (BDT)" />
+            <BarChartBase data={slotReachChart} color="#4f46e5" metricName="Avg reach / post" valueAxisLabel="Avg reach / post" categoryAxisLabel="Time slot (BDT)" />
           ) : (
             <div className="flex items-center justify-center h-48 text-sm text-slate-500">
               No slot has ≥ {MIN_N} posts in this {rangeDays}-day window. Widen the range.
@@ -230,7 +230,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
           caption={`Same threshold as the reach chart: a slot needs ≥ ${MIN_N} posts to appear.`}
         >
           {slotsShown > 0 ? (
-            <BarChartBase data={slotEngChart} valueFormat="percent" colorByIndex metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Time slot (BDT)" />
+            <BarChartBase data={slotEngChart} valueFormat="percent" color="#ec4899" metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Time slot (BDT)" />
           ) : (
             <div className="flex items-center justify-center h-48 text-sm text-slate-500">
               No slot has ≥ {MIN_N} posts in this {rangeDays}-day window.
@@ -249,7 +249,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
           caption={`Day-level reach patterns. Days need ≥ ${MIN_N} posts in a ${rangeDays}-day window to appear.`}
         >
           {daysShown > 0 ? (
-            <BarChartBase data={dayReachChart} colorByIndex metricName="Avg reach / post" valueAxisLabel="Avg reach / post" categoryAxisLabel="Day of week" />
+            <BarChartBase data={dayReachChart} color="#4f46e5" metricName="Avg reach / post" valueAxisLabel="Avg reach / post" categoryAxisLabel="Day of week" />
           ) : (
             <div className="flex items-center justify-center h-48 text-sm text-slate-500">
               No day-of-week has ≥ {MIN_N} posts in this {rangeDays}-day window.
@@ -265,7 +265,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
           caption={`When the audience is most active. Same ≥ ${MIN_N} threshold as the reach chart.`}
         >
           {daysShown > 0 ? (
-            <BarChartBase data={dayEngChart} valueFormat="percent" colorByIndex metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Day of week" />
+            <BarChartBase data={dayEngChart} valueFormat="percent" color="#ec4899" metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Day of week" />
           ) : (
             <div className="flex items-center justify-center h-48 text-sm text-slate-500">
               No day-of-week has ≥ {MIN_N} posts in this {rangeDays}-day window.

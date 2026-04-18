@@ -6,9 +6,23 @@ import { Card, ChartCard } from "@/components/Card";
 import KpiCard from "@/components/KpiCard";
 import TrendChart from "@/components/TrendChart";
 import BarChartBase from "@/components/BarChart";
+import { canonicalColor, type ColorField } from "@/lib/colors";
 
 type Props = { posts: Post[]; daily: DailyMetric[] };
 type Preset = "7d" | "30d" | "90d" | "ytd" | "all" | "custom";
+
+// Map the group-by dimension onto a canonical colour field so a bar for
+// "Reel" on the Format grouping is pink wherever it appears. Dimensions
+// with no canonical mapping (audience, visual_style, language) fall
+// through to the hash-based palette.
+function colorFieldFor(dim: keyof Post): ColorField {
+  if (dim === "content_pillar") return "pillar";
+  if (dim === "format") return "format";
+  if (dim === "hook_type") return "hook";
+  if (dim === "spotlight_type") return "spotlight";
+  if (dim === "funnel_stage") return "funnel";
+  return "pillar"; // fallback → hash-based palette
+}
 
 const PRESET_LABELS: Record<Preset, string> = {
   "7d": "Last 7 days",
@@ -187,10 +201,13 @@ export default function ExploreClient({ posts }: Props) {
               caption={`Each bar is the sum of unique reach for posts in that ${groupByLabel.toLowerCase()} segment. Percentage shown is share of total reach across segments shown.`}
             >
               <BarChartBase
-                data={grouped.slice(0, 12).map((g) => ({ label: g.key || "Unknown", value: g.total_reach }))}
+                data={grouped.slice(0, 12).map((g) => ({
+                  label: g.key || "Unknown",
+                  value: g.total_reach,
+                  color: canonicalColor(colorFieldFor(groupByDim), g.key),
+                }))}
                 horizontal
                 height={Math.max(200, Math.min(12, grouped.length) * 34)}
-                colorByIndex
                 metricName="Reach"
                 valueAxisLabel="Unique reach"
                 showPercent

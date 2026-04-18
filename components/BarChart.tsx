@@ -4,7 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 type FormatSpec = "number" | "percent" | "percent1";
 
 type Props = {
-  data: { label: string; value: number; meta?: number; muted?: boolean }[];
+  data: { label: string; value: number; meta?: number; muted?: boolean; color?: string }[];
   color?: string;
   height?: number;
   horizontal?: boolean;
@@ -147,7 +147,12 @@ export default function BarChartBase({
           {data.map((d, i) => (
             <Cell
               key={i}
-              fill={d.muted ? "#cbd5e1" : (colorByIndex ? PALETTE[i % PALETTE.length] : color || "#06b6d4")}
+              fill={
+                d.muted
+                  ? "#cbd5e1"
+                  : d.color ||
+                    (colorByIndex ? PALETTE[i % PALETTE.length] : color || "#4f46e5")
+              }
             />
           ))}
           {showPercent && (
