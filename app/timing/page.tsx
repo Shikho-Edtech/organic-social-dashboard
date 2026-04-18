@@ -146,7 +146,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <Card className="!p-5">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Best for Reach (Day)</div>
-          <div className="text-2xl font-bold text-brand-cyan mt-2">{bestDayReach?.label || "—"}</div>
+          <div className="text-xl sm:text-2xl font-bold text-brand-cyan mt-2 break-words leading-tight">{bestDayReach?.label || "—"}</div>
           <div className="text-xs text-slate-500 mt-1">
             {Math.round(bestDayReach?.reachSum.mean || 0).toLocaleString()} avg reach/post
           </div>
@@ -159,7 +159,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
         </Card>
         <Card className="!p-5">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Best for Engagement (Day)</div>
-          <div className="text-2xl font-bold text-brand-pink mt-2">{bestDayEng?.label || "—"}</div>
+          <div className="text-xl sm:text-2xl font-bold text-brand-pink mt-2 break-words leading-tight">{bestDayEng?.label || "—"}</div>
           <div className="text-xs text-slate-500 mt-1">
             {(bestDayEng?.erSum.mean || 0).toFixed(2)}% avg eng rate
           </div>
@@ -175,7 +175,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
             Best for Reach (Slot)
             {!anyRankable && <span className="ml-1 text-amber-500" title="No slot has n≥2 — ranking falls back to raw mean">*</span>}
           </div>
-          <div className="text-2xl font-bold text-brand-green mt-2">{bestSlotReach?.label.split(" ")[0] || "—"}</div>
+          <div className="text-xl sm:text-2xl font-bold text-brand-green mt-2 break-words leading-tight">{bestSlotReach?.label.split(" ")[0] || "—"}</div>
           <div className="text-xs text-slate-500 mt-1">
             {Math.round(bestSlotReach?.reachSum.mean || 0).toLocaleString()} avg reach/post
           </div>
@@ -191,7 +191,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
             Best for Engagement (Slot)
             {!anyRankable && <span className="ml-1 text-amber-500" title="No slot has n≥2 — ranking falls back to raw mean">*</span>}
           </div>
-          <div className="text-2xl font-bold text-brand-purple mt-2">{bestSlotEng?.label.split(" ")[0] || "—"}</div>
+          <div className="text-xl sm:text-2xl font-bold text-brand-purple mt-2 break-words leading-tight">{bestSlotEng?.label.split(" ")[0] || "—"}</div>
           <div className="text-xs text-slate-500 mt-1">
             {(bestSlotEng?.erSum.mean || 0).toFixed(2)}% avg eng rate
           </div>

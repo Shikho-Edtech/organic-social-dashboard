@@ -93,14 +93,15 @@ export default function ExploreClient({ posts }: Props) {
 
   return (
     <div>
-      {/* Header */}
+      {/* Header — mirrors PageHeader: mobile stacks title above picker,
+          picker self-aligns right. sm+: side by side at far edges. */}
       <div className="mb-6">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <div className="min-w-0">
             <h1 className="text-2xl font-bold text-slate-900">Explore</h1>
             <p className="text-sm text-slate-500 mt-1">Filter by any dimension, group by any dimension</p>
           </div>
-          <div className="flex flex-col items-end gap-2">
+          <div className="flex flex-col items-end gap-2 self-end sm:self-auto">
             <RangeDropdown
               preset={preset}
               setPreset={setPreset}
@@ -295,7 +296,7 @@ function RangeDropdown({
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-72 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
+        <div className="absolute right-0 mt-2 w-72 max-w-[calc(100vw-2rem)] bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
           <div className="py-1">
             {presetOrder.map((k) => (
               <button
@@ -482,7 +483,7 @@ function GroupBySelect({
         </svg>
       </button>
       {open && (
-        <div className="absolute left-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden py-1">
+        <div className="absolute left-0 mt-2 w-56 max-w-[calc(100vw-2rem)] bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden py-1">
           {GROUP_BY_OPTIONS.map((o) => (
             <button
               key={o.key as string}

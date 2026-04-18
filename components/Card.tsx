@@ -44,11 +44,15 @@ export function ChartCard({
   return (
     <Card className={`${kindBorder} ${className}`}>
       <div className="mb-4">
-        <div className="flex items-start gap-2">
-          <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+        {/* Title row is `flex-wrap` so the sample-size + kind badges fall to a
+            second line on narrow cards instead of squeezing the title and
+            pushing content off the right edge. `min-w-0` + `break-words` on
+            the title itself handles very long titles gracefully. */}
+        <div className="flex items-start gap-2 flex-wrap">
+          <h3 className="text-base font-semibold text-slate-900 min-w-0 break-words">{title}</h3>
           {definition && <InfoTooltip text={definition} />}
           {sampleSize && (
-            <span className="ml-auto text-[10px] font-semibold uppercase tracking-wider text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded translate-y-[2px]">
+            <span className="ml-auto text-[10px] font-semibold uppercase tracking-wider text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded translate-y-[2px] break-words">
               {sampleSize}
             </span>
           )}

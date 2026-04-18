@@ -94,7 +94,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <Card className="!p-5">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Best Format</div>
-          <div className="text-2xl font-bold text-brand-cyan mt-2">{bestFormat?.key || "—"}</div>
+          <div className="text-xl sm:text-2xl font-bold text-brand-cyan mt-2 break-words leading-tight">{bestFormat?.key || "—"}</div>
           <div className="text-xs text-slate-500 mt-1">
             {(bestFormat?.avg_engagement_rate || 0).toFixed(2)}% eng rate
           </div>
@@ -104,7 +104,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
         </Card>
         <Card className="!p-5">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Best Pillar</div>
-          <div className="text-2xl font-bold text-brand-pink mt-2">{bestPillar?.key || "—"}</div>
+          <div className="text-xl sm:text-2xl font-bold text-brand-pink mt-2 break-words leading-tight">{bestPillar?.key || "—"}</div>
           <div className="text-xs text-slate-500 mt-1">
             {(bestPillar?.avg_engagement_rate || 0).toFixed(2)}% eng rate
           </div>
@@ -114,7 +114,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
         </Card>
         <Card className="!p-5">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Best Hook</div>
-          <div className="text-2xl font-bold text-brand-green mt-2">{bestHook?.key || "—"}</div>
+          <div className="text-xl sm:text-2xl font-bold text-brand-green mt-2 break-words leading-tight">{bestHook?.key || "—"}</div>
           <div className="text-xs text-slate-500 mt-1">
             {(bestHook?.avg_engagement_rate || 0).toFixed(2)}% eng rate
           </div>
@@ -124,7 +124,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
         </Card>
         <Card className="!p-5">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Best Spotlight Type</div>
-          <div className="text-2xl font-bold text-brand-purple mt-2">{bestSpotlight?.key || "—"}</div>
+          <div className="text-xl sm:text-2xl font-bold text-brand-purple mt-2 break-words leading-tight">{bestSpotlight?.key || "—"}</div>
           <div className="text-xs text-slate-500 mt-1">
             {(bestSpotlight?.avg_engagement_rate || 0).toFixed(2)}% eng rate
           </div>
