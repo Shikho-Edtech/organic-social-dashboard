@@ -36,6 +36,13 @@ export function ChartCard({
   children: ReactNode;
   className?: string;
 }) {
+  // The left border colour alone communicates kind (cyan=observed / indigo=
+  // AI-classified / violet=derived). The old right-aligned text badge
+  // ("Meta data" / "AI-classified" / "Derived") duplicated that same info in
+  // a second visual channel, which was redundant on desktop and fought with
+  // the sample-size badge for space on mobile. Kind is now encoded in border
+  // colour + `data-kind` (for screen readers / debugging). The InfoTooltip
+  // definition still explains the provenance in plain English.
   const kindBorder =
     kind === "observed" ? "border-l-4 border-l-cyan-500"
     : kind === "ai"     ? "border-l-4 border-l-indigo-500"
@@ -43,26 +50,17 @@ export function ChartCard({
     : "";
   return (
     <Card className={`${kindBorder} ${className}`}>
-      <div className="mb-4">
-        {/* Title row is `flex-wrap` so the sample-size + kind badges fall to a
-            second line on narrow cards instead of squeezing the title and
-            pushing content off the right edge. `min-w-0` + `break-words` on
-            the title itself handles very long titles gracefully. */}
+      <div className="mb-4" data-kind={kind}>
+        {/* Title row is `flex-wrap` so the sample-size badge falls to a second
+            line on narrow cards instead of squeezing the title off the right
+            edge. `min-w-0` + `break-words` on the title handles very long
+            titles gracefully. */}
         <div className="flex items-start gap-2 flex-wrap">
           <h3 className="text-base font-semibold text-slate-900 min-w-0 break-words">{title}</h3>
           {definition && <InfoTooltip text={definition} />}
           {sampleSize && (
-            <span className="ml-auto text-[10px] font-semibold uppercase tracking-wider text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded translate-y-[2px] break-words">
+            <span className="ml-auto text-[10px] font-semibold uppercase tracking-wider text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded translate-y-[2px] break-words">
               {sampleSize}
-            </span>
-          )}
-          {kind && (
-            <span className={`${sampleSize ? "ml-1" : "ml-auto"} text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded translate-y-[2px] ${
-              kind === "observed" ? "bg-cyan-50 text-cyan-700"
-              : kind === "ai"     ? "bg-indigo-50 text-indigo-700"
-              :                     "bg-violet-50 text-violet-700"
-            }`}>
-              {kind === "observed" ? "Meta data" : kind === "ai" ? "AI-classified" : "Derived"}
             </span>
           )}
         </div>

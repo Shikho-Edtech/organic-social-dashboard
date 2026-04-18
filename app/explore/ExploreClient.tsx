@@ -124,25 +124,27 @@ export default function ExploreClient({ posts }: Props) {
         <KpiCard label="Engagement Rate" value={kpis.avg_engagement_rate.toFixed(2) + "%"} />
       </div>
 
-      {/* Filter toolbar — single row of dropdowns */}
+      {/* Filter toolbar. Mobile: stacks as a vertical list of full-width
+          tap targets so every control clears the 44×44 WCAG 2.5.5 minimum.
+          sm+: single flex-wrap row, same density as desktop today. */}
       <Card className="mb-6 !p-0">
-        <div className="flex flex-wrap items-center gap-2 px-4 py-3">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mr-1">Filter</span>
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 px-4 py-3">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 sm:mr-1">Filter</span>
           <MultiSelect label="Content Pillar" options={pillarOptions} selected={pillars} onChange={setPillars} />
           <MultiSelect label="Format" options={formatOptions} selected={formats} onChange={setFormats} />
           <MultiSelect label="Audience" options={audienceOptions} selected={audiences} onChange={setAudiences} />
           <MultiSelect label="Spotlight" options={entityOptions} selected={entities} onChange={setEntities} searchable />
-          <div className="h-6 w-px bg-slate-200 mx-1" />
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Group by</span>
+          <div className="hidden sm:block h-6 w-px bg-slate-200 mx-1" />
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mt-2 sm:mt-0">Group by</span>
           <GroupBySelect value={groupByDim} onChange={setGroupByDim} />
-          <div className="ml-auto flex items-center gap-3 text-xs text-slate-500">
+          <div className="sm:ml-auto flex items-center justify-between sm:justify-end gap-3 text-xs text-slate-500 mt-2 sm:mt-0 w-full sm:w-auto">
             <span>
               <span className="font-semibold text-slate-700">{filtered.length.toLocaleString()}</span> posts match
             </span>
             {totalFilters > 0 && (
               <button
                 onClick={clearAll}
-                className="text-slate-500 hover:text-slate-800 underline underline-offset-2"
+                className="text-slate-500 hover:text-slate-800 underline underline-offset-2 py-2"
               >
                 Clear {totalFilters} filter{totalFilters > 1 ? "s" : ""}
               </button>
@@ -154,7 +156,7 @@ export default function ExploreClient({ posts }: Props) {
       {filtered.length === 0 ? (
         <Card>
           <div className="py-10 text-center">
-            <div className="text-slate-400 mb-2">
+            <div className="text-slate-500 mb-2">
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mx-auto">
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -214,7 +216,7 @@ export default function ExploreClient({ posts }: Props) {
                     <span>{p.shares} shares</span>
                   </div>
                   <div className="text-xs text-slate-600 mt-1 line-clamp-2">{p.message.slice(0, 200)}</div>
-                  <div className="text-[11px] text-slate-400 mt-1.5 flex flex-wrap items-center gap-x-1.5">
+                  <div className="text-[11px] text-slate-500 mt-1.5 flex flex-wrap items-center gap-x-1.5">
                     <span className="text-brand-shikho-pink font-medium">{p.content_pillar || "—"}</span>
                     <span>·</span>
                     <span className="text-slate-500">{p.format || p.type}</span>
@@ -226,7 +228,7 @@ export default function ExploreClient({ posts }: Props) {
                         <span className="text-brand-shikho-orange">
                           {p.spotlight_name}
                           {p.spotlight_type && p.spotlight_type !== "None" && (
-                            <span className="text-slate-400 font-normal"> ({p.spotlight_type})</span>
+                            <span className="text-slate-500 font-normal"> ({p.spotlight_type})</span>
                           )}
                         </span>
                       </>
@@ -290,7 +292,7 @@ function RangeDropdown({
           <line x1="3" y1="10" x2="21" y2="10"></line>
         </svg>
         <span className="font-medium">{displayLabel}</span>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`text-slate-400 transition-transform ${open ? "rotate-180" : ""}`}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`text-slate-500 transition-transform ${open ? "rotate-180" : ""}`}>
           <polyline points="6 9 12 15 18 9"></polyline>
         </svg>
       </button>
@@ -324,7 +326,7 @@ function RangeDropdown({
             <div className="flex items-center gap-2">
               <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)}
                 className="flex-1 px-2 py-1 rounded-md text-xs border border-slate-200 bg-white text-slate-700 focus:outline-none focus:border-brand-shikho-indigo" />
-              <span className="text-xs text-slate-400">to</span>
+              <span className="text-xs text-slate-500">to</span>
               <input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)}
                 className="flex-1 px-2 py-1 rounded-md text-xs border border-slate-200 bg-white text-slate-700 focus:outline-none focus:border-brand-shikho-indigo" />
             </div>
@@ -419,7 +421,7 @@ function MultiSelect({
           )}
           <div className="max-h-64 overflow-y-auto py-1">
             {filtered.length === 0 && (
-              <div className="px-3 py-4 text-xs text-slate-400 text-center">No matches</div>
+              <div className="px-3 py-4 text-xs text-slate-500 text-center">No matches</div>
             )}
             {filtered.map((opt) => {
               const active = selected.includes(opt);

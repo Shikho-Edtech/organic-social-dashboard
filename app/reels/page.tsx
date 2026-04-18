@@ -5,6 +5,7 @@ import PageHeader from "@/components/PageHeader";
 import { Card, ChartCard } from "@/components/Card";
 import KpiCard from "@/components/KpiCard";
 import BarChartBase from "@/components/BarChart";
+import TrendChart from "@/components/TrendChart";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -94,8 +95,20 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
   let viewsWithCurve = 0;
   let reelsWithCurve = 0;
 
-  for (const r of reels) {
-    const curve = parseRetentionCurve(r.retention_graph);
+  // P3: parse each reel's retention curve ONCE and stash it here.
+  // Previously `parseRetentionCurve(r.retention_graph)` was called in this
+  // loop AND again 60× per reel in the average-curve loop below. For a page
+  // with ~100 reels that's 6,100 JSON.parse calls instead of 100. Numbers
+  // are small but the hot path ran on every page render (no React caching
+  // because this is a Server Component). Pre-parsed once, the per-second
+  // loops are now pure object lookups.
+  const parsedCurves: Record<number, number>[] = reels.map((r) =>
+    parseRetentionCurve(r.retention_graph)
+  );
+
+  for (let idx = 0; idx < reels.length; idx++) {
+    const r = reels[idx];
+    const curve = parsedCurves[idx];
     const views = r.total_views || 0;
     if (Object.keys(curve).length === 0 || views === 0) continue;
     for (const sec of retentionPoints) {
@@ -202,22 +215,24 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
   // Average retention curve across all reels, normalized to percent of
   // starting viewers. Good for visualizing drop-off shape independent of
   // volume. Only include seconds present in at least one reel.
+  // P3: uses the pre-parsed `parsedCurves` array instead of re-parsing the
+  // retention JSON 60× per reel. Same result, ~60× fewer JSON.parse calls.
   const secondsToAverage = Array.from({ length: 60 }, (_, i) => i);
-  const avgCurve: { label: string; value: number }[] = [];
+  const avgCurveLine: { date: string; value: number }[] = [];
   for (const sec of secondsToAverage) {
     let weighted = 0;
     let denom = 0;
-    for (const r of reels) {
-      const curve = parseRetentionCurve(r.retention_graph);
+    for (let idx = 0; idx < reels.length; idx++) {
+      const curve = parsedCurves[idx];
       if (Object.keys(curve).length === 0) continue;
       const frac = curve[sec];
       if (frac === undefined) continue;
-      const w = r.total_views || 0;
+      const w = reels[idx].total_views || 0;
       weighted += frac * w;
       denom += w;
     }
     if (denom > 0) {
-      avgCurve.push({ label: `${sec}s`, value: Number(((weighted / denom) * 100).toFixed(1)) });
+      avgCurveLine.push({ date: `${sec}s`, value: Number(((weighted / denom) * 100).toFixed(1)) });
     }
   }
 
@@ -293,21 +308,21 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
         <Card className="!p-4">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">15s Retention</div>
           <div className="text-xl font-bold text-brand-green mt-1">{total15s.toLocaleString()}</div>
-          <div className="text-[10px] text-slate-400 mt-0.5">
+          <div className="text-[10px] text-slate-500 mt-0.5">
             {denom15s ? ((total15s / denom15s) * 100).toFixed(1) : "0"}% · {total15sBucket > 0 ? "Meta bucket" : "derived from curve"}
           </div>
         </Card>
         <Card className="!p-4">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">30s Retention</div>
           <div className="text-xl font-bold text-brand-pink mt-1">{total30s.toLocaleString()}</div>
-          <div className="text-[10px] text-slate-400 mt-0.5">
+          <div className="text-[10px] text-slate-500 mt-0.5">
             {denom30s ? ((total30s / denom30s) * 100).toFixed(1) : "0"}% · {total30sBucket > 0 ? "Meta bucket" : "derived from curve"}
           </div>
         </Card>
         <Card className="!p-4">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Replay Rate</div>
           <div className="text-xl font-bold text-brand-purple mt-1">{replayRate.toFixed(1)}%</div>
-          <div className="text-[10px] text-slate-400 mt-0.5">
+          <div className="text-[10px] text-slate-500 mt-0.5">
             {totalReplays.toLocaleString()} replays / {totalPlays.toLocaleString()} plays
           </div>
         </Card>
@@ -329,11 +344,19 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
           title="Average Retention Curve"
           kind="derived"
           subtitle="% of starting audience still watching, by second (0-60s)"
-          definition="View-weighted average of every reel's retention curve. Each point shows what % of starting viewers were still watching at that second. A healthy curve flattens after 10-15s instead of continuing to drop."
+          definition="View-weighted average of every reel's retention curve. Each point shows what % of starting viewers were still watching at that second. A healthy curve flattens after 10-15s instead of continuing to drop. Rendered as a line because retention is a continuous process — 60 individual bars made the drop-off shape harder to read than a single sweeping curve."
           sampleSize={`${totalReels} reels`}
           caption="Look for the inflection point. A cliff before 3s = weak hook. A cliff at 6s = mid-hook works but promise isn't paying off. Long tail past 30s = sticky content."
         >
-          <BarChartBase data={avgCurve} valueFormat="percent1" metricName="% still watching" valueAxisLabel="% still watching" categoryAxisLabel="Second" />
+          <TrendChart
+            data={avgCurveLine}
+            variant="line"
+            color="#ec4899"
+            valueFormat="percent1"
+            metricName="% still watching"
+            valueAxisLabel="% still watching"
+            xAxisLabel="Second"
+          />
         </ChartCard>
       </div>
 

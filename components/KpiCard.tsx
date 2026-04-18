@@ -8,7 +8,7 @@ type Props = {
 };
 
 export default function KpiCard({ label, value, delta, sublabel }: Props) {
-  const deltaColor = delta === undefined ? "" : delta > 0 ? "text-brand-green" : delta < 0 ? "text-brand-red" : "text-slate-400";
+  const deltaColor = delta === undefined ? "" : delta > 0 ? "text-brand-green" : delta < 0 ? "text-brand-red" : "text-slate-500";
   const deltaText = delta !== undefined ? `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%` : null;
   return (
     <Card className="!p-5">
@@ -21,7 +21,7 @@ export default function KpiCard({ label, value, delta, sublabel }: Props) {
       </div>
       <div className="mt-2 min-h-[18px] text-xs break-words">
         {deltaText && <span className={deltaColor}>{deltaText}</span>}
-        {sublabel && <span className="text-slate-400 ml-1.5">{sublabel}</span>}
+        {sublabel && <span className="text-slate-500 ml-1.5">{sublabel}</span>}
       </div>
     </Card>
   );

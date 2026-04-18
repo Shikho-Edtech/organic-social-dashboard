@@ -1,5 +1,65 @@
 # Learnings
 
+## 2026-04-18 — `JSON.parse` inside a nested loop is silently O(n²) expensive
+
+Reels page aggregated an average retention curve by iterating every reel,
+calling `parseRetentionCurve(r.retention_graph)` inside the loop, and
+inside THAT loop iterating every point of the curve. 60 reels × one
+`JSON.parse` of a 60-point string per reel = 60 parses per render. Fine.
+But the earlier implementation ALSO parsed once per point inside the
+chart loop — so for a 60-reel × 60-point grid the parse ran ~3,600
+times. Nothing breaks — it just quietly takes 40ms on every server
+render and scales quadratically with reel count.
+
+Fix: parse once at the top of the page into
+`const parsedCurves: Record<number, number>[] = reels.map(...);`
+then index `parsedCurves[idx]` inside the loop. 60× → 1× parse per reel,
+and the work the loop does is now pure number math.
+
+Rule: **any `JSON.parse` or `new Date(...)` or regex inside a render
+loop is a smell.** Hoist it to a pre-computed array before the loop
+runs. Next.js's `force-dynamic` means this cost is paid on every
+request, not amortized via cache — so the savings are real.
+
+## 2026-04-18 — Chart palette's first two colors dominate brand perception
+
+When a dashboard uses BarChart/Donut across 8 pages and the palettes all
+start with `#6366f1` (generic indigo) and `#f59e0b` (orange), the brand
+never actually lands visually — users see "generic chart colors." The
+fix isn't adding more brand color everywhere; it's making sure **the
+first two slots of the default palette are the brand indigo + pink**
+(`#4f46e5`, `#ec4899`). Almost every chart has ≤2 series, and the first
+series is the one the eye tracks. Two slot swaps in `BarChart.tsx` +
+`Donut.tsx` now do more brand work than any amount of accent tinting
+in the chrome.
+
+Corollary: the brand tint should ALSO live in the Nav active tab
+(highest-frequency UI element), not just charts. Done in the same
+batch.
+
+## 2026-04-18 — Donut is wrong for ≥5 similarly-sized slices
+
+Confirmed by Cleveland & McGill (1984): position on a common scale
+(bars) is perceived ~3× more accurately than angle (pie/donut) for
+magnitude comparisons. The Engagement page had a 6-slice reaction
+donut where the 2nd–5th slices were all 10–20%. Readers physically
+can't rank them without reading each label. Switching to a horizontal
+bar chart sorted desc removed the ambiguity in a single edit.
+
+Rule: **donut ≤ 3 slices, or when "part of whole = 100%" is the
+primary message.** ≥ 4 or needing rank-order → bars, always.
+
+## 2026-04-18 — `new Date().getDay()` is not "today" for a server component
+
+`force-dynamic` pages run on the server, so `new Date().getDay()`
+returns the server's TZ weekday — which, on Vercel, can be any of
+several regions. The fix is `Intl.DateTimeFormat("en-US", { weekday:
+"long", timeZone: "Asia/Dhaka" })` — always correct for the audience.
+Cheap: one `Intl` call per render, no external dep.
+
+Rule: **never use raw `Date` weekday/hour for audience-facing "now"
+in a server component.** Always pin the time zone.
+
 ## 2026-04-18 — `justify-between` + `flex-wrap` makes alignment content-dependent
 
 When you put `flex justify-between flex-wrap` on a row with two items, the

@@ -71,7 +71,7 @@ export default function DateRangePicker() {
           <line x1="3" y1="10" x2="21" y2="10"></line>
         </svg>
         <span className="font-medium">{displayLabel}</span>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`text-slate-400 transition-transform ${open ? "rotate-180" : ""}`}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`text-slate-500 transition-transform ${open ? "rotate-180" : ""}`}>
           <polyline points="6 9 12 15 18 9"></polyline>
         </svg>
       </button>
@@ -110,7 +110,7 @@ export default function DateRangePicker() {
                 onChange={(e) => setStart(e.target.value)}
                 className="flex-1 px-2 py-1 rounded-md text-xs border border-slate-200 bg-white text-slate-700 focus:outline-none focus:border-brand-shikho-indigo"
               />
-              <span className="text-xs text-slate-400">to</span>
+              <span className="text-xs text-slate-500">to</span>
               <input
                 type="date"
                 value={end}

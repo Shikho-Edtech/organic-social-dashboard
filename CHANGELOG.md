@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-04-18 — Batch 1 foundation pass (WCAG AA, loading/error, brand palette, Strategy hero, Plan today marker)
+
+First of three design-roadmap batches. Foundation-level polish that every
+subsequent page inherits. WCAG AA contrast bumped across 13 files
+(text-slate-400 → 500, Recharts ticks slate-400 → slate-500), a global
+focus-visible ring added via `@layer base` so every focusable element shows
+a 2px indigo outline on keyboard traversal, and the first-ever
+`app/loading.tsx` + `app/error.tsx` (skeleton shell + friendly error card
+with a reset button and error.digest reference). Brand tint now lives in
+the active Nav tab and leads the BarChart + Donut palettes (indigo →
+pink → orange). Strategy's weekly verdict got a hero redesign: bigger
+headline (`text-2xl lg:text-4xl`), gradient blur bloom, explicit "Read full
+verdict / Collapse" CTA with rotating chevron. Plan auto-opens today's
+slot in Asia/Dhaka time with a pulsing pink "Today" pill and indigo ring;
+chevrons are now a single downward pattern everywhere they appear.
+Engagement's 6-slice donut became a horizontal bar chart (Cleveland &
+McGill — position beats angle for magnitude); Reels' average retention is
+now a line chart (TrendChart) rather than a bar-per-second wall.
+Performance: retention curves are parsed once at page load instead of
+~60× per reel. Mobile: Explore's filter toolbar stacks cleanly at 360px
+with 44×44 tap targets. Card no longer shows the "Meta data / AI-classified
+/ Derived" text pill — kind is now conveyed by the left-border color alone
+(+ `data-kind` attribute for tooling), which was visual noise on a
+6-KPI Overview grid. Build passes (~30s, 13 routes compiled).
+
 ## 2026-04-18 — Staleness banner on Strategy + Plan (Day 2O, dashboard side)
 
 Strategy and Plan pages now show an amber (7–14d / fallback) or rose

@@ -136,12 +136,12 @@ export default function LoginPage() {
             {loading ? "Signing in..." : "Sign in"}
           </button>
 
-          <div className="mt-8 pt-6 border-t border-slate-200 space-y-2 text-xs text-slate-400 leading-relaxed">
+          <div className="mt-8 pt-6 border-t border-slate-200 space-y-2 text-xs text-slate-500 leading-relaxed">
             <div>
-              <span className="font-semibold text-slate-500">What lives here:</span> Overview, Trends, Engagement, Timing, Reels, Strategy, Plan, Explore.
+              <span className="font-semibold text-slate-700">What lives here:</span> Overview, Trends, Engagement, Timing, Reels, Strategy, Plan, Explore.
             </div>
             <div>
-              <span className="font-semibold text-slate-500">Times:</span> Bangladesh Time (UTC+6) throughout.
+              <span className="font-semibold text-slate-700">Times:</span> Bangladesh Time (UTC+6) throughout.
             </div>
           </div>
         </form>

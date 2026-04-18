@@ -20,7 +20,11 @@ type Props = {
   showPercent?: boolean;
 };
 
-const PALETTE = ["#06b6d4", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#3b82f6", "#14b8a6", "#ef4444", "#6366f1", "#84cc16", "#f97316", "#a78bfa"];
+// Palette ordered to lead with brand: Shikho indigo + pink first so 2-3 bar
+// charts land on brand colours without requiring `color={}` overrides.
+// Secondary tones follow in a perceptually-distinct sequence that avoids
+// adjacent hues blending into each other.
+const PALETTE = ["#4f46e5", "#ec4899", "#f59e0b", "#06b6d4", "#10b981", "#8b5cf6", "#3b82f6", "#14b8a6", "#ef4444", "#84cc16", "#f97316", "#a78bfa"];
 
 function makeFormatter(spec?: FormatSpec): (v: number) => string {
   if (spec === "percent") return (v) => v + "%";

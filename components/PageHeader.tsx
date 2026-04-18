@@ -29,7 +29,7 @@ export default function PageHeader({ title, subtitle, dateLabel, showPicker = tr
           <div className="flex flex-col items-end gap-2 self-end sm:self-auto">
             <DateRangePicker />
             <div className="text-xs text-slate-500">{dateLabel}</div>
-            <div className="text-[10px] text-slate-400">Rendered {renderedAt} BDT</div>
+            <div className="text-[10px] text-slate-500">Rendered {renderedAt} BDT</div>
           </div>
         )}
       </div>

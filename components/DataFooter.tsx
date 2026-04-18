@@ -1,6 +1,6 @@
 export default function DataFooter() {
   return (
-    <footer className="max-w-7xl mx-auto px-6 pb-8 pt-2 text-xs text-slate-400">
+    <footer className="max-w-7xl mx-auto px-6 pb-8 pt-2 text-xs text-slate-500">
       <div className="border-t border-slate-200 pt-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
           <div className="flex items-center gap-1.5">

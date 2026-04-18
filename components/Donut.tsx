@@ -1,7 +1,10 @@
 "use client";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
-const PALETTE = ["#06b6d4", "#f59e0b", "#10b981", "#ec4899", "#8b5cf6", "#3b82f6", "#14b8a6", "#ef4444"];
+// Palette ordered to lead with brand: Shikho indigo + pink first so single-
+// slice / 2-slice charts carry brand identity without extra config. Secondary
+// colours follow in a perceptually-distinct sequence.
+const PALETTE = ["#4f46e5", "#ec4899", "#f59e0b", "#06b6d4", "#10b981", "#8b5cf6", "#14b8a6", "#ef4444"];
 
 type FormatSpec = "number" | "percent" | "percent1";
 
@@ -60,7 +63,7 @@ export default function Donut({ data, height = 220, valueFormat, metricName, sho
           formatter={(value: string) => {
             const entry = data.find((d) => d.label === value);
             const share = entry && total > 0 ? ` · ${pct(entry.value).toFixed(1)}%` : "";
-            return <span className="text-xs text-slate-600">{value}<span className="text-slate-400">{share}</span></span>;
+            return <span className="text-xs text-slate-600">{value}<span className="text-slate-500">{share}</span></span>;
           }}
         />
       </PieChart>

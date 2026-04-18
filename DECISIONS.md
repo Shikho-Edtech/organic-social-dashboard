@@ -1,5 +1,47 @@
 # Decisions
 
+## 2026-04-18 — Donut → horizontal bar for Engagement's reaction breakdown
+
+The 6-slice donut on Engagement broke Cleveland & McGill's perception
+hierarchy: people judge position on a common axis (bars) ~3× more
+accurately than angle (pie/donut). Six similarly-sized slices was the
+worst case — readers couldn't tell which reaction was second-vs-third
+without reading each legend label.
+
+Switched to a horizontal bar (sorted desc, `colorByIndex`, `showPercent`)
+with dynamic height of `max(220, rows * 36)`. Position is now the
+encoding; color is secondary. Kept Donut.tsx in place for two-slice or
+explicitly-part-of-whole visuals where the "whole = 100%" framing
+matters more than rank-order.
+
+## 2026-04-18 — "Today" detection in Asia/Dhaka, not via `new Date().getDay()`
+
+Plan runs server-side (`force-dynamic`). If Vercel's build region shifts
+to UTC (or any non-BDT region), `new Date().getDay()` returns the
+server's weekday, not the user's. On a Friday evening BDT that's a
+Thursday or a Saturday on the server — the wrong day gets auto-opened.
+
+Used `Intl.DateTimeFormat("en-US", { weekday: "long", timeZone: "Asia/Dhaka" })`
+which is always right for the primary audience. If we ever add a user
+selector, the helper becomes `todayInZone(tz)` — trivial to extend.
+
+## 2026-04-18 — Removed Card's text kind badge, kept left-border + data-kind
+
+Overview used to show a small "Meta data / AI-classified / Derived" pill
+on every KPI card. On a 5-up Overview grid that was 5 pills repeating
+essentially "where this number came from" which most viewers don't
+check per-card. The left-border color already encodes kind for the
+1-5% of power users who care. Added `data-kind` to the Card's inner
+div so tooling, tests, or future UIs (filter by kind, legend) can
+discriminate without the visual badge.
+
+Tradeoff: brand-new users no longer see the kind spelled out. Acceptable
+because (a) the data footer already explains sources per-card, (b) the
+audit found this was "6 pills saying three things that are already
+color-coded" style noise, (c) the rule from LEARNINGS stays: if you
+need to re-add, do it as an `<abbr>` or hover-only affordance, not a
+default-rendered pill.
+
 ## 2026-04-18 — Project-level CLAUDE.md over per-commit mobile reminders
 
 User asked: "how do we ensure future updates are mobile-responsive?" Three

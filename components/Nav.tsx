@@ -80,7 +80,7 @@ export default function Nav() {
                 href={t.href}
                 className={`px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
                   active
-                    ? "border-slate-900 text-slate-900"
+                    ? "border-brand-shikho-indigo text-brand-shikho-indigo"
                     : "border-transparent text-slate-500 hover:text-slate-800"
                 }`}
               >

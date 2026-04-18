@@ -31,6 +31,20 @@ const dayAccent: Record<string, string> = {
   Sunday:    "from-violet-500/90 to-indigo-500/80",
 };
 
+// Resolve today's day-of-week in Asia/Dhaka (BDT) on every render. Server
+// Components get a fresh render per request (we set dynamic = "force-dynamic"
+// below), so this is always "right now" for the viewer in BDT regardless of
+// where the runtime happens to live. We format and parse the long weekday
+// rather than calling Date#getDay on the server-local time, which would drift
+// whenever Vercel's runtime isn't on the UTC boundary the user expects.
+function todayInDhaka(): string {
+  const formatted = new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    timeZone: "Asia/Dhaka",
+  }).format(new Date());
+  return formatted;
+}
+
 export default async function PlanPage() {
   const [calendar, runStatus] = await Promise.all([getCalendar(), getRunStatus()]);
   const staleness = computeStaleness("calendar", runStatus);
@@ -40,6 +54,7 @@ export default async function PlanPage() {
   }
   const daysOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
   const orderedDays = daysOrder.filter((d) => byDay[d]?.length);
+  const today = todayInDhaka();
 
   return (
     <div>
@@ -57,6 +72,7 @@ export default async function PlanPage() {
         {orderedDays.map((day) => {
           const slots = byDay[day];
           const accent = dayAccent[day] || "from-slate-500 to-slate-400";
+          const isToday = day === today;
 
           // Tally formats for the preview chip row on the day header
           const formatTally: Record<string, number> = {};
@@ -67,20 +83,40 @@ export default async function PlanPage() {
           const formatEntries = Object.entries(formatTally).sort((a, b) => b[1] - a[1]);
 
           return (
-            <details key={day} className="group bg-white border border-slate-200 rounded-xl overflow-hidden">
+            // Today's card: expanded by default via `open` + gets a stronger
+            // indigo ring so it stands out from the collapsed six others.
+            // The ring is offset so it doesn't clash with the card's own
+            // rounded border on white backgrounds.
+            <details
+              key={day}
+              open={isToday}
+              className={`group bg-white border border-slate-200 rounded-xl overflow-hidden ${
+                isToday ? "ring-2 ring-brand-shikho-indigo ring-offset-2 ring-offset-slate-50" : ""
+              }`}
+            >
               <summary className="list-none cursor-pointer">
                 <div className={`relative px-4 sm:px-5 py-4 bg-gradient-to-r ${accent} text-white transition-opacity group-hover:opacity-95`}>
                   {/* Mobile: chevron + day + count on row 1, chips on row 2.
                       sm+: single row with chips flexing in the middle. */}
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                     <div className="flex items-center gap-3 sm:gap-4">
-                      {/* Chevron — rotates on open */}
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-white/80 transition-transform group-open:rotate-90">
-                        <polyline points="9 18 15 12 9 6"></polyline>
+                      {/* Chevron — down arrow flips 180° on open. Standardized
+                          across Plan + Strategy disclosures so the affordance
+                          is consistent everywhere in the app. */}
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-white/80 transition-transform group-open:rotate-180">
+                        <polyline points="6 9 12 15 18 9"></polyline>
                       </svg>
                       {/* Day + date */}
                       <div className="flex-shrink-0">
-                        <div className="text-lg font-bold leading-tight">{day}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="text-lg font-bold leading-tight">{day}</div>
+                          {isToday && (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider bg-white text-slate-900 rounded px-1.5 py-0.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-brand-shikho-pink animate-pulse" />
+                              Today
+                            </span>
+                          )}
+                        </div>
                         <div className="text-[11px] font-medium uppercase tracking-wider text-white/80 mt-0.5">{slots[0]?.date}</div>
                       </div>
                       {/* Post count — on mobile it sits top-right next to date */}
@@ -106,12 +142,17 @@ export default async function PlanPage() {
                 </div>
               </summary>
 
-              {/* Slot briefs — only visible when day is expanded */}
-              <div className="divide-y divide-slate-100">
+              {/* Slot briefs — only visible when day is expanded.
+                  Alternating row shading + stronger divider pair up to give
+                  each slot a visually distinct lane. `divide-slate-100` alone
+                  washed out against the white card; `divide-slate-200` plus
+                  `odd:bg-slate-50/40` gives a subtle zebra that reads clearly
+                  on mobile without adding visual weight on desktop. */}
+              <div className="divide-y divide-slate-200">
                 {slots.map((slot, i) => {
                   const fc = formatColors[slot.format] || formatColors.Status;
                   return (
-                    <div key={i} className="relative px-4 sm:px-5 py-5 hover:bg-slate-50/60 transition-colors">
+                    <div key={i} className="relative px-4 sm:px-5 py-5 odd:bg-slate-50/40 hover:bg-slate-50/80 transition-colors">
                       <div className={`absolute left-0 top-0 bottom-0 w-1 ${fc.stripe}`} />
                       {/* Mobile: time + format row ABOVE content. sm+: time+format LEFT of content,
                           with the time pill in a fixed-width column so all slots align vertically. */}
@@ -140,7 +181,7 @@ export default async function PlanPage() {
                                 <span className="text-brand-shikho-orange font-medium">
                                   {slot.spotlight_name || slot.featured_entity}
                                   {slot.spotlight_type && slot.spotlight_type !== "None" && (
-                                    <span className="text-slate-400 font-normal"> ({slot.spotlight_type})</span>
+                                    <span className="text-slate-500 font-normal"> ({slot.spotlight_type})</span>
                                   )}
                                 </span>
                               </>
@@ -166,13 +207,13 @@ export default async function PlanPage() {
                           <div className="mt-3 space-y-1.5">
                             {slot.visual_direction && (
                               <div className="flex gap-2 text-xs">
-                                <span className="flex-shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-400 w-16">Visual</span>
+                                <span className="flex-shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-500 w-16">Visual</span>
                                 <span className="text-slate-600 leading-relaxed">{slot.visual_direction}</span>
                               </div>
                             )}
                             {slot.cta && (
                               <div className="flex gap-2 text-xs">
-                                <span className="flex-shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-400 w-16">CTA</span>
+                                <span className="flex-shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-500 w-16">CTA</span>
                                 <span className="text-slate-600 leading-relaxed">{slot.cta}</span>
                               </div>
                             )}
@@ -196,12 +237,13 @@ export default async function PlanPage() {
                             </div>
                           )}
 
-                          {/* Rationale disclosure */}
+                          {/* Rationale disclosure — same chevron pattern as
+                              the day cards: down-arrow flips 180° on open. */}
                           {slot.rationale && (
                             <details className="group/r mt-3">
                               <summary className="list-none cursor-pointer inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-800">
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-open/r:rotate-90">
-                                  <polyline points="9 18 15 12 9 6"></polyline>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-open/r:rotate-180">
+                                  <polyline points="6 9 12 15 18 9"></polyline>
                                 </svg>
                                 Why this post
                               </summary>
@@ -219,7 +261,7 @@ export default async function PlanPage() {
         })}
       </div>
 
-      <div className="text-center text-xs text-slate-400 py-6">Edit slots in the Content_Calendar tab of the Google Sheet. Changes reflect here within 5 minutes.</div>
+      <div className="text-center text-xs text-slate-500 py-6">Edit slots in the Content_Calendar tab of the Google Sheet. Changes reflect here within 5 minutes.</div>
     </div>
   );
 }

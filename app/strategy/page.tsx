@@ -130,41 +130,40 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
       <StalenessBanner info={staleness} artifact="diagnosis" />
       <PageHeader title="Strategy" subtitle="Claude's diagnosis and recommended actions" dateLabel={`${range.label} · Funnel charts filtered; verdict = latest weekly snapshot`} />
 
-      {/* Weekly verdict — hero, click to reveal the full sentence */}
+      {/* Weekly verdict — hero. Big gradient block, headline reads as the
+          single most important sentence on the page. Click anywhere on the
+          card to reveal the full sentence + calendar alert. The mobile
+          `line-clamp-1` on the headline keeps the hero from occupying the
+          entire first screen on a phone; tapping opens the full text. */}
       {diagnosis?.headline && (
         <details className="group mb-6">
           <summary className="list-none cursor-pointer">
-            <Card className="!p-0 overflow-hidden hover:border-brand-shikho-pink/30 transition-colors">
-              <div className="flex">
+            <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-brand-shikho-pink/10 via-brand-shikho-orange/5 to-brand-shikho-indigo/10 hover:border-brand-shikho-pink/40 hover:shadow-md transition-all">
+              {/* Decorative gradient bloom in the corner — subtle, adds depth */}
+              <div aria-hidden className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-brand-shikho-pink/10 blur-3xl" />
+              <div aria-hidden className="absolute -bottom-16 -left-16 w-56 h-56 rounded-full bg-brand-shikho-indigo/10 blur-3xl" />
+              <div className="relative flex">
                 <div className="w-1.5 bg-gradient-to-b from-brand-shikho-pink via-brand-shikho-orange to-brand-shikho-indigo" />
-                <div className="flex-1 p-6">
+                <div className="flex-1 p-5 sm:p-7">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full bg-slate-900 text-white">
+                    <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-slate-900 text-white">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                       </svg>
                       Weekly verdict
                     </span>
-                    <span className="text-[10px] text-slate-400">{diagnosis.week_ending ? `week ending ${diagnosis.week_ending}` : "latest weekly run"}</span>
-                    {verdictSplit.body && (
-                      <span className="ml-auto inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400 group-open:text-slate-600">
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-open:rotate-90">
-                          <polyline points="9 18 15 12 9 6"></polyline>
-                        </svg>
-                        {verdictSplit.body ? "more" : ""}
-                      </span>
-                    )}
+                    <span className="text-[11px] text-slate-600">{diagnosis.week_ending ? `week ending ${diagnosis.week_ending}` : "latest weekly run"}</span>
                   </div>
-                  <div className="text-lg lg:text-xl text-slate-700 font-medium mt-3 leading-snug">
+                  <div className="text-2xl lg:text-4xl text-slate-900 font-bold mt-4 leading-tight tracking-tight line-clamp-1 group-open:line-clamp-none">
                     <HeadlineWithMetrics text={verdictSplit.head} metricClass="text-brand-shikho-pink" />
                   </div>
                   {verdictSplit.body && (
-                    <div className="mt-3 text-sm text-slate-600 leading-relaxed hidden group-open:block">
+                    <div className="mt-4 text-sm sm:text-[15px] text-slate-700 leading-relaxed hidden group-open:block">
                       {verdictSplit.body}
                     </div>
                   )}
                   {diagnosis.exam_alert && (
-                    <div className="mt-3 hidden group-open:flex items-start gap-2 bg-brand-purple/5 border border-brand-purple/20 rounded-md p-3">
+                    <div className="mt-4 hidden group-open:flex items-start gap-2 bg-brand-purple/5 border border-brand-purple/20 rounded-md p-3">
                       <span className="flex-shrink-0 mt-0.5 text-brand-purple">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -179,9 +178,21 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
                       </div>
                     </div>
                   )}
+                  {/* Explicit CTA so users know the card is expandable. Text
+                      flips when open. Chevron is the standard down→up on
+                      open pattern used across the rest of the dashboard. */}
+                  {(verdictSplit.body || diagnosis.exam_alert) && (
+                    <div className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-brand-shikho-indigo group-hover:text-brand-shikho-blue">
+                      <span className="group-open:hidden">Read full verdict</span>
+                      <span className="hidden group-open:inline">Collapse</span>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-open:rotate-180">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                      </svg>
+                    </div>
+                  )}
                 </div>
               </div>
-            </Card>
+            </div>
           </summary>
         </details>
       )}
@@ -222,7 +233,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
               </svg>
             </div>
             <h3 className="text-base font-semibold text-slate-800">Key Findings</h3>
-            <span className="text-[10px] text-slate-400 uppercase tracking-wider">{whatHappened.length} · click any to expand</span>
+            <span className="text-[10px] text-slate-500 uppercase tracking-wider">{whatHappened.length} · click any to expand</span>
           </div>
           <div className="grid md:grid-cols-2 gap-3">
             {whatHappened.map((item, i) => {
@@ -239,7 +250,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
                         <HeadlineWithMetrics text={head} metricClass="text-brand-cyan" />
                       </div>
                       {hasDetail && (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-slate-400 mt-1 transition-transform group-open:rotate-180">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-slate-500 mt-1 transition-transform group-open:rotate-180">
                           <polyline points="6 9 12 15 18 9"></polyline>
                         </svg>
                       )}
@@ -266,7 +277,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
               </svg>
             </div>
             <h3 className="text-base font-semibold text-slate-800">Top Performers</h3>
-            <span className="text-[10px] text-slate-400 uppercase tracking-wider">click to expand</span>
+            <span className="text-[10px] text-slate-500 uppercase tracking-wider">click to expand</span>
           </div>
           <div className="space-y-2.5">
             {topPerformers.length === 0 && (
@@ -289,7 +300,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
                         <HeadlineWithMetrics text={head} metricClass="text-brand-green" />
                       </div>
                       {hasDetail && (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-slate-400 transition-transform group-open:rotate-180">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-slate-500 transition-transform group-open:rotate-180">
                           <polyline points="6 9 12 15 18 9"></polyline>
                         </svg>
                       )}
@@ -302,7 +313,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
                       )}
                       {tp.why_it_worked && (
                         <div className="pl-9">
-                          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Why it worked</div>
+                          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Why it worked</div>
                           <div className="text-xs text-slate-600 leading-relaxed">{tp.why_it_worked}</div>
                         </div>
                       )}
@@ -336,7 +347,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
               </svg>
             </div>
             <h3 className="text-base font-semibold text-slate-800">Underperformers</h3>
-            <span className="text-[10px] text-slate-400 uppercase tracking-wider">click to expand</span>
+            <span className="text-[10px] text-slate-500 uppercase tracking-wider">click to expand</span>
           </div>
           <div className="space-y-2.5">
             {underperformers.length === 0 && (
@@ -359,7 +370,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
                         <HeadlineWithMetrics text={head} metricClass="text-brand-red" />
                       </div>
                       {hasDetail && (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-slate-400 transition-transform group-open:rotate-180">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-slate-500 transition-transform group-open:rotate-180">
                           <polyline points="6 9 12 15 18 9"></polyline>
                         </svg>
                       )}
@@ -372,7 +383,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
                       )}
                       {up.why_it_failed && (
                         <div className="pl-9">
-                          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Why it missed</div>
+                          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Why it missed</div>
                           <div className="text-xs text-slate-600 leading-relaxed">{up.why_it_failed}</div>
                         </div>
                       )}
@@ -411,7 +422,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
               </svg>
             </div>
             <h3 className="text-base font-semibold text-slate-800">Watch-outs</h3>
-            <span className="text-[10px] text-slate-400 uppercase tracking-wider">{watchOuts.length} · click any to expand</span>
+            <span className="text-[10px] text-slate-500 uppercase tracking-wider">{watchOuts.length} · click any to expand</span>
           </div>
           <div className="grid md:grid-cols-2 gap-3">
             {watchOuts.map((item, i) => {

@@ -1,0 +1,763 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Design &amp; UX Audit — Organic Social Dashboard</title>
+<style>
+  :root {
+    --bg: #0b1220;
+    --card: #111a2e;
+    --card-2: #162038;
+    --line: #1f2a44;
+    --text: #e2e8f0;
+    --text-2: #cbd5e1;
+    --muted: #94a3b8;
+    --muted-2: #64748b;
+    --brand-indigo: #7f85ff;
+    --brand-pink: #ff6ba4;
+    --brand-orange: #ffa348;
+    --brand-cyan: #4fd4e0;
+    --brand-green: #4ade80;
+    --brand-red: #f87171;
+    --brand-amber: #facc15;
+    --brand-violet: #a78bfa;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif; font-size: 15px; line-height: 1.55; }
+  main { max-width: 1080px; margin: 0 auto; padding: 48px 24px 120px; }
+  h1, h2, h3, h4 { margin: 0; font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; }
+  h1 { font-size: 40px; background: linear-gradient(90deg, var(--brand-indigo), var(--brand-pink) 60%, var(--brand-orange)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  h2 { font-size: 24px; margin: 48px 0 16px; color: #f8fafc; }
+  h3 { font-size: 17px; margin: 24px 0 10px; color: #e2e8f0; }
+  h4 { font-size: 14px; margin: 18px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+  p { margin: 10px 0; color: var(--text-2); }
+  a { color: var(--brand-indigo); }
+  code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 0.87em; background: rgba(127,133,255,0.12); color: #c7cbff; padding: 1px 6px; border-radius: 4px; }
+  hr { border: none; border-top: 1px solid var(--line); margin: 40px 0; }
+
+  .meta { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .subtitle { color: var(--muted-2); font-size: 16px; font-weight: 400; margin-top: 8px; }
+
+  .lede { background: linear-gradient(135deg, rgba(127,133,255,0.08), rgba(255,107,164,0.05)); border: 1px solid var(--line); border-radius: 14px; padding: 24px 28px; margin: 32px 0; }
+  .lede p { color: var(--text); font-size: 15.5px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  @media (max-width: 720px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; }
+  .card h3 { margin-top: 0; }
+  .card ol, .card ul { margin: 8px 0 0; padding-left: 20px; color: var(--text-2); }
+  .card li { margin: 6px 0; }
+  .card.strength { border-left: 3px solid var(--brand-green); }
+  .card.opportunity { border-left: 3px solid var(--brand-orange); }
+
+  .finding { background: var(--card); border: 1px solid var(--line); border-left-width: 3px; border-radius: 10px; padding: 16px 20px; margin: 12px 0; }
+  .finding.critical { border-left-color: var(--brand-red); }
+  .finding.major { border-left-color: var(--brand-orange); }
+  .finding.minor { border-left-color: var(--brand-amber); }
+  .finding.polish { border-left-color: var(--muted-2); }
+  .finding .head { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; margin-bottom: 6px; }
+  .finding .tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 2px 7px; border-radius: 4px; }
+  .tag.critical { background: rgba(248,113,113,0.12); color: var(--brand-red); }
+  .tag.major { background: rgba(251,146,60,0.12); color: var(--brand-orange); }
+  .tag.minor { background: rgba(250,204,21,0.12); color: var(--brand-amber); }
+  .tag.polish { background: rgba(100,116,139,0.16); color: var(--muted); }
+  .tag.effort { background: rgba(127,133,255,0.12); color: var(--brand-indigo); }
+  .finding .title { font-weight: 600; color: #f8fafc; font-size: 15px; }
+  .finding .row { margin: 4px 0; color: var(--text-2); font-size: 14px; }
+  .finding .row b { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.08em; margin-right: 6px; }
+
+  .page-card { background: var(--card-2); border: 1px solid var(--line); border-radius: 12px; padding: 22px 24px; margin: 16px 0; }
+  .page-card h3 { margin-top: 0; color: #f8fafc; font-size: 18px; }
+  .page-card .filepath { color: var(--muted-2); font-size: 12px; font-family: "SF Mono", monospace; margin-top: 2px; }
+  .page-card .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 14px; }
+  @media (max-width: 720px) { .page-card .cols { grid-template-columns: 1fr; gap: 12px; } }
+  .page-card h4 { margin: 0 0 6px; }
+  .page-card h4.good { color: var(--brand-green); }
+  .page-card h4.bad { color: var(--brand-orange); }
+  .page-card ul { margin: 0; padding-left: 18px; color: var(--text-2); font-size: 14px; }
+  .page-card ul li { margin: 3px 0; }
+  .page-card .opp { margin-top: 14px; padding: 10px 14px; background: rgba(127,133,255,0.08); border-left: 2px solid var(--brand-indigo); border-radius: 4px; font-size: 14px; color: var(--text); }
+  .page-card .opp b { color: var(--brand-indigo); }
+
+  table.roadmap { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  table.roadmap th, table.roadmap td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.roadmap th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; background: var(--card); }
+  table.roadmap td.n { color: var(--brand-indigo); font-weight: 600; font-variant-numeric: tabular-nums; width: 44px; }
+  table.roadmap td.eff { width: 60px; }
+  table.roadmap td.eff span { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; padding: 1px 6px; border-radius: 4px; }
+  .eff-s { background: rgba(74,222,128,0.12); color: var(--brand-green); }
+  .eff-m { background: rgba(255,163,72,0.12); color: var(--brand-orange); }
+  .eff-l { background: rgba(248,113,113,0.12); color: var(--brand-red); }
+  table.roadmap td.loc { font-family: "SF Mono", monospace; font-size: 12px; color: var(--muted); }
+  table.roadmap tr:hover { background: rgba(127,133,255,0.03); }
+
+  .handled { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px 22px; color: var(--muted); font-size: 13px; }
+  .handled ol { margin: 8px 0 0; padding-left: 20px; }
+  .handled li { margin: 4px 0; }
+  .handled b { color: var(--text-2); }
+
+  .nottouch { background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.18); border-radius: 10px; padding: 16px 22px; margin-top: 16px; }
+  .nottouch h4 { color: var(--brand-green); margin-bottom: 8px; }
+  .nottouch ul { margin: 0; padding-left: 18px; color: var(--text-2); font-size: 14px; }
+
+  details { background: var(--card); border: 1px solid var(--line); border-radius: 10px; margin: 12px 0; overflow: hidden; }
+  details summary { padding: 12px 20px; cursor: pointer; font-weight: 600; color: #f8fafc; display: flex; align-items: center; gap: 10px; }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::before { content: "›"; color: var(--brand-indigo); font-size: 20px; transition: transform 0.18s; display: inline-block; }
+  details[open] summary::before { transform: rotate(90deg); }
+  details .inner { padding: 0 22px 16px; }
+
+  .bottomline { background: linear-gradient(135deg, rgba(127,133,255,0.14), rgba(255,107,164,0.09)); border: 1px solid rgba(127,133,255,0.3); border-radius: 14px; padding: 24px 28px; margin: 32px 0; }
+  .bottomline p { color: var(--text); font-size: 15.5px; margin: 0; }
+  .bottomline b { color: #fff; }
+
+  footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--line); color: var(--muted-2); font-size: 13px; text-align: center; }
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <div class="meta">Independent Design &amp; UX Audit · 2026-04-18</div>
+  <h1>Organic Social Dashboard</h1>
+  <div class="subtitle">Heuristic evaluation, visual design review, accessibility assessment, and prioritized recommendations roadmap for web + mobile, pre- and post-login.</div>
+</header>
+
+<div class="lede">
+  <p>This is an internal analytics tool that has been iterated on thoughtfully and is well past scaffolding. The mobile-first rigor, the kind taxonomy (<code>observed</code> / <code>ai</code> / <code>derived</code>), the explicit sample-size badges, the adaptive min-N gating, and the tap-toggle InfoTooltip all show a team that takes data honesty seriously.</p>
+  <p><b>What it lacks is the polish layer that would make it feel like a product rather than a competent internal dashboard.</b> The visual system is functional but generic Tailwind slate-gray; the brand palette exists but only surfaces on login, the header, and a handful of KPI accents. Information architecture has eight pages for what is effectively one data source, with real overlap between Engagement / Timing / Strategy. Accessibility is below WCAG AA for at least six common text treatments.</p>
+  <p style="color: var(--muted);">The dashboard is trustworthy and functional. It is not yet opinionated.</p>
+</div>
+
+<h2>Top 5 strengths &amp; opportunities</h2>
+
+<div class="grid-2">
+  <div class="card strength">
+    <h3 style="color: var(--brand-green);">Strengths</h3>
+    <ol>
+      <li>Data provenance is treated as a first-class design element (kind prop, DataFooter, sample-size badges, definition tooltips on every chart). This is rare and good.</li>
+      <li>Mobile-first rules are real, not aspirational. Evidence of actual iteration after desktop-only regressions.</li>
+      <li>Plan page progressive disclosure (<code>&lt;details&gt;</code> per day with format chips peeking) is genuinely good UX. Native semantics, respects density.</li>
+      <li>Adaptive min-N gating on Timing and Engagement is intellectually honest. Prevents the "one viral dawn post wins Early" trap.</li>
+      <li>DateRangePicker and Explore filter toolbar are both clean, keyboard-dismissible, viewport-clamped. Better than most SaaS equivalents.</li>
+    </ol>
+  </div>
+  <div class="card opportunity">
+    <h3 style="color: var(--brand-orange);">Biggest opportunities</h3>
+    <ol>
+      <li><b>Accessibility below WCAG AA</b> in 40+ places. <code>text-slate-400</code> on white (2.85:1) used for real content. Focus rings missing from most interactive elements.</li>
+      <li><b>No loading or skeleton states.</b> Cold loads look broken for 300-1500ms.</li>
+      <li><b>Brand palette is under-deployed.</b> Dashboard feels like shadcn, not Shikho.</li>
+      <li><b>8 pages is too many.</b> Engagement / Timing / Strategy overlap. A 5-page IA would reduce cognitive load.</li>
+      <li><b>Strategy Weekly Verdict hero is visually underbuilt</b> for what's literally the most important content on the dashboard.</li>
+    </ol>
+  </div>
+</div>
+
+<hr>
+
+<h2>Prioritized roadmap</h2>
+<p>Top 20 items ordered by impact-to-effort ratio. Priorities 1-10 are all small-effort and together would visibly lift quality in under a day.</p>
+
+<table class="roadmap">
+  <thead>
+    <tr><th>#</th><th>Eff</th><th>Location</th><th>Recommendation</th></tr>
+  </thead>
+  <tbody>
+    <tr><td class="n">1</td><td class="eff"><span class="eff-s">S</span></td><td class="loc">globals.css + components</td><td>WCAG AA contrast fix: global replace <code>text-slate-400</code> → <code>text-slate-500</code> for content (~80 occurrences). Update Recharts axis tick fill <code>#94a3b8</code> → <code>#64748b</code>.</td></tr>
+    <tr><td class="n">2</td><td class="eff"><span class="eff-s">S</span></td><td class="loc">app/globals.css</td><td>Add base-layer <code>focus-visible</code> rule for buttons/links/summaries using <code>brand-shikho-indigo</code> ring.</td></tr>
+    <tr><td class="n">3</td><td class="eff"><span class="eff-s">S</span></td><td class="loc">app/error.tsx, app/loading.tsx</td><td>Create <code>error.tsx</code> and <code>loading.tsx</code> at app root with skeleton KPI + chart block + friendly error card.</td></tr>
+    <tr><td class="n">4</td><td class="eff"><span class="eff-s">S</span></td><td class="loc">components/Nav.tsx:81</td><td>Change desktop active-tab color to <code>border-brand-shikho-indigo text-brand-shikho-indigo</code> for brand consistency.</td></tr>
+    <tr><td class="n">5</td><td class="eff"><span class="eff-s">S</span></td><td class="loc">BarChart.tsx:23, Donut.tsx:4</td><td>Reorder PALETTE so shikho-indigo + pink are first. Change default bar color from cyan to shikho-indigo.</td></tr>
+    <tr><td class="n">6</td><td class="eff"><span class="eff-s">S</span></td><td class="loc">app/reels/page.tsx:336</td><td>Change Avg Retention Curve from bars to line chart (use <code>TrendChart variant="line"</code>). Retention is a continuous curve, not 60 bars.</td></tr>
+    <tr><td class="n">7</td><td class="eff"><span class="eff-s">S</span></td><td class="loc">app/engagement/page.tsx:214</td><td>Change 6-slice Engagement Breakdown donut to horizontal bar. Donut angle comparison fails past 3-4 slices.</td></tr>
+    <tr><td class="n">8</td><td class="eff"><span class="eff-s">S</span></td><td class="loc">components/Card.tsx:51</td><td>Remove kind text badge; keep only left-border color; document kinds once in DataFooter.</td></tr>
+    <tr><td class="n">9</td><td class="eff"><span class="eff-s">S</span></td><td class="loc">app/strategy/page.tsx:128</td><td>Redesign Weekly Verdict hero: bigger type, stronger gradient, explicit "Read full verdict" affordance.</td></tr>
+    <tr><td class="n">10</td><td class="eff"><span class="eff-s">S</span></td><td class="loc">app/plan/page.tsx</td><td>Auto-detect and visually mark "today" day-card (ring + expand by default).</td></tr>
+    <tr><td class="n">11</td><td class="eff"><span class="eff-m">M</span></td><td class="loc">all chart pages</td><td>Drop <code>colorByIndex</code> from value-comparison bar charts. Keep only for categorical cross-references.</td></tr>
+    <tr><td class="n">12</td><td class="eff"><span class="eff-m">M</span></td><td class="loc">app/layout.tsx + pages</td><td>Add <code>&lt;Suspense&gt;</code> around chart grids so KPI bar renders first. Pair with skeleton.</td></tr>
+    <tr><td class="n">13</td><td class="eff"><span class="eff-m">M</span></td><td class="loc">app/timing/page.tsx</td><td>Replace slot × day pair of bar charts with a single day-of-week × hour heatmap. Canonical viz for "when to post".</td></tr>
+    <tr><td class="n">14</td><td class="eff"><span class="eff-m">M</span></td><td class="loc">app/reels/page.tsx:385</td><td>Convert desktop <code>&lt;table&gt;</code> to mobile card-list below <code>md:</code> (mirror Explore Top 10 pattern).</td></tr>
+    <tr><td class="n">15</td><td class="eff"><span class="eff-m">M</span></td><td class="loc">Nav + IA</td><td>Merge Plan into Strategy as a "Next week" section. Consider merging Trends into Overview.</td></tr>
+    <tr><td class="n">16</td><td class="eff"><span class="eff-m">M</span></td><td class="loc">PageHeader.tsx + lib/sheets.ts</td><td>Rename "Rendered {timestamp}" → "Data as of {timestamp}" using actual Sheets fetch time.</td></tr>
+    <tr><td class="n">17</td><td class="eff"><span class="eff-m">M</span></td><td class="loc">ChartCard + chart components</td><td>Introduce <code>&lt;EmptyChart&gt;</code> component; wire via ChartCard prop; replace ad-hoc empty state divs.</td></tr>
+    <tr><td class="n">18</td><td class="eff"><span class="eff-m">M</span></td><td class="loc">app/engagement/page.tsx</td><td>Unify "Best X" KPI color strategy — either all shikho-indigo, or map to category-canonical colors.</td></tr>
+    <tr><td class="n">19</td><td class="eff"><span class="eff-l">L</span></td><td class="loc">overall</td><td>Establish a consistent page template (header → KPI strip → primary chart → 2-up secondary → detail) and rebuild each page to it.</td></tr>
+    <tr><td class="n">20</td><td class="eff"><span class="eff-l">L</span></td><td class="loc">layout + per-page</td><td>Real accessibility sweep: <code>aria-describedby</code> on InfoTooltip, keyboard-accessible chart data tables, escape-to-close on popovers.</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2>Detailed findings</h2>
+<p class="subtitle" style="font-size: 14px;">Grouped by theme. Severity color-coded on the left. Click a section to expand.</p>
+
+<details open>
+  <summary>Visual design &amp; aesthetics · 6 findings</summary>
+  <div class="inner">
+
+    <div class="finding major">
+      <div class="head"><span class="tag major">Major</span><span class="tag effort">M effort</span><span class="title">V1 — Brand palette is present but invisible in-product</span></div>
+      <div class="row"><b>What</b><code>tailwind.config.ts:18-23</code> defines <code>brand-shikho-indigo/blue/pink/orange</code>. They're used on login, Nav, a few Explore KPI texts, and Plan day gradients. The dashboard itself uses <code>brand-cyan/green/amber/purple</code> (generic) or slate. A user lands on Overview and sees zero Shikho branding except the top-left logo.</div>
+      <div class="row"><b>Why</b>The team invested in a brand identity and the dashboard doesn't cash in. Competing dashboards (Buffer, Meta Business Suite) have a distinct signature color for primary data — this one picks cyan.</div>
+      <div class="row"><b>Fix</b>Pick <code>brand-shikho-indigo</code> as the primary data color (reach trend, primary bars) and <code>brand-shikho-pink</code> as the accent. Reorder the PALETTE arrays in <code>BarChart.tsx:23</code> and <code>Donut.tsx:4</code>.</div>
+    </div>
+
+    <div class="finding major">
+      <div class="head"><span class="tag major">Major</span><span class="tag effort">S effort</span><span class="title">V2 — Typography hierarchy compresses at the bottom</span></div>
+      <div class="row"><b>What</b>Five distinct sizes below 14px: <code>text-xs</code>, <code>text-[11px]</code>, <code>text-[10px]</code>, <code>text-[9px]</code>, and <code>text-sm</code> used adjacent. Eye can't establish hierarchy.</div>
+      <div class="row"><b>Why</b>Visual noise; 9-10px fails AA contrast thresholds more aggressively.</div>
+      <div class="row"><b>Fix</b>Collapse to three small sizes: <code>text-xs</code> (12px) for labels, <code>text-[11px]</code> for eyebrow/uppercase. Drop <code>text-[10px]</code> and <code>text-[9px]</code> entirely. If a label doesn't fit at 11px it's too verbose.</div>
+    </div>
+
+    <div class="finding minor">
+      <div class="head"><span class="tag minor">Minor</span><span class="tag effort">S effort</span><span class="title">V3 — Kind badges compete with sample-size badges in ChartCard header</span></div>
+      <div class="row"><b>What</b><code>Card.tsx:51-68</code> has title + (i) + sample-size + kind all flex-wrapping on a narrow card. Four things compete for one row. Kind badge is smaller than sample-size badge — wrong visual weight.</div>
+      <div class="row"><b>Fix</b>Kind is already a left-border treatment. Remove the redundant kind text badge. Document kinds once in <code>DataFooter</code>.</div>
+    </div>
+
+    <div class="finding polish">
+      <div class="head"><span class="tag polish">Polish</span><span class="tag effort">S effort</span><span class="title">V4 — Inline SVGs inconsistent in stroke-width and size</span></div>
+      <div class="row"><b>What</b>Stroke widths range from 1.5 to 3.5 across the codebase. Sizes: 10/11/12/13/14/16 px all in play. Icons look hand-drawn, not designed.</div>
+      <div class="row"><b>Fix</b>Standardize: <code>strokeWidth="2"</code> ornamental (chevrons, info), <code>strokeWidth="2.5"</code> affordance (close, check-when-selected). Three sizes: 12, 14, 16.</div>
+    </div>
+
+    <div class="finding minor">
+      <div class="head"><span class="tag minor">Minor</span><span class="tag effort">S effort</span><span class="title">V5 — Spacing rhythm breaks between KPI strips and chart grids</span></div>
+      <div class="row"><b>What</b>KPI rows use <code>mb-6</code>, chart grids <code>mb-4</code>, some have none. Gaps inconsistent as you scroll.</div>
+      <div class="row"><b>Fix</b>Page wrapper uses <code>space-y-6</code>. Remove per-grid margin-bottoms.</div>
+    </div>
+
+    <div class="finding polish">
+      <div class="head"><span class="tag polish">Polish</span><span class="tag effort">M effort</span><span class="title">V6 — Cards have no visual family</span></div>
+      <div class="row"><b>What</b>Every card is <code>bg-white border border-slate-200 rounded-xl p-6</code>. No shadow, no hover state, no subtle gradient. Flatness reads as "not cared about".</div>
+      <div class="row"><b>Fix</b>Add <code>shadow-sm</code> baseline. <code>hover:shadow-md hover:-translate-y-px</code> for clickable cards only. Consider <code>bg-gradient-to-br from-white to-slate-50/40</code> for KPI cards.</div>
+    </div>
+
+  </div>
+</details>
+
+<details>
+  <summary>UX heuristics (Nielsen's 10) · 7 findings</summary>
+  <div class="inner">
+
+    <div class="finding major">
+      <div class="head"><span class="tag major">Major</span><span class="tag effort">M effort</span><span class="title">U1 — No loading states anywhere</span></div>
+      <div class="row"><b>What</b>All 8 pages are Server Components with <code>revalidate = 300</code>. No <code>loading.tsx</code>, no skeletons, no Suspense.</div>
+      <div class="row"><b>Why</b>Nielsen #1 (visibility of system status). Cold load = blank white for 300-1500ms. Feels broken on slow mobile networks.</div>
+      <div class="row"><b>Fix</b>Add <code>app/loading.tsx</code> with skeleton KPI cards + skeleton chart block. Next.js renders it automatically.</div>
+    </div>
+
+    <div class="finding major">
+      <div class="head"><span class="tag major">Major</span><span class="tag effort">S effort</span><span class="title">U2 — Error recovery is absent</span></div>
+      <div class="row"><b>What</b>No <code>error.tsx</code> files. If <code>getPosts()</code> throws, user sees Next.js's default "Application error" screen. Already happened 2026-04-17 per CHANGELOG.</div>
+      <div class="row"><b>Fix</b>Add <code>app/error.tsx</code> with friendly card, "Try again" button calling <code>reset()</code>, tech hint about 5-min cache.</div>
+    </div>
+
+    <div class="finding minor">
+      <div class="head"><span class="tag minor">Minor</span><span class="tag effort">S effort</span><span class="title">U3 — Nav active state has no Shikho accent on desktop</span></div>
+      <div class="row"><b>What</b><code>Nav.tsx:81</code> — active tab is <code>border-slate-900 text-slate-900</code> (neutral). Mobile correctly uses brand indigo. Desktop is inconsistent.</div>
+      <div class="row"><b>Fix</b>One-line change to <code>border-brand-shikho-indigo text-brand-shikho-indigo</code>.</div>
+    </div>
+
+    <div class="finding minor">
+      <div class="head"><span class="tag minor">Minor</span><span class="tag effort">S effort</span><span class="title">U4 — "Rendered {timestamp}" appears on every page except Plan</span></div>
+      <div class="row"><b>What</b>Plan passes <code>showPicker={false}</code> which hides the entire right column — including the render timestamp. Yet Plan caches the same way.</div>
+      <div class="row"><b>Why</b>Plan is EXACTLY where staleness matters most. Pipeline runs Monday 10am BDT.</div>
+      <div class="row"><b>Fix</b>Split render timestamp from the picker column. Show it even without picker. Or give Plan its own "Generated {date}" chip.</div>
+    </div>
+
+    <div class="finding minor">
+      <div class="head"><span class="tag minor">Minor</span><span class="tag effort">S effort</span><span class="title">U5 — "Best X" KPIs use color but the color isn't informative</span></div>
+      <div class="row"><b>What</b>Best Format=cyan, Pillar=pink, Hook=green, Spotlight=purple. Rotates purely for visual variety, not meaning.</div>
+      <div class="row"><b>Why</b>Your own CLAUDE.md: "When categorizing items, use color to distinguish things — not just labels." Inverse also applies: color not conveying meaning is decoration masquerading as data.</div>
+      <div class="row"><b>Fix</b>Either (a) all "Best X" in shikho-indigo (unified best-of feel), or (b) tie color to what the value represents — Best Format=Reel should pull the pink that Reels uses on the Plan page.</div>
+    </div>
+
+    <div class="finding minor">
+      <div class="head"><span class="tag minor">Minor</span><span class="tag effort">S effort</span><span class="title">U6 — Disclosure chevron affordances inconsistent</span></div>
+      <div class="row"><b>What</b>Plan uses <code>&gt;</code> → <code>v</code>. Strategy findings use <code>v</code> → <code>^</code>. Strategy verdict uses <code>&gt;</code>. Three patterns on related page types.</div>
+      <div class="row"><b>Fix</b>Standardize: all <code>&lt;details&gt;</code> summaries use down-chevron rotating 180° on open.</div>
+    </div>
+
+    <div class="finding minor">
+      <div class="head"><span class="tag minor">Minor</span><span class="tag effort">S effort</span><span class="title">U7 — Strategy Weekly Verdict's expand affordance is weak</span></div>
+      <div class="row"><b>What</b>Tiny 10px "more" label at top-right that goes slate-400 → slate-600 on open. On a hero card, this is underwhelming.</div>
+      <div class="row"><b>Fix</b>Visible "Read full verdict →" ghost button at bottom-right. Converts to "Collapse ↑" on open. Make the affordance the primary CTA of the section.</div>
+    </div>
+
+  </div>
+</details>
+
+<details>
+  <summary>Information architecture · 3 findings</summary>
+  <div class="inner">
+
+    <div class="finding major">
+      <div class="head"><span class="tag major">Major</span><span class="tag effort">L effort</span><span class="title">IA1 — 8 pages is too many for this data set</span></div>
+      <div class="row"><b>What</b>Trends (reach over time) overlaps Overview's reach trend. Engagement (rate cuts) and Timing (rate cuts by day/hour) are both rate-cuts of the same posts. Strategy and Plan both consume weekly pipeline output.</div>
+      <div class="row"><b>Why</b>A user asking "how is pillar X performing" checks Engagement, Overview, Explore, and sometimes Strategy. Answer lives in four places.</div>
+      <div class="row"><b>Fix</b>Consider a 5-page IA: Overview · Content (Engagement + Trends merged) · Timing · Reels · Strategy (Plan merged in as "Next week" section). Explore stays as a power-user drill-down. Even just merging Plan into Strategy is M and reduces the top-bar.</div>
+    </div>
+
+    <div class="finding minor">
+      <div class="head"><span class="tag minor">Minor</span><span class="tag effort">S effort</span><span class="title">IA2 — Top-to-bottom page flow is inconsistent</span></div>
+      <div class="row"><b>What</b>Overview = KPIs → 2x2 grid. Engagement = Best X → 2x2 → 1x1 → 2x2. Strategy = verdict → 1x2 funnel → findings → top/under → watch-outs. No unifying pattern.</div>
+      <div class="row"><b>Fix</b>Establish a page template: header → headline KPIs (up to 4-5) → primary chart (full width or 2-up) → secondary charts → detail tables/rows.</div>
+    </div>
+
+    <div class="finding minor">
+      <div class="head"><span class="tag minor">Minor</span><span class="tag effort">S effort</span><span class="title">IA3 — Plan has no date for "next week"</span></div>
+      <div class="row"><b>What</b>Subtitle says "Next week's content calendar" but only per-slot dates are shown. If pipeline hasn't run, "next week" becomes "stale week" invisibly.</div>
+      <div class="row"><b>Fix</b>Show week range in subtitle ("Week of Monday 21 Apr — Sunday 27 Apr · generated Mon 14 Apr 10:03 BDT"). Pull from <code>slot.date</code> min/max.</div>
+    </div>
+
+  </div>
+</details>
+
+<details>
+  <summary>Mobile UX · 5 findings</summary>
+  <div class="inner">
+
+    <div class="finding major">
+      <div class="head"><span class="tag major">Major</span><span class="tag effort">S effort</span><span class="title">M1 — Explore filter tap targets below 44×44</span></div>
+      <div class="row"><b>What</b>MultiSelect buttons are <code>px-2.5 py-1.5</code> <code>text-xs</code> = roughly 28×60-80px. WCAG 2.5.5 wants 44×44.</div>
+      <div class="row"><b>Why</b>Four pills in a row on 375px = error-prone mis-taps between Pillar and Format.</div>
+      <div class="row"><b>Fix</b>Below <code>sm:</code>, stack filter toolbar vertically (<code>flex-col sm:flex-row</code>). Use <code>py-2.5 text-sm</code> on buttons. Desktop keeps compact.</div>
+    </div>
+
+    <div class="finding minor">
+      <div class="head"><span class="tag minor">Minor</span><span class="tag effort">S effort</span><span class="title">M2 — Nav "Sign out" link is 12px text</span></div>
+      <div class="row"><b>What</b>12px slate-500 in top-right with no border, no icon. On mobile: 14×45 strip.</div>
+      <div class="row"><b>Why</b>Genuinely hard to tap on small Android. Accidental clicks log user out mid-task.</div>
+      <div class="row"><b>Fix</b>Icon button (power icon) with <code>p-2</code>, or move to bottom of mobile Nav dropdown with red text.</div>
+    </div>
+
+    <div class="finding major">
+      <div class="head"><span class="tag major">Major</span><span class="tag effort">M effort</span><span class="title">M3 — Reels table scrolls horizontally without affordance</span></div>
+      <div class="row"><b>What</b>9-column table in <code>overflow-x-auto</code>. On 375px: only Date + Caption + one metric visible. User doesn't know to swipe.</div>
+      <div class="row"><b>Why</b>LEARNINGS.md already flagged this anti-pattern for nav. Same class of bug.</div>
+      <div class="row"><b>Fix</b>Collapse to card list on mobile; show table at <code>md:</code>. Or add fade-right gradient as swipe cue. Card list matches project's mobile-first spirit.</div>
+    </div>
+
+    <div class="finding minor">
+      <div class="head"><span class="tag minor">Minor</span><span class="tag effort">S effort</span><span class="title">M4 — Strategy Weekly Verdict hero is 220+ px tall on mobile</span></div>
+      <div class="row"><b>What</b>Badge + week label + chevron + 2-3 line headline. Pushes funnel charts below the fold.</div>
+      <div class="row"><b>Fix</b>On mobile, <code>line-clamp-1</code> the headline. Full text appears on expand.</div>
+    </div>
+
+    <div class="finding polish">
+      <div class="head"><span class="tag polish">Polish</span><span class="tag effort">S effort</span><span class="title">M5 — Plan slot dividers invisible (<code>divide-slate-100</code>)</span></div>
+      <div class="row"><b>What</b>slate-100 on white is 1.03:1 — nearly invisible. With 5 slots per day, they blur together.</div>
+      <div class="row"><b>Fix</b><code>divide-slate-200</code> (3.8:1) or add <code>odd:bg-slate-50/40</code> alternation.</div>
+    </div>
+
+  </div>
+</details>
+
+<details>
+  <summary>Accessibility · 7 findings</summary>
+  <div class="inner">
+
+    <div class="finding critical">
+      <div class="head"><span class="tag critical">Critical</span><span class="tag effort">M effort</span><span class="title">A1 — <code>text-slate-400</code> for real content (42 files)</span></div>
+      <div class="row"><b>What</b>Used for sample-size badges, KPI sublabels, render timestamps, week-ending dates, Best X reliability labels, Explore post meta rows. All real informational content. 2.85:1 on white fails WCAG AA (needs 4.5:1).</div>
+      <div class="row"><b>Why</b>On mobile brightness auto-dimmed in daylight, slate-400 is effectively unreadable.</div>
+      <div class="row"><b>Fix</b>Global replace: <code>text-slate-400</code> → <code>text-slate-500</code> (4.58:1) for all content with real meaning. Reserve slate-400 for ornamental separators like <code>·</code>.</div>
+    </div>
+
+    <div class="finding critical">
+      <div class="head"><span class="tag critical">Critical</span><span class="tag effort">S effort</span><span class="title">A2 — No visible focus rings on most interactive elements</span></div>
+      <div class="row"><b>What</b>Only 3 files have <code>focus:</code> classes, all for input fields. Nav buttons, MultiSelects, disclosure summaries, sign-out — no focus rings.</div>
+      <div class="row"><b>Why</b>WCAG 2.4.7 fail. Keyboard-only users lose their place.</div>
+      <div class="row"><b>Fix</b>Single base-layer rule in <code>globals.css</code>:<br><code>button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px solid theme('colors.brand.shikho-indigo'); outline-offset: 2px; }</code></div>
+    </div>
+
+    <div class="finding major">
+      <div class="head"><span class="tag major">Major</span><span class="tag effort">S effort</span><span class="title">A3 — InfoTooltip not keyboard accessible</span></div>
+      <div class="row"><b>What</b>Opens on click, closes on outside mousedown. No Escape-to-close. No <code>aria-describedby</code> linking tooltip text to button.</div>
+      <div class="row"><b>Fix</b>Give tooltip an <code>id</code>. Use <code>aria-describedby={tooltipId}</code>. Add Escape keydown handler. Has <code>role="tooltip"</code> already.</div>
+    </div>
+
+    <div class="finding minor">
+      <div class="head"><span class="tag minor">Minor</span><span class="tag effort">S effort</span><span class="title">A4 — DateRangePicker button has no accessible name</span></div>
+      <div class="row"><b>Fix</b><code>aria-label={`Change date range, current: ${displayLabel}`}</code> + <code>aria-expanded={open}</code> + <code>aria-haspopup="dialog"</code>.</div>
+    </div>
+
+    <div class="finding minor">
+      <div class="head"><span class="tag minor">Minor</span><span class="tag effort">L effort</span><span class="title">A5 — Recharts tooltips not keyboard reachable</span></div>
+      <div class="row"><b>What</b>Hover-only. Data in charts inaccessible via keyboard.</div>
+      <div class="row"><b>Fix</b>For internal tool, document as known gap and provide a "View data" button expanding a table. Defer to L.</div>
+    </div>
+
+    <div class="finding minor">
+      <div class="head"><span class="tag minor">Minor</span><span class="tag effort">S effort</span><span class="title">A6 — <code>list-none</code> disclosures lose triangle without replacement focus</span></div>
+      <div class="row"><b>Fix</b>Bundled with A2 — focus ring fixes this automatically.</div>
+    </div>
+
+    <div class="finding minor">
+      <div class="head"><span class="tag minor">Minor</span><span class="tag effort">M effort</span><span class="title">A7 — Pixel-pinned sizes don't scale with user font-size preference</span></div>
+      <div class="row"><b>What</b><code>min-h-[18px]</code> etc. won't scale at 200% zoom (WCAG 1.4.4).</div>
+      <div class="row"><b>Fix</b>Use <code>em</code>-based units where possible. Lower priority.</div>
+    </div>
+
+  </div>
+</details>
+
+<details>
+  <summary>Data visualization · 7 findings</summary>
+  <div class="inner">
+
+    <div class="finding major">
+      <div class="head"><span class="tag major">Major</span><span class="tag effort">S effort</span><span class="title">D1 — Donut charts wrong for 6-slice Engagement Breakdown</span></div>
+      <div class="row"><b>Why</b>Cleveland &amp; McGill: position on common scale &gt; angle &gt; area. Humans can't compare angles beyond 3-4 slices. Like+Care / Love / Wow / Haha / Comments / Shares = 6 slices = bar chart territory.</div>
+      <div class="row"><b>Fix</b>Convert Engagement Breakdown (<code>Engagement/page.tsx:214</code>) to horizontal bar. Same data, same colors, easier comparison.</div>
+    </div>
+
+    <div class="finding minor">
+      <div class="head"><span class="tag minor">Minor</span><span class="tag effort">S effort</span><span class="title">D2 — <code>colorByIndex</code> rainbow when color conveys nothing</span></div>
+      <div class="row"><b>What</b>Used across Pillar, Format, Hook, Spotlight charts. When bars show ER by category, color conveys nothing — value is already on x-axis. Chart junk.</div>
+      <div class="row"><b>Fix</b>Default to single brand color for value-comparison bar charts. Use <code>colorByIndex</code> only when color maps to categories referenced elsewhere.</div>
+    </div>
+
+    <div class="finding minor">
+      <div class="head"><span class="tag minor">Minor</span><span class="tag effort">S effort</span><span class="title">D3 — Axis labels redundant with chart title</span></div>
+      <div class="row"><b>What</b>Chart titled "Format Performance", subtitle "Avg engagement rate by format", y-axis "Engagement rate", x-axis "Format". Says "Format" four times.</div>
+      <div class="row"><b>Fix</b>Drop <code>categoryAxisLabel</code> when title already names it. Keep <code>valueAxisLabel</code> only when unit isn't obvious.</div>
+    </div>
+
+    <div class="finding major">
+      <div class="head"><span class="tag major">Major</span><span class="tag effort">S effort</span><span class="title">D4 — "Average Retention Curve" is bars, should be a line</span></div>
+      <div class="row"><b>What</b>60 bars representing % viewers still watching at seconds 0-60. This is a continuous function plotted discretely. Canonical viz is a line or area.</div>
+      <div class="row"><b>Why</b>Retention curves have a canonical shape (cliff → decay) that bars obscure.</div>
+      <div class="row"><b>Fix</b>Use <code>TrendChart variant="line"</code> instead. Reels page line 336.</div>
+    </div>
+
+    <div class="finding major">
+      <div class="head"><span class="tag major">Major</span><span class="tag effort">S effort</span><span class="title">D5 — Recharts axis ticks fail AA contrast</span></div>
+      <div class="row"><b>What</b><code>globals.css:17</code> sets <code>.recharts-cartesian-axis-tick text { fill: #94a3b8 }</code>. 2.85:1. Fails AA.</div>
+      <div class="row"><b>Fix</b>Change to <code>#64748b</code> (slate-500, 4.58:1). Two-character hex change.</div>
+    </div>
+
+    <div class="finding polish">
+      <div class="head"><span class="tag polish">Polish</span><span class="tag effort">S effort</span><span class="title">D6 — 11px tick font below readable threshold at 200% zoom</span></div>
+      <div class="row"><b>Fix</b>Bump to 12 when fixing D5.</div>
+    </div>
+
+    <div class="finding minor">
+      <div class="head"><span class="tag minor">Minor</span><span class="tag effort">M effort</span><span class="title">D7 — Empty states inconsistent</span></div>
+      <div class="row"><b>What</b>Timing has thoughtful empty states. Overview/Trends/Engagement leave Recharts empty (looks buggy). Explore has a well-designed empty state.</div>
+      <div class="row"><b>Fix</b>Add <code>&lt;EmptyChart reason="..."&gt;</code> component used by every chart. Wire into ChartCard as a prop.</div>
+    </div>
+
+  </div>
+</details>
+
+<details>
+  <summary>Performance · 3 findings</summary>
+  <div class="inner">
+
+    <div class="finding minor">
+      <div class="head"><span class="tag minor">Minor</span><span class="tag effort">M effort</span><span class="title">P1 — No streaming, no Suspense boundaries</span></div>
+      <div class="row"><b>What</b>Each page <code>await</code>s all data upfront. Nothing renders until slowest call returns.</div>
+      <div class="row"><b>Fix</b>Split KPI bar (fast) from chart grid (heavier). Suspense boundary at chart-grid level with skeleton fallback.</div>
+    </div>
+
+    <div class="finding minor">
+      <div class="head"><span class="tag minor">Minor</span><span class="tag effort">M effort</span><span class="title">P2 — "Rendered timestamp" is request-time, not data-fetch-time</span></div>
+      <div class="row"><b>What</b>Shows when request arrived, not when Sheets was queried. Conflicts with DataFooter's 5-min cache.</div>
+      <div class="row"><b>Fix</b>Rename to "Data as of {timestamp}" using actual Sheets fetch time.</div>
+    </div>
+
+    <div class="finding polish">
+      <div class="head"><span class="tag polish">Polish</span><span class="tag effort">S effort</span><span class="title">P3 — Reels page parses retention curves redundantly</span></div>
+      <div class="row"><b>What</b>Outer 60-second loop × inner reels loop × <code>parseRetentionCurve</code> call = 3000 JSON parses for 50 reels.</div>
+      <div class="row"><b>Fix</b>Parse each reel's curve once, cache in local array, iterate seconds inside.</div>
+    </div>
+
+  </div>
+</details>
+
+<hr>
+
+<h2>Page-by-page quick hits</h2>
+
+<div class="page-card">
+  <h3>Login</h3>
+  <div class="filepath">app/login/page.tsx</div>
+  <div class="cols">
+    <div>
+      <h4 class="good">Works</h4>
+      <ul>
+        <li>Strong left-brand / right-form split reads like a product.</li>
+        <li>Cadence bullets (daily/Monday/source/cache) build trust.</li>
+        <li>Mobile collapses brand panel to a <code>min-h-[240px]</code> header — sensible.</li>
+        <li>Focus uses brand indigo — best-branded form in the app.</li>
+      </ul>
+    </div>
+    <div>
+      <h4 class="bad">Doesn't</h4>
+      <ul>
+        <li>Three radial-gradient blobs at <code>/25</code> opacity are barely visible against the indigo panel.</li>
+        <li>"Team access" + "Sign in" + paragraph = three competing voices in 150px.</li>
+        <li><code>text-slate-400</code> on bottom meta block fails contrast.</li>
+        <li>Error state has no shake or focus return.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="opp"><b>Biggest opportunity:</b> Replace four cadence bullets with a single illustration of the data flow (API → Sheets → Dashboard).</div>
+</div>
+
+<div class="page-card">
+  <h3>Overview</h3>
+  <div class="filepath">app/page.tsx</div>
+  <div class="cols">
+    <div>
+      <h4 class="good">Works</h4>
+      <ul>
+        <li>Six KPIs in <code>grid-cols-2 md:3 lg:6</code> is the right density.</li>
+        <li>WoW deltas with "vs prev" sublabel = right context.</li>
+        <li>Reach Trend as primary chart matches user priority.</li>
+        <li><code>kind</code> borders silently communicate provenance.</li>
+      </ul>
+    </div>
+    <div>
+      <h4 class="bad">Doesn't</h4>
+      <ul>
+        <li>No "what's the one thing that changed" callout — deltas exist but nothing draws the eye.</li>
+        <li>Engagement Mix donut is redundant with Engagement page's Engagement Breakdown.</li>
+        <li>Pillar rainbow + Format donut colors = chaos.</li>
+        <li>"Avg Reach/Post" KPI has no delta or sublabel — an orphan.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="opp"><b>Biggest opportunity:</b> Replace Engagement Mix donut with a "Biggest movers" text callout ("Shares ↑ 43% WoW · comments flat · reactions ↓ 8%").</div>
+</div>
+
+<div class="page-card">
+  <h3>Trends</h3>
+  <div class="filepath">app/trends/page.tsx</div>
+  <div class="cols">
+    <div>
+      <h4 class="good">Works</h4>
+      <ul>
+        <li>Clear split: volume + reach top, rates + virality bottom.</li>
+        <li>Week-level ER is the right granularity — daily is too noisy.</li>
+        <li><code>kind</code> mix tells the right story.</li>
+      </ul>
+    </div>
+    <div>
+      <h4 class="bad">Doesn't</h4>
+      <ul>
+        <li>Daily Volume + Daily Reach could be dual-axis — side-by-side forces mental overlay.</li>
+        <li>Weekly Shares bars next to Weekly ER line = stylistic mix for adjacent cards.</li>
+        <li>No WoW deltas on weekly cuts.</li>
+        <li>No chart of posting cadence vs reach — "did posting more help?" unanswered.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="opp"><b>Biggest opportunity:</b> A "Weekly snapshot" card combining posts, reach, ER, shares in small-multiples. Replaces four charts with one dense view.</div>
+</div>
+
+<div class="page-card">
+  <h3>Engagement</h3>
+  <div class="filepath">app/engagement/page.tsx</div>
+  <div class="cols">
+    <div>
+      <h4 class="good">Works</h4>
+      <ul>
+        <li>"Best X" strip is a clear so-what headline.</li>
+        <li>Reach-weighted ER with explicit MIN_N is statistically honest.</li>
+        <li>Spotlight split across engagement + reach is the right move.</li>
+        <li>Sample-size badges keep reader grounded.</li>
+      </ul>
+    </div>
+    <div>
+      <h4 class="bad">Doesn't</h4>
+      <ul>
+        <li>Four Best X KPIs use four different colors — decorative.</li>
+        <li>Six bar charts on one page. At 375px = six card-heights of scroll.</li>
+        <li>Hook Type + Engagement Breakdown donut paired but answer different questions.</li>
+        <li>Best Spotlight purple collides with AI-kind indigo border.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="opp"><b>Biggest opportunity:</b> Recommendations card at top ("Post more Reels with Teacher spotlight — both beat others by &gt;40%") synthesizing the four Best X into one actionable line.</div>
+</div>
+
+<div class="page-card">
+  <h3>Timing</h3>
+  <div class="filepath">app/timing/page.tsx</div>
+  <div class="cols">
+    <div>
+      <h4 class="good">Works</h4>
+      <ul>
+        <li>Four Best X with reliability labels + CI lower bound = top-tier stats.</li>
+        <li>Adaptive MIN_N with visible "X/6 slots" badge surfaces hidden data honestly.</li>
+        <li>Empty states tell user what to do ("Widen the range").</li>
+        <li><code>.split(" ")[0]</code> so "Early (5-9)" becomes "Early" in KPI.</li>
+      </ul>
+    </div>
+    <div>
+      <h4 class="bad">Doesn't</h4>
+      <ul>
+        <li>Six time slots miss 0-5am — posts at 2am appear in no bucket.</li>
+        <li>Bar charts for "when to post" — canonical viz is a heatmap.</li>
+        <li>KPI footer (reliability + CI floor in slate-400) is illegible.</li>
+        <li>Amber asterisk uses <code>title</code> attribute — hover-only, fails on touch.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="opp"><b>Biggest opportunity:</b> Add a day × hour heatmap. One viz answers "when should we post?" in a single glance.</div>
+</div>
+
+<div class="page-card">
+  <h3>Reels</h3>
+  <div class="filepath">app/reels/page.tsx</div>
+  <div class="cols">
+    <div>
+      <h4 class="good">Works</h4>
+      <ul>
+        <li>Primary (5) + secondary (4) KPI split is right for data-rich page.</li>
+        <li>"Meta bucket" vs "derived from curve" notes = best-in-class provenance.</li>
+        <li>Retention funnel + avg retention curve pair analytically correct.</li>
+        <li>Green +N follower gain in table = one place semantic color is used well.</li>
+      </ul>
+    </div>
+    <div>
+      <h4 class="bad">Doesn't</h4>
+      <ul>
+        <li>Secondary cards' <code>text-xl</code> values don't match semantic weight vs primary.</li>
+        <li>Avg Retention Curve as bars — should be a line.</li>
+        <li>Table is 9 columns wide — mobile invisible.</li>
+        <li>No sorting on the table.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="opp"><b>Biggest opportunity:</b> Replace <code>&lt;table&gt;</code> with card-list showing 3-5 reel cards with all metrics visible + sort dropdown.</div>
+</div>
+
+<div class="page-card">
+  <h3>Strategy</h3>
+  <div class="filepath">app/strategy/page.tsx</div>
+  <div class="cols">
+    <div>
+      <h4 class="good">Works</h4>
+      <ul>
+        <li>Layered disclosure (verdict collapsed → headline → expand) is exactly right for AI content.</li>
+        <li><code>splitHeadline()</code> + metric pill extraction makes long sentences skimmable.</li>
+        <li>Top/Under performers green/red side-by-side is classic, effective.</li>
+        <li><code>exam_alert</code> callout in purple matches the calendar semantic consistently.</li>
+      </ul>
+    </div>
+    <div>
+      <h4 class="bad">Doesn't</h4>
+      <ul>
+        <li>Hero verdict card is visually UNDERbuilt for the most important card on the dashboard.</li>
+        <li>Funnel charts above verdict expansion = expanded text pushes reader back up.</li>
+        <li>"click to expand" hint appears four times — one discovery cue would do.</li>
+        <li>Empty state has no next-run timestamp.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="opp"><b>Biggest opportunity:</b> Redesign Weekly Verdict as a full-width illustrated callout — <code>text-2xl lg:text-4xl</code>, real gradient background, optional hero number from the verdict text.</div>
+</div>
+
+<div class="page-card">
+  <h3>Plan</h3>
+  <div class="filepath">app/plan/page.tsx</div>
+  <div class="cols">
+    <div>
+      <h4 class="good">Works</h4>
+      <ul>
+        <li>Collapsed day cards with format-chip preview — most polished UX pattern in the app.</li>
+        <li>Day gradients give each day an identity.</li>
+        <li>Slot briefs on expand are dense without overwhelming.</li>
+        <li>"Why this post" rationale as second-level disclosure is correct.</li>
+      </ul>
+    </div>
+    <div>
+      <h4 class="bad">Doesn't</h4>
+      <ul>
+        <li>Gradient-on-gradient pretty but all 7 days compete — no "most important" day.</li>
+        <li>No "today" highlight.</li>
+        <li>Expected/Success chips are free-text — quality varies.</li>
+        <li>Video purple + Sunday violet = adjacent hues, can clash.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="opp"><b>Biggest opportunity:</b> Add a "today" marker (ring + shadow) that auto-detects today's day-of-week and expands it by default.</div>
+</div>
+
+<div class="page-card">
+  <h3>Explore</h3>
+  <div class="filepath">app/explore/ExploreClient.tsx</div>
+  <div class="cols">
+    <div>
+      <h4 class="good">Works</h4>
+      <ul>
+        <li>Filter toolbar with multi-selects + count badges + clear-all = best-in-class.</li>
+        <li>Group-by dimension switcher is a real power-user feature.</li>
+        <li>Search inside Spotlight dropdown = thoughtful affordance.</li>
+        <li>Top 10 with brand-shikho-pink border reads like social posts.</li>
+      </ul>
+    </div>
+    <div>
+      <h4 class="bad">Doesn't</h4>
+      <ul>
+        <li>Filter toolbar wraps awkwardly on mobile.</li>
+        <li>Real "engine" (filters) isn't visually emphasized — KPI strip + charts compete for attention.</li>
+        <li>Top 10 limited to 10 with no pagination.</li>
+        <li>No sort controls — always by reach.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="opp"><b>Biggest opportunity:</b> Make Explore feel like a workbench. Sticky filter toolbar top, de-emphasize KPIs, push charts up, Top 10 as the detail view.</div>
+</div>
+
+<hr>
+
+<h2>Already handled</h2>
+<div class="handled">
+<p style="margin-top: 0; color: var(--text-2);">These are documented in <code>CLAUDE.md</code> / <code>LEARNINGS.md</code> / <code>DECISIONS.md</code> — do not re-raise:</p>
+<ol>
+  <li><b>flex-wrap for header alignment</b> — replaced with <code>flex-col sm:flex-row</code> across PageHeader and ExploreClient (DECISIONS 2026-04-18).</li>
+  <li><b>Popups spilling off-screen</b> — <code>max-w-[calc(100vw-2rem)]</code> on all popups (DECISIONS 2026-04-18).</li>
+  <li><b>BarChart YAxis width</b> — data-driven, 6.5px/char + 12px padding, clamped [60,140] (DECISIONS 2026-04-18).</li>
+  <li><b>Hover-only tooltips invisible on touch</b> — InfoTooltip is tap-toggle with outside-click dismiss (DECISIONS 2026-04-18).</li>
+  <li><b>overflow-x-auto invisible as mobile nav</b> — Nav switched to labelled dropdown below <code>md:</code>.</li>
+  <li><b>KpiCard big-number overflow</b> — <code>text-2xl sm:text-3xl</code> + <code>break-words</code>.</li>
+  <li><b>3-column flex collapsing flex-1</b> — Plan slot brief restructured to stack on mobile.</li>
+  <li><b>Timing MIN_N bump</b> — adaptive <code>minPostsForRange()</code>.</li>
+  <li><b>Strategy date-range clarity</b> — verdict reads from <code>getLatestDiagnosis()</code>, labeled as such.</li>
+  <li><b>Best X KPI CI lower-bound ranking on Timing</b> — <code>bestByLowerBound()</code> with eligibility gate.</li>
+</ol>
+</div>
+
+<div class="nottouch">
+  <h4>Things that are fine — do not touch</h4>
+  <ul>
+    <li><code>DataFooter</code> — the pattern and content are both good.</li>
+    <li><code>InfoTooltip</code> implementation — tap-toggle + hover pairing is right. Only add the a11y improvements in A3.</li>
+    <li>Plan day-card progressive disclosure — polished and appropriate.</li>
+    <li>Explore filter toolbar — best-designed component in the app.</li>
+    <li>Adaptive MIN_N and the 95% CI lower-bound ranking — intellectually correct.</li>
+    <li><code>kind</code> taxonomy (observed/ai/derived) — valuable data literacy. Only simplify the visual presentation (recommendation #8).</li>
+  </ul>
+</div>
+
+<hr>
+
+<div class="bottomline">
+  <p><b>Bottom line.</b> The dashboard is structurally sound and statistically honest — these are the hard parts to get right and they are right. The remaining work is almost entirely polish and accessibility: fix contrast, add loading/error states, deploy the brand palette consistently, trim the 8-page IA, and rebuild the Strategy verdict hero to match its importance. Priorities 1-10 are all Small-effort and would visibly lift quality in under a day of work. Priorities 11-18 are the craft pass. Priorities 19-20 are the strategic rebuild.</p>
+</div>
+
+<footer>
+  Audit generated 2026-04-18 · organic-social-dashboard · based on source code review of all 8 dashboard pages, 10 shared components, and 4 project docs.
+</footer>
+
+</main>
+</body>
+</html>

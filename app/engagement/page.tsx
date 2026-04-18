@@ -5,7 +5,6 @@ import { resolveRange } from "@/lib/daterange";
 import PageHeader from "@/components/PageHeader";
 import { Card, ChartCard } from "@/components/Card";
 import BarChartBase from "@/components/BarChart";
-import Donut from "@/components/Donut";
 import type { GroupStatRow } from "@/lib/aggregate";
 
 export const dynamic = "force-dynamic";
@@ -64,7 +63,11 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
   const bestHook = rankByReachWeighted(hookStats);
   const bestSpotlight = rankByReachWeighted(spotlightStats);
 
-  // Engagement breakdown (overall)
+  // Engagement breakdown (overall). Sorted descending so the biggest
+  // interaction type lands at the top of the horizontal bar chart —
+  // Cleveland & McGill: position on a common scale outranks angle (pie/
+  // donut) for magnitude comparison, especially with 6 categories where
+  // slice sizes at the tail become hard to rank by eye.
   const totals = inRange.reduce(
     (acc, p) => {
       acc.like += p.like || 0;
@@ -77,14 +80,14 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
     },
     { like: 0, love: 0, wow: 0, haha: 0, comments: 0, shares: 0 }
   );
-  const reactionDonut = [
+  const reactionBreakdown = [
     { label: "Like + Care", value: totals.like },
     { label: "Love", value: totals.love },
     { label: "Wow", value: totals.wow },
     { label: "Haha", value: totals.haha },
     { label: "Comments", value: totals.comments },
     { label: "Shares", value: totals.shares },
-  ];
+  ].sort((a, b) => b.value - a.value);
 
   return (
     <div>
@@ -98,7 +101,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           <div className="text-xs text-slate-500 mt-1">
             {(bestFormat?.avg_engagement_rate || 0).toFixed(2)}% eng rate
           </div>
-          <div className="text-[11px] text-slate-400 mt-0.5">
+          <div className="text-[11px] text-slate-500 mt-0.5">
             {reliabilityLabel(bestFormat?.count || 0)}
           </div>
         </Card>
@@ -108,7 +111,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           <div className="text-xs text-slate-500 mt-1">
             {(bestPillar?.avg_engagement_rate || 0).toFixed(2)}% eng rate
           </div>
-          <div className="text-[11px] text-slate-400 mt-0.5">
+          <div className="text-[11px] text-slate-500 mt-0.5">
             {reliabilityLabel(bestPillar?.count || 0)}
           </div>
         </Card>
@@ -118,7 +121,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           <div className="text-xs text-slate-500 mt-1">
             {(bestHook?.avg_engagement_rate || 0).toFixed(2)}% eng rate
           </div>
-          <div className="text-[11px] text-slate-400 mt-0.5">
+          <div className="text-[11px] text-slate-500 mt-0.5">
             {reliabilityLabel(bestHook?.count || 0)}
           </div>
         </Card>
@@ -128,7 +131,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           <div className="text-xs text-slate-500 mt-1">
             {(bestSpotlight?.avg_engagement_rate || 0).toFixed(2)}% eng rate
           </div>
-          <div className="text-[11px] text-slate-400 mt-0.5">
+          <div className="text-[11px] text-slate-500 mt-0.5">
             {reliabilityLabel(bestSpotlight?.count || 0)}
           </div>
         </Card>
@@ -208,10 +211,19 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           title="Engagement Breakdown"
           kind="observed"
           subtitle="Volume by interaction type"
-          definition="Total count of each reaction / comment / share across all posts in the period. 'Like + Care' groups Facebook's Like and Care reactions together."
+          definition="Total count of each reaction / comment / share across all posts in the period. 'Like + Care' groups Facebook's Like and Care reactions together. Bars are sorted by volume so the dominant interaction type is always on top — with 6 categories, ranking is easier on a common-axis bar chart than a pie/donut where slice-size discrimination breaks down past 4 categories."
+          sampleSize={`n = ${inRange.length} posts`}
           caption="High comment share suggests active community dialogue; high share ratio suggests virality potential."
         >
-          <Donut data={reactionDonut} metricName="Interactions" />
+          <BarChartBase
+            data={reactionBreakdown}
+            horizontal
+            height={Math.max(220, reactionBreakdown.length * 36)}
+            colorByIndex
+            metricName="Interactions"
+            valueAxisLabel="Count"
+            showPercent
+          />
         </ChartCard>
       </div>
     </div>

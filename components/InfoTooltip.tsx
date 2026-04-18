@@ -46,7 +46,7 @@ export default function InfoTooltip({ text }: { text: string }) {
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="text-slate-400 hover:text-slate-600"
+          className="text-slate-500 hover:text-slate-700"
         >
           <circle cx="12" cy="12" r="10"></circle>
           <line x1="12" y1="16" x2="12" y2="12"></line>

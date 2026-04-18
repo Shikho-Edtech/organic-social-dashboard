@@ -150,7 +150,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
           <div className="text-xs text-slate-500 mt-1">
             {Math.round(bestDayReach?.reachSum.mean || 0).toLocaleString()} avg reach/post
           </div>
-          <div className="text-[11px] text-slate-400 mt-0.5">
+          <div className="text-[11px] text-slate-500 mt-0.5">
             {reliabilityLabel(bestDayReach?.posts || 0)}
             {bestDayReach && isFinite(bestDayReach.reachSum.lowerBound95) && (
               <> · reliable floor {Math.max(0, Math.round(bestDayReach.reachSum.lowerBound95)).toLocaleString()}</>
@@ -163,7 +163,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
           <div className="text-xs text-slate-500 mt-1">
             {(bestDayEng?.erSum.mean || 0).toFixed(2)}% avg eng rate
           </div>
-          <div className="text-[11px] text-slate-400 mt-0.5">
+          <div className="text-[11px] text-slate-500 mt-0.5">
             {reliabilityLabel(bestDayEng?.posts || 0)}
             {bestDayEng && isFinite(bestDayEng.erSum.lowerBound95) && (
               <> · reliable floor {Math.max(0, bestDayEng.erSum.lowerBound95).toFixed(2)}%</>
@@ -179,7 +179,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
           <div className="text-xs text-slate-500 mt-1">
             {Math.round(bestSlotReach?.reachSum.mean || 0).toLocaleString()} avg reach/post
           </div>
-          <div className="text-[11px] text-slate-400 mt-0.5">
+          <div className="text-[11px] text-slate-500 mt-0.5">
             {reliabilityLabel(bestSlotReach?.posts || 0)}
             {bestSlotReach && isFinite(bestSlotReach.reachSum.lowerBound95) && (
               <> · reliable floor {Math.max(0, Math.round(bestSlotReach.reachSum.lowerBound95)).toLocaleString()}</>
@@ -195,7 +195,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
           <div className="text-xs text-slate-500 mt-1">
             {(bestSlotEng?.erSum.mean || 0).toFixed(2)}% avg eng rate
           </div>
-          <div className="text-[11px] text-slate-400 mt-0.5">
+          <div className="text-[11px] text-slate-500 mt-0.5">
             {reliabilityLabel(bestSlotEng?.posts || 0)}
             {bestSlotEng && isFinite(bestSlotEng.erSum.lowerBound95) && (
               <> · reliable floor {Math.max(0, bestSlotEng.erSum.lowerBound95).toFixed(2)}%</>
