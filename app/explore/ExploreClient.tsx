@@ -252,7 +252,7 @@ export default function ExploreClient({ posts }: Props) {
                     <span className="text-slate-300 mx-1.5">·</span>
                     <span>{engagementRate(p).toFixed(2)}% engagement</span>
                     <span className="text-slate-300 mx-1.5">·</span>
-                    <span>{p.shares} shares</span>
+                    <span>{(p.shares || 0).toLocaleString()} share{p.shares === 1 ? "" : "s"}</span>
                   </div>
                   <div className="text-xs text-slate-600 mt-1 line-clamp-2">{p.message.slice(0, 200)}</div>
                   <div className="text-[11px] text-slate-500 mt-1.5 flex flex-wrap items-center gap-x-1.5">

@@ -190,8 +190,13 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
           </div>
           <div className="text-[11px] text-slate-500 mt-0.5">
             {reliabilityLabel(bestDayReach?.posts || 0)}
-            {bestDayReach && isFinite(bestDayReach.reachSum.lowerBound95) && (
-              <> · reliable floor {Math.max(0, Math.round(bestDayReach.reachSum.lowerBound95)).toLocaleString()}</>
+            {/* Only show the floor when it's positive — a clamp-to-zero floor
+                on a negative CI lower bound ("reliable floor 0") is actively
+                misleading: it looks like "we expect at least 0", which is
+                trivially true. If CI goes negative, variance is too high to
+                call a floor; the reliability label alone tells that story. */}
+            {bestDayReach && isFinite(bestDayReach.reachSum.lowerBound95) && bestDayReach.reachSum.lowerBound95 > 0 && (
+              <> · reliable floor {Math.round(bestDayReach.reachSum.lowerBound95).toLocaleString()}</>
             )}
           </div>
         </Card>
@@ -203,8 +208,8 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
           </div>
           <div className="text-[11px] text-slate-500 mt-0.5">
             {reliabilityLabel(bestDayEng?.posts || 0)}
-            {bestDayEng && isFinite(bestDayEng.erSum.lowerBound95) && (
-              <> · reliable floor {Math.max(0, bestDayEng.erSum.lowerBound95).toFixed(2)}%</>
+            {bestDayEng && isFinite(bestDayEng.erSum.lowerBound95) && bestDayEng.erSum.lowerBound95 > 0 && (
+              <> · reliable floor {bestDayEng.erSum.lowerBound95.toFixed(2)}%</>
             )}
           </div>
         </Card>
@@ -216,8 +221,8 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
           </div>
           <div className="text-[11px] text-slate-500 mt-0.5">
             {reliabilityLabel(bestHourReach?.posts || 0)}
-            {bestHourReach && isFinite(bestHourReach.reachSum.lowerBound95) && (
-              <> · reliable floor {Math.max(0, Math.round(bestHourReach.reachSum.lowerBound95)).toLocaleString()}</>
+            {bestHourReach && isFinite(bestHourReach.reachSum.lowerBound95) && bestHourReach.reachSum.lowerBound95 > 0 && (
+              <> · reliable floor {Math.round(bestHourReach.reachSum.lowerBound95).toLocaleString()}</>
             )}
           </div>
         </Card>
@@ -229,8 +234,8 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
           </div>
           <div className="text-[11px] text-slate-500 mt-0.5">
             {reliabilityLabel(bestHourEng?.posts || 0)}
-            {bestHourEng && isFinite(bestHourEng.erSum.lowerBound95) && (
-              <> · reliable floor {Math.max(0, bestHourEng.erSum.lowerBound95).toFixed(2)}%</>
+            {bestHourEng && isFinite(bestHourEng.erSum.lowerBound95) && bestHourEng.erSum.lowerBound95 > 0 && (
+              <> · reliable floor {bestHourEng.erSum.lowerBound95.toFixed(2)}%</>
             )}
           </div>
         </Card>

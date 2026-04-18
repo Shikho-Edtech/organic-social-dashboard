@@ -215,7 +215,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
           kind="ai"
           subtitle="Posts by marketing stage"
           definition="TOFU (top-of-funnel): awareness / education. MOFU (middle): consideration / demo. BOFU (bottom): direct conversion asks. Funnel stage is assigned by the weekly classifier."
-          sampleSize={`n = ${inRange.length} posts`}
+          sampleSize={`n = ${inRange.length} post${inRange.length === 1 ? "" : "s"}`}
           caption="Heavy BOFU may limit new audience growth. Healthy mix is typically ~50% TOFU, ~30% MOFU, ~20% BOFU for organic."
         >
           <BarChartBase data={funnelDist} metricName="Posts" valueAxisLabel="Posts" categoryAxisLabel="Funnel stage" showPercent />

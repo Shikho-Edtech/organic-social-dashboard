@@ -311,7 +311,7 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
           kind="derived"
           subtitle="Viewers still watching at key seconds (all reels in range)"
           definition="For each second N, sum(total_views × retention[N]) across all reels with parseable retention curves. Meta's per-second drop-off data IS populated for reels (unlike the 15s/30s bucket fields). 0s = starting viewers of those reels; later bars = how many survived to that second. Reels without retention curves are excluded from both numerator and denominator."
-          sampleSize={`${reelsWithCurve} of ${totalReels} reels have retention curves`}
+          sampleSize={`${reelsWithCurve} of ${totalReels} reel${totalReels === 1 ? "" : "s"} ${reelsWithCurve === 1 ? "has" : "have"} retention curves`}
           caption="Biggest drop on Shikho reels is typically between 2s and 6s — the hook window. If 6s→15s survival is high, format is sticky. If 15s→30s drop is steep, middle loses people."
         >
           <BarChartBase data={funnel} color="#4f46e5" metricName="Viewers" valueAxisLabel="Viewers" categoryAxisLabel="Seconds watched" />
@@ -321,7 +321,7 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
           kind="derived"
           subtitle="% of starting audience still watching, by second (0-60s)"
           definition="View-weighted average of every reel's retention curve. Each point shows what % of starting viewers were still watching at that second. A healthy curve flattens after 10-15s instead of continuing to drop. Rendered as a line because retention is a continuous process — 60 individual bars made the drop-off shape harder to read than a single sweeping curve."
-          sampleSize={`${totalReels} reels`}
+          sampleSize={`${totalReels} reel${totalReels === 1 ? "" : "s"}`}
           caption="Look for the inflection point. A cliff before 3s = weak hook. A cliff at 6s = mid-hook works but promise isn't paying off. Long tail past 30s = sticky content."
         >
           <TrendChart
@@ -367,7 +367,7 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
             kind="observed"
             subtitle="Reels that converted viewers → followers"
             definition="Net new followers attributed to each reel by Meta. Tooltip shows total plays for context."
-            sampleSize={`${topByFollowers.length} reels gained followers`}
+            sampleSize={`${topByFollowers.length} reel${topByFollowers.length === 1 ? "" : "s"} gained followers`}
             caption="High plays with zero follower gain = viral but not sticky. Low plays with high gain = niche but converts."
           >
             <BarChartBase data={topByFollowers} horizontal height={340} color="#10b981" metricName="Followers gained" valueAxisLabel="Followers gained" categoryAxisLabel="Reel caption (preview)" />

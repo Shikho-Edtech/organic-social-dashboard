@@ -106,8 +106,16 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
     },
     { like: 0, love: 0, wow: 0, haha: 0, comments: 0, shares: 0 }
   );
+  // "Like" here is the Facebook Like reaction only. A prior pass labeled this
+  // "Like + Care" but the ingestion layer never reads a Care column from
+  // Raw_Posts (lib/sheets.ts getPosts, and the Post type has no `care` field),
+  // so the sum was still just Like while the label implied Like ∪ Care was
+  // being aggregated. Either the pipeline needs to start emitting a Care
+  // column and the sum needs to include it, or the label stays as "Like".
+  // Keeping the label honest for now; if Care volume becomes non-trivial,
+  // add it upstream.
   const reactionBreakdown = [
-    { label: "Like + Care", value: totals.like },
+    { label: "Like", value: totals.like },
     { label: "Love", value: totals.love },
     { label: "Wow", value: totals.wow },
     { label: "Haha", value: totals.haha },
@@ -125,6 +133,12 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           hashes to a stable colour that persists across renders. The
           colour is inline `style` because Tailwind can't compile a
           dynamic `text-[#hex]`. */}
+      {/* Best X strip. Prior pass rendered "0.00% eng rate" under a "—"
+          label when nothing cleared the MIN_N gate — a fake rate on a fake
+          winner. Now: if no bucket qualifies, show a single "Not enough
+          posts" line instead of a false precision number. The reliability
+          label still gets a read so the user knows WHY nothing qualified
+          (reads "no data" when count is zero). */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <Card className="!p-5">
           <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Best Format</div>
@@ -134,12 +148,18 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           >
             {bestFormat?.key || "—"}
           </div>
-          <div className="text-xs text-slate-500 mt-1">
-            {(bestFormat?.avg_engagement_rate || 0).toFixed(2)}% eng rate
-          </div>
-          <div className="text-[11px] text-slate-500 mt-0.5">
-            {reliabilityLabel(bestFormat?.count || 0)}
-          </div>
+          {bestFormat ? (
+            <>
+              <div className="text-xs text-slate-500 mt-1">
+                {bestFormat.avg_engagement_rate.toFixed(2)}% eng rate
+              </div>
+              <div className="text-[11px] text-slate-500 mt-0.5">
+                {reliabilityLabel(bestFormat.count)}
+              </div>
+            </>
+          ) : (
+            <div className="text-xs text-slate-500 mt-1">Not enough posts in range to rank ({MIN_N}+ needed per format).</div>
+          )}
         </Card>
         <Card className="!p-5">
           <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Best Pillar</div>
@@ -149,12 +169,18 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           >
             {bestPillar?.key || "—"}
           </div>
-          <div className="text-xs text-slate-500 mt-1">
-            {(bestPillar?.avg_engagement_rate || 0).toFixed(2)}% eng rate
-          </div>
-          <div className="text-[11px] text-slate-500 mt-0.5">
-            {reliabilityLabel(bestPillar?.count || 0)}
-          </div>
+          {bestPillar ? (
+            <>
+              <div className="text-xs text-slate-500 mt-1">
+                {bestPillar.avg_engagement_rate.toFixed(2)}% eng rate
+              </div>
+              <div className="text-[11px] text-slate-500 mt-0.5">
+                {reliabilityLabel(bestPillar.count)}
+              </div>
+            </>
+          ) : (
+            <div className="text-xs text-slate-500 mt-1">Not enough posts in range to rank ({MIN_N}+ needed per pillar).</div>
+          )}
         </Card>
         <Card className="!p-5">
           <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Best Hook</div>
@@ -164,12 +190,18 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           >
             {bestHook?.key || "—"}
           </div>
-          <div className="text-xs text-slate-500 mt-1">
-            {(bestHook?.avg_engagement_rate || 0).toFixed(2)}% eng rate
-          </div>
-          <div className="text-[11px] text-slate-500 mt-0.5">
-            {reliabilityLabel(bestHook?.count || 0)}
-          </div>
+          {bestHook ? (
+            <>
+              <div className="text-xs text-slate-500 mt-1">
+                {bestHook.avg_engagement_rate.toFixed(2)}% eng rate
+              </div>
+              <div className="text-[11px] text-slate-500 mt-0.5">
+                {reliabilityLabel(bestHook.count)}
+              </div>
+            </>
+          ) : (
+            <div className="text-xs text-slate-500 mt-1">Not enough posts in range to rank ({MIN_N}+ needed per hook type).</div>
+          )}
         </Card>
         <Card className="!p-5">
           <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Best Spotlight Type</div>
@@ -179,12 +211,18 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           >
             {bestSpotlight?.key || "—"}
           </div>
-          <div className="text-xs text-slate-500 mt-1">
-            {(bestSpotlight?.avg_engagement_rate || 0).toFixed(2)}% eng rate
-          </div>
-          <div className="text-[11px] text-slate-500 mt-0.5">
-            {reliabilityLabel(bestSpotlight?.count || 0)}
-          </div>
+          {bestSpotlight ? (
+            <>
+              <div className="text-xs text-slate-500 mt-1">
+                {bestSpotlight.avg_engagement_rate.toFixed(2)}% eng rate
+              </div>
+              <div className="text-[11px] text-slate-500 mt-0.5">
+                {reliabilityLabel(bestSpotlight.count)}
+              </div>
+            </>
+          ) : (
+            <div className="text-xs text-slate-500 mt-1">Not enough posts in range to rank ({MIN_N}+ needed per spotlight type).</div>
+          )}
         </Card>
       </div>
 
@@ -206,14 +244,18 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
                 <span className="font-semibold" style={{ color: canonicalColor("format", bestFormat.key) }}>{bestFormat.key}</span>
                 <span className="font-semibold"> on </span>
                 <span className="font-semibold" style={{ color: canonicalColor("pillar", bestPillar.key) }}>{bestPillar.key}</span>
-                <span> — combined engagement rate of roughly {((bestFormat.avg_engagement_rate + bestPillar.avg_engagement_rate) / 2).toFixed(2)}% across {bestFormat.count + bestPillar.count} posts ({reliabilityLabel(Math.min(bestFormat.count, bestPillar.count))}).</span>
+                <span>
+                  {" "}— {bestFormat.key} averages {bestFormat.avg_engagement_rate.toFixed(2)}% ER across {bestFormat.count} post{bestFormat.count === 1 ? "" : "s"},
+                  and {bestPillar.key} averages {bestPillar.avg_engagement_rate.toFixed(2)}% across {bestPillar.count} post{bestPillar.count === 1 ? "" : "s"}.
+                  The two are measured on different cuts, so the intersection is an unknown — treat it as a test, not a guarantee.
+                </span>
               </li>
             )}
             {bestHook && (
               <li>
                 <span>Open with a </span>
                 <span className="font-semibold" style={{ color: canonicalColor("hook", bestHook.key) }}>{bestHook.key}</span>
-                <span> hook — {bestHook.avg_engagement_rate.toFixed(2)}% engagement across {bestHook.count} posts. Test it on the other pillars to see if the hook or the topic is carrying.</span>
+                <span> hook — {bestHook.avg_engagement_rate.toFixed(2)}% engagement across {bestHook.count} post{bestHook.count === 1 ? "" : "s"}. Test it on the other pillars to see if the hook or the topic is carrying.</span>
               </li>
             )}
             {bestSpotlight && (
@@ -233,7 +275,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           kind="ai"
           subtitle="Avg engagement rate by format"
           definition={`Engagement rate = total interactions (reactions + comments + shares) ÷ total unique reach across posts in that format — reach-weighted so viral outliers don't dominate. Formats with fewer than ${MIN_N} posts are hidden.`}
-          sampleSize={`n = ${inRange.length} posts`}
+          sampleSize={`n = ${inRange.length} post${inRange.length === 1 ? "" : "s"}`}
           caption="Higher is better. A format that consistently beats the average is worth doubling down on."
         >
           <BarChartBase data={formatER} valueFormat="percent" metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Format" />
@@ -255,7 +297,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           kind="ai"
           subtitle="Avg engagement rate by content pillar"
           definition={`Reach-weighted engagement rate per pillar (Σ interactions ÷ Σ reach). Only pillars with ${MIN_N}+ posts in the period are shown, so a single outlier can't win.`}
-          sampleSize={`${pillarStats.length} pillars shown (${MIN_N}+ posts)`}
+          sampleSize={`${pillarStats.length} pillar${pillarStats.length === 1 ? "" : "s"} shown (${MIN_N}+ posts)`}
           caption="Identify which content themes resonate most with the audience. Use alongside the Strategy tab's top-performer list."
         >
           <BarChartBase data={pillarER} horizontal height={Math.max(240, pillarER.length * 32)} valueFormat="percent" metricName="Engagement rate" valueAxisLabel="Engagement rate" />
@@ -269,7 +311,11 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
             kind="ai"
             subtitle="Avg engagement rate by spotlight type"
             definition={`Posts grouped by what they spotlight: Teacher, Product, Program, or Campaign. Reach-weighted engagement rate. Only types with ${MIN_N}+ posts shown. Assigned by the v2.2 classifier.`}
-            sampleSize={`${spotlightStats.length} spotlight types, n = ${spotlightStats.reduce((s, x) => s + x.count, 0)} posts`}
+            sampleSize={(() => {
+              const nTypes = spotlightStats.length;
+              const nPosts = spotlightStats.reduce((s, x) => s + x.count, 0);
+              return `${nTypes} spotlight type${nTypes === 1 ? "" : "s"}, n = ${nPosts} post${nPosts === 1 ? "" : "s"}`;
+            })()}
             caption="Which spotlight category the audience engages with most. If Teacher posts outperform Product posts, lean into the faculty."
           >
             <BarChartBase data={spotlightER} horizontal height={Math.max(180, spotlightER.length * 36)} valueFormat="percent" metricName="Engagement rate" valueAxisLabel="Engagement rate" />
@@ -292,7 +338,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           kind="ai"
           subtitle="Avg engagement rate by opening hook"
           definition={`Posts grouped by classified hook type (Question, Stat, Celebration, etc.). Reach-weighted engagement rate. Only hook types with ${MIN_N}+ posts are shown. Hook type is assigned by the weekly pipeline from the post's opening line.`}
-          sampleSize={`${hookStats.length} hook types shown`}
+          sampleSize={`${hookStats.length} hook type${hookStats.length === 1 ? "" : "s"} shown`}
           caption="If one hook dominates, try testing the same content with a different opening to see if it's the hook or the topic."
         >
           <BarChartBase data={hookER} horizontal height={Math.max(220, hookER.length * 32)} valueFormat="percent" metricName="Engagement rate" valueAxisLabel="Engagement rate" />
@@ -301,8 +347,8 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           title="Engagement Breakdown"
           kind="observed"
           subtitle="Volume by interaction type"
-          definition="Total count of each reaction / comment / share across all posts in the period. 'Like + Care' groups Facebook's Like and Care reactions together. Bars are sorted by volume so the dominant interaction type is always on top — with 6 categories, ranking is easier on a common-axis bar chart than a pie/donut where slice-size discrimination breaks down past 4 categories."
-          sampleSize={`n = ${inRange.length} posts`}
+          definition="Total count of each reaction / comment / share across all posts in the period. Bars are sorted by volume so the dominant interaction type is always on top — with 6 categories, ranking is easier on a common-axis bar chart than a pie/donut where slice-size discrimination breaks down past 4 categories."
+          sampleSize={`n = ${inRange.length} post${inRange.length === 1 ? "" : "s"}`}
           caption="High comment share suggests active community dialogue; high share ratio suggests virality potential."
         >
           <BarChartBase

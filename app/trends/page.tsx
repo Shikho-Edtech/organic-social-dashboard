@@ -105,7 +105,7 @@ export default async function TrendsPage({ searchParams }: { searchParams: Recor
               <h3 className="text-base font-semibold text-slate-900">Weekly at-a-glance</h3>
               <p className="text-xs text-slate-500 mt-0.5">Four series across the same weeks — read vertically for correlated dips/spikes</p>
             </div>
-            <div className="text-[11px] text-slate-500">{multiples.length} weeks</div>
+            <div className="text-[11px] text-slate-500">{multiples.length} week{multiples.length === 1 ? "" : "s"}</div>
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
