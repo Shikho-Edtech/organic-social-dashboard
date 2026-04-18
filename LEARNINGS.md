@@ -1,5 +1,17 @@
 # Learnings
 
+## 2026-04-18 — "Fix mobile by picking smaller constants" regresses desktop
+
+Two regressions from today's mobile pass had the same shape: I
+replaced a single constant (YAxis width 130, Plan Time pill `w-20`)
+with a value tuned for mobile, and desktop silently got worse. The
+sanity check is cheap — after any mobile-targeted change, re-open at
+desktop width and scan for truncation, broken alignment, or lost
+affordances. Better yet: before reaching for a smaller constant, ask
+whether the value should be data-driven (longest label) or
+breakpoint-scoped (`sm:w-20`) instead. "Pick a middle number that's
+bad for both but shippable" is usually a false compromise.
+
 ## 2026-04-18 — `group-hover` tooltips are invisible on touch
 
 Touch devices don't fire hover events. Any `group-hover:opacity-100`

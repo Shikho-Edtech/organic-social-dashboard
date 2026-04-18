@@ -1,14 +1,26 @@
 # Decisions
 
-## 2026-04-18 — BarChart horizontal YAxis width: single value, not responsive
+## 2026-04-18 — BarChart YAxis width: data-driven, not static (revised)
 
-Dropped YAxis width from 130 → 100 globally instead of making it
-breakpoint-aware. Recharts doesn't support CSS breakpoints on axis
-props and detecting viewport in the chart component would require
+Revised the earlier "single static 100" call after a desktop regression
+check. The static value worked for mobile but truncated long pillar
+names on desktop. Ruled out a viewport-aware approach (Recharts props
+don't accept CSS breakpoints; adding ResizeObserver + state to every
+chart is overkill). Instead, the axis now sizes itself to the longest
+label present in the data — ~6.5px per char at 11px sans-serif + 12px
+padding, clamped [60, 140]. Short-label charts (TOFU/MOFU/BOFU) get
+~60px, long-label charts (full pillar names) get ~130px. Same behaviour
+on mobile and desktop; the drawing-area tradeoff is only paid when
+the labels actually need it.
+
+## 2026-04-18 — BarChart horizontal YAxis width: single value, not responsive (superseded)
+
+Originally dropped 130 → 100 globally. Recharts doesn't support CSS
+breakpoints on axis props and detecting viewport would require
 client-side state + ResizeObserver — overkill for a 30px adjustment.
-100 is a compromise: mobile gets back 30px of drawing area, desktop
-still fits most labels (longer pillar names now truncate with "…",
-which is acceptable since the full label is in the tooltip).
+100 was a compromise: mobile got 30px back, desktop truncated long
+pillar names with "…" (acceptable because full label shows in tooltip).
+Superseded by the data-driven approach above after desktop review.
 
 ## 2026-04-18 — InfoTooltip: tap-toggle, not long-press or always-visible
 

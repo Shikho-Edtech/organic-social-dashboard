@@ -110,12 +110,13 @@ export default async function PlanPage() {
                   return (
                     <div key={i} className="relative px-4 sm:px-5 py-5 hover:bg-slate-50/60 transition-colors">
                       <div className={`absolute left-0 top-0 bottom-0 w-1 ${fc.stripe}`} />
-                      {/* Mobile: time + format row ABOVE content. sm+: time+format LEFT of content. */}
+                      {/* Mobile: time + format row ABOVE content. sm+: time+format LEFT of content,
+                          with the time pill in a fixed-width column so all slots align vertically. */}
                       <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
                         {/* Left group: time pill + format chip */}
                         <div className="flex items-center gap-2 sm:gap-3 sm:flex-shrink-0">
-                          <div className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700 bg-slate-100 rounded-md px-2 py-1">
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500">
+                          <div className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700 bg-slate-100 rounded-md px-2 py-1 sm:w-20 sm:justify-center">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500 flex-shrink-0">
                               <circle cx="12" cy="12" r="10"></circle>
                               <polyline points="12 6 12 12 16 14"></polyline>
                             </svg>

@@ -44,6 +44,18 @@ export default function BarChartBase({
   const total = showPercent ? data.reduce((s, d) => s + (d.value || 0), 0) : 0;
   const pct = (v: number) => (total > 0 ? (v / total) * 100 : 0);
 
+  // Dynamic YAxis width for horizontal bars. Previously hardcoded to 130,
+  // which burned 44% of a 375px phone's drawing area even when labels were
+  // short (e.g. TOFU/MOFU/BOFU). Compute from actual longest label: ~6.5px
+  // per char at 11px sans-serif + 12px padding, clamped 60–140. Long pillar
+  // names like "Study Tips & Exam Prep" still get the full 130ish they had
+  // before; short-label charts reclaim pixels for bars on mobile.
+  const longestLabel = data.reduce(
+    (max, d) => Math.max(max, (d.label || "").length),
+    0
+  );
+  const yAxisWidth = Math.min(140, Math.max(60, Math.round(longestLabel * 6.5) + 12));
+
   const tooltipFormatter = (v: number, _name: string, entry: any): [string, string] => {
     const name = metricName || "Value";
     const meta = entry?.payload?.meta;
@@ -82,10 +94,11 @@ export default function BarChartBase({
               dataKey="label"
               axisLine={false}
               tickLine={false}
-              // Was 130. On a 375px phone with card padding, 130px for labels
-              // left only ~160px of drawing area for bars. 100 is a compromise
-              // that still fits most pillar names and ~3-word hook types.
-              width={100}
+              // Dynamic width: sized to the longest label in this chart's data,
+              // clamped 60–140. Mobile charts with short labels (TOFU/MOFU/BOFU)
+              // reclaim ~40px of drawing area; desktop charts with long pillar
+              // names ("Study Tips & Exam Prep") still get the ~130 they need.
+              width={yAxisWidth}
               tick={{ fontSize: 11, fill: "#475569" }}
               label={
                 categoryAxisLabel

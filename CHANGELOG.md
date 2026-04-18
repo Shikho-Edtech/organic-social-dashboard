@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-04-18 — Desktop regression fixes from the mobile pass
+
+Two regressions introduced by today's mobile audit. (1)
+[BarChart.tsx](components/BarChart.tsx): the static 130→100 YAxis
+width fix for mobile was truncating long pillar names like "Study
+Tips & Exam Prep" on desktop. Replaced with a dynamic width sized to
+the longest label in each chart's data (~6.5px/char + 12px padding,
+clamped 60–140). Mobile charts with short labels still reclaim pixels;
+desktop charts with long names get the room they need. (2)
+[app/plan/page.tsx](app/plan/page.tsx): restructuring the slot brief
+to stack time+format above content on mobile dropped the `w-20` on
+the Time pill, so desktop Time columns no longer aligned vertically
+across slots. Restored `sm:w-20 sm:justify-center` — mobile keeps its
+natural-width pill, desktop gets its grid back.
+
 ## 2026-04-18 — Mobile audit pass (tooltips, Plan layout, bar labels)
 
 Three fixes from a full-site mobile audit. (1) ChartCard (i) tooltips
