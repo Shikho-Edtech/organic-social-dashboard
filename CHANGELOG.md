@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-04-18 — Fix /timing RSC-boundary crash (real root cause)
+
+`/timing` was passing inline arrow functions as `valueFormat` to the
+`<Heatmap>` client component. Next.js 14 App Router can't serialize
+non-server-action functions across the Server→Client boundary — prod
+threw on every render, dev only warned. Build passed, types checked, no
+signal until production. Replaced the function prop with a
+`"percent" | "number"` enum; Heatmap owns the format logic internally.
+Commit 9e60773. Full post-mortem + detection heuristics in LEARNINGS,
+design rationale for enum-over-function in DECISIONS.
+
+Earlier commit 015b048 (NaN guards in /timing's day/hour grid) was a
+plausible-but-wrong fix for the same symptom. Those guards are kept —
+they address a different latent bug — but they weren't what was
+breaking the page.
+
 ## 2026-04-18 — Batch 3 design pass: Timing heatmap, Explore workbench, a11y sweep, page template
 
 Final of three design-roadmap batches. Batch 1 fixed foundation,

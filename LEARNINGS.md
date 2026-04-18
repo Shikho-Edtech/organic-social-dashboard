@@ -1,5 +1,72 @@
 # Learnings
 
+## 2026-04-18 — Functions cannot cross the RSC boundary in Next 14 production
+
+`/timing` crashed with a generic Server Component error on every production
+load (reference 2007790820). First fix (015b048) added NaN guards around
+`grid[day][hour]` array indexing — those were plausible defensive code but
+not the actual bug. Second production browse still 500'd with the same
+digest. That same-digest signature was the giveaway: Next.js error.digest is
+derived from the error MESSAGE, not the stack trace. Same digest across
+commits meant the same error message was still being thrown, just from
+slightly different code paths after the first fix.
+
+Actual root cause: the Heatmap client component received `valueFormat` as an
+inline arrow function passed down from the Server Component:
+
+    valueFormat={(v) => v.toFixed(2) + "%"}
+
+Next.js 14 App Router cannot serialize a plain function across the RSC
+boundary. Only Server Actions (functions marked with 'use server') are
+allowed. Passing any other function throws:
+
+    "Functions cannot be passed directly to Client Components unless you
+     explicitly expose it by marking it with 'use server'."
+
+`next build` does NOT catch this — the build succeeds, the types check,
+the dev server only logs a warning. It shows up only when production
+actually tries to serialize the render tree, and only on pages that
+actually pass a function to a client component (here: just /timing, because
+it's the only consumer of `<Heatmap>`).
+
+Fix: replace function props with serializable descriptors. `valueFormat` is
+now a `"percent" | "number"` string enum, and Heatmap owns the format logic
+internally (fine, it's already a client component).
+
+### Detection heuristics for this failure class
+
+1. **Same digest across commits that change page code** = same error
+   message, likely a serialization throw at the RSC boundary, not a code
+   path you fixed.
+2. **Page compiles + next build green + dev works + prod 500s** = classic
+   RSC-only issue. Dev doesn't round-trip through the full serializer.
+3. **Only one page affected even though the bad file is shared** = that
+   page is the only one exercising the bad prop. Audit consumers.
+
+### Preventive guardrails
+
+- **Prop audit for every new client component**: functions, class
+  instances, Dates, Maps, Sets, Symbols, and non-plain objects cannot be
+  passed from a Server Component. Use enums / primitives / plain objects.
+- **Default function props with fallback strings**, not fallback functions,
+  so a future caller from a Server Component can't fall into the same
+  trap.
+- **When in doubt, grep for `<ClientComponent` across `app/` and check
+  every prop**. If a prop's value starts with `(` or is a function
+  reference, it's a bug waiting to hit prod.
+
+### What to do differently next time
+
+Don't assume a "possible-looking" bug explanation is the right one.
+015b048's NaN guards were a plausible-sounding fix, defensible in review,
+and technically correct (the guards ARE needed for a different latent
+bug). But we never verified the fix removed the actual symptom before
+declaring it done. The signal we missed: error digest is a hash of the
+error message in Next.js — same digest across builds = same error still
+throwing. Verify in production, not just in a passing build.
+
+Fixed in 9e60773.
+
 ## 2026-04-18 — Sticky toolbars need to know how tall the nav is (Batch 3b)
 
 Explore's sticky filter toolbar at first was `sticky top-0 z-30`. The

@@ -1,5 +1,33 @@
 # Decisions
 
+## 2026-04-18 — Client-component format props are enums, not functions
+
+After the /timing RSC-boundary crash (see LEARNINGS for full diagnosis),
+Heatmap's `valueFormat` prop was changed from `(v: number) => string` to
+`"percent" | "number"`. The format logic moved inside the component.
+
+Why enum instead of function:
+
+- A function prop is a silent trap: it works fine in dev and in unit
+  tests, passes typecheck, passes `next build`, and crashes only in
+  production. The failure is invisible until a user hits the route.
+- A string enum is serializable by construction. There's no way to
+  accidentally pass something that won't cross the RSC boundary.
+- The format space is small and closed (two cases today, realistically
+  three or four over the life of the component). Keeping the cases
+  enumerated in the component keeps the call sites trivial and the
+  behavior discoverable.
+
+Tradeoff: callers can no longer pass custom format logic. If we ever
+need a third format (e.g. "duration" for retention), we add it to the
+enum and the helper; this is a deliberate choice. Any use case that
+truly needs arbitrary formatting probably wants its own specialized
+client component, not a generic Heatmap.
+
+Applies to any future client-component prop that looks like a
+"formatter" or "renderer" — default to enum + inline logic, escalate to
+a proper API only if the cases genuinely can't be enumerated.
+
 ## 2026-04-18 — One heatmap beats a 2x2 bar grid (Batch 3a, #13)
 
 Timing asked "when should we post?" with four separate charts: bars
