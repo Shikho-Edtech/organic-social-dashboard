@@ -399,13 +399,20 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
         </div>
       )}
 
-      {/* Reels table */}
+      {/* Reels table — desktop table / mobile card-list.
+          A 9-column table at 360px forces horizontal scroll for primary
+          content, which CLAUDE.md flags as an anti-pattern. Below `md:`
+          each row is rendered as a stacked card with the same fields
+          laid out in a 3-column metric grid. Desktop keeps the dense
+          table because it's great at scanning. */}
       <Card className="!p-0 overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100">
           <h3 className="text-base font-semibold text-slate-900">Recent Reels</h3>
           <p className="text-xs text-slate-500 mt-0.5">Newest first · up to 25 rows</p>
         </div>
-        <div className="overflow-x-auto">
+
+        {/* Desktop / tablet table (md+) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500">
               <tr>
@@ -437,6 +444,51 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
             </tbody>
           </table>
         </div>
+
+        {/* Mobile card list (below md) */}
+        <ul className="md:hidden divide-y divide-slate-100">
+          {tableRows.map((row, i) => (
+            <li key={row.id + i} className="px-4 py-3">
+              <div className="flex items-baseline justify-between gap-2 mb-1.5">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 whitespace-nowrap">
+                  {row.date}
+                </div>
+                <div className="text-[11px] text-slate-500 truncate">{row.pillar}</div>
+              </div>
+              <div className="text-sm text-slate-800 line-clamp-2 mb-2" title={row.caption}>
+                {row.caption}
+              </div>
+              <div className="grid grid-cols-3 gap-x-2 gap-y-2 text-xs">
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Plays</div>
+                  <div className="text-sm font-semibold text-slate-900 tabular-nums">{row.plays.toLocaleString()}</div>
+                </div>
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Watch</div>
+                  <div className="text-sm font-semibold text-slate-900 tabular-nums">{row.watch}s</div>
+                </div>
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Follows</div>
+                  <div className="text-sm font-semibold text-brand-green tabular-nums">
+                    {row.follows > 0 ? `+${row.follows}` : "0"}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Hook 3s</div>
+                  <div className="text-sm text-slate-700 tabular-nums">{row.hook3}%</div>
+                </div>
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Replay %</div>
+                  <div className="text-sm text-slate-700 tabular-nums">{row.replayRate}%</div>
+                </div>
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Replays</div>
+                  <div className="text-sm text-slate-700 tabular-nums">{row.replays.toLocaleString()}</div>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
       </Card>
     </div>
   );

@@ -8,7 +8,12 @@ type Props = {
 };
 
 export default function PageHeader({ title, subtitle, dateLabel, showPicker = true }: Props) {
-  const renderedAt = new Date().toLocaleString("en-GB", {
+  // Pages are `force-dynamic` with `revalidate = 300`, so data is fetched at
+  // most ~5 minutes before the user sees it. That's close enough to call this
+  // the "data as of" timestamp rather than a render-time UI artefact. Users
+  // asking "how fresh is what I'm looking at?" now have a direct answer
+  // instead of inferring it from the word "Rendered".
+  const dataAsOf = new Date().toLocaleString("en-GB", {
     timeZone: "Asia/Dhaka",
     day: "2-digit", month: "short", year: "numeric",
     hour: "2-digit", minute: "2-digit", hour12: false,
@@ -29,7 +34,7 @@ export default function PageHeader({ title, subtitle, dateLabel, showPicker = tr
           <div className="flex flex-col items-end gap-2 self-end sm:self-auto">
             <DateRangePicker />
             <div className="text-xs text-slate-500">{dateLabel}</div>
-            <div className="text-[11px] text-slate-500">Rendered {renderedAt} BDT</div>
+            <div className="text-[11px] text-slate-500">Data as of {dataAsOf} BDT</div>
           </div>
         )}
       </div>

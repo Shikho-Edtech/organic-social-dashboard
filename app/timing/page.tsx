@@ -5,6 +5,7 @@ import { resolveRange } from "@/lib/daterange";
 import PageHeader from "@/components/PageHeader";
 import { Card, ChartCard } from "@/components/Card";
 import BarChartBase from "@/components/BarChart";
+import EmptyChart from "@/components/EmptyChart";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -216,9 +217,10 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
           {slotsShown > 0 ? (
             <BarChartBase data={slotReachChart} color="#4f46e5" metricName="Avg reach / post" valueAxisLabel="Avg reach / post" categoryAxisLabel="Time slot (BDT)" />
           ) : (
-            <div className="flex items-center justify-center h-48 text-sm text-slate-500">
-              No slot has ≥ {MIN_N} posts in this {rangeDays}-day window. Widen the range.
-            </div>
+            <EmptyChart
+              message={`Not enough posts per slot in this ${rangeDays}-day window`}
+              hint={`Need at least ${MIN_N} posts in a single slot to rank reliably. Widen the date range or wait for more posts.`}
+            />
           )}
         </ChartCard>
         <ChartCard
@@ -232,9 +234,10 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
           {slotsShown > 0 ? (
             <BarChartBase data={slotEngChart} valueFormat="percent" color="#ec4899" metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Time slot (BDT)" />
           ) : (
-            <div className="flex items-center justify-center h-48 text-sm text-slate-500">
-              No slot has ≥ {MIN_N} posts in this {rangeDays}-day window.
-            </div>
+            <EmptyChart
+              message={`Not enough posts per slot`}
+              hint={`Need ${MIN_N}+ posts in a single slot for a ${rangeDays}-day window.`}
+            />
           )}
         </ChartCard>
       </div>
@@ -251,9 +254,10 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
           {daysShown > 0 ? (
             <BarChartBase data={dayReachChart} color="#4f46e5" metricName="Avg reach / post" valueAxisLabel="Avg reach / post" categoryAxisLabel="Day of week" />
           ) : (
-            <div className="flex items-center justify-center h-48 text-sm text-slate-500">
-              No day-of-week has ≥ {MIN_N} posts in this {rangeDays}-day window.
-            </div>
+            <EmptyChart
+              message={`Not enough posts per day-of-week`}
+              hint={`Need ${MIN_N}+ posts on a single weekday for a ${rangeDays}-day window.`}
+            />
           )}
         </ChartCard>
         <ChartCard
@@ -267,9 +271,10 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
           {daysShown > 0 ? (
             <BarChartBase data={dayEngChart} valueFormat="percent" color="#ec4899" metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Day of week" />
           ) : (
-            <div className="flex items-center justify-center h-48 text-sm text-slate-500">
-              No day-of-week has ≥ {MIN_N} posts in this {rangeDays}-day window.
-            </div>
+            <EmptyChart
+              message={`Not enough posts per day-of-week`}
+              hint={`Need ${MIN_N}+ posts on a single weekday for a ${rangeDays}-day window.`}
+            />
           )}
         </ChartCard>
       </div>
