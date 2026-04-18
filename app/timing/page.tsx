@@ -257,7 +257,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
               cells={erCells}
               minN={CELL_MIN_N}
               metricLabel="engagement rate"
-              valueFormat={(v) => v.toFixed(2) + "%"}
+              valueFormat="percent"
               minColor="#fdf2f8" // pink-50
               maxColor="#ec4899" // pink-500 — matches the "ER" family color
             />
@@ -286,7 +286,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
               cells={reachCells}
               minN={CELL_MIN_N}
               metricLabel="avg reach"
-              valueFormat={(v) => Math.round(v).toLocaleString()}
+              valueFormat="number"
               minColor="#eef2ff" // indigo-50
               maxColor="#4f46e5" // indigo-600
             />

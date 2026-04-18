@@ -28,13 +28,25 @@ type Props = {
   minN: number;
   /** Human label for the value axis, used in tooltips. */
   metricLabel: string;
-  /** Formatter for the value in tooltips. */
-  valueFormat?: (v: number) => string;
+  /**
+   * Serializable format descriptor for the value in tooltips / aria labels.
+   * Functions can't cross the RSC boundary in Next 14 production (prod throws,
+   * dev silently warns). Use a string enum here and format inline.
+   *  - "percent" → v.toFixed(2) + "%"
+   *  - "number"  → Math.round(v).toLocaleString()
+   */
+  valueFormat?: "percent" | "number";
   /** Low-end color (value near 0). Defaults to indigo-50. */
   minColor?: string;
   /** High-end color (value at max). Defaults to brand indigo (indigo-600). */
   maxColor?: string;
 };
+
+function formatValue(v: number, kind: "percent" | "number"): string {
+  if (!isFinite(v)) return "—";
+  if (kind === "percent") return v.toFixed(2) + "%";
+  return Math.round(v).toLocaleString();
+}
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DAY_NAMES_SHORT = ["S", "M", "T", "W", "T", "F", "S"];
@@ -70,10 +82,11 @@ export default function Heatmap({
   cells,
   minN,
   metricLabel,
-  valueFormat = (v) => v.toFixed(2),
+  valueFormat = "number",
   minColor = "#eef2ff", // indigo-50
   maxColor = "#4f46e5", // indigo-600
 }: Props) {
+  const fmt = (v: number) => formatValue(v, valueFormat);
   const [hovered, setHovered] = useState<HeatmapCell | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -156,7 +169,7 @@ export default function Heatmap({
                     isHover ? "ring-2 ring-slate-900 scale-110 z-10 relative" : ""
                   }`}
                   style={{ backgroundColor: color }}
-                  aria-label={`${day} ${formatHour(h)}: ${cell.n} posts, ${valueFormat(cell.value)} ${metricLabel.toLowerCase()}`}
+                  aria-label={`${day} ${formatHour(h)}: ${cell.n} posts, ${fmt(cell.value)} ${metricLabel.toLowerCase()}`}
                 />
               );
             })}
@@ -201,7 +214,7 @@ export default function Heatmap({
             {hovered.n > 0 && (
               <>
                 {" · "}
-                {valueFormat(hovered.value)} {metricLabel.toLowerCase()}
+                {fmt(hovered.value)} {metricLabel.toLowerCase()}
               </>
             )}
           </div>
