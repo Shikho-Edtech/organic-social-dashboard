@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-04-18 — Mobile audit pass (tooltips, Plan layout, bar labels)
+
+Three fixes from a full-site mobile audit. (1) ChartCard (i) tooltips
+are now tap-activated via a new [InfoTooltip](components/InfoTooltip.tsx)
+client component — hover-only meant every chart definition was
+invisible on touch devices. (2) Plan page slot briefs stack time+format
+above content on mobile so main content stops being crammed to ~100px.
+(3) Plan day-header chips wrap to their own row below the day/date on
+mobile. (4) BarChart horizontal YAxis width reduced 130 → 100 — the old
+value ate 44% of the drawing area on a 375px phone.
+
 ## 2026-04-18 — Mobile nav fix
 
 [components/Nav.tsx](components/Nav.tsx) — Replaced the horizontal
