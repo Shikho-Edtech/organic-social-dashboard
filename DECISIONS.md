@@ -1,5 +1,41 @@
 # Decisions
 
+## 2026-04-18 — Pre-commit QA gate formalized in project CLAUDE.md
+
+User asked: "do we have this as a global rule to do extensive qa from multiple
+perspectives before any commit or deployment?" Answer was partial — global
+CLAUDE.md has "stress test before delivering" and project CLAUDE.md has a
+mobile checklist + `npm run build`, but there was no explicit multi-
+perspective gate. Batch 1 shipped with build + general stress-testing, but
+no formal pass through 360/768/1280 or keyboard traversal.
+
+Options considered:
+
+- **Global rule in `~/.claude/CLAUDE.md`**: applies everywhere. Rejected —
+  the specifics (viewports, breakpoints, stack-specific perspectives) depend
+  on the project. A generic "do thorough QA" in global is already covered
+  by "stress test before delivering" and adding more there just dilutes it.
+- **CI pipeline (Playwright, axe-core, Lighthouse)**: catches more
+  automatically but costs setup + maintenance for an 11-page internal
+  dashboard. Rejected — same tradeoff as the visual-regression decision:
+  overkill for this scale.
+- **Seven-perspective gate in project CLAUDE.md**: Claude reads it every
+  session that touches this repo, specifics match the stack (Tailwind
+  breakpoints, `focus-visible`, `StalenessBanner`, Recharts), and it
+  encodes the exact failure classes that have actually shipped bugs
+  (desktop-only, hover-only, empty-state crashes).
+
+Went with the third. Seven perspectives: viewport sweep, data extremes,
+interaction modes, accessibility, error + loading states, build + type-check,
+cold-read test. Explicitly frames `npm run build` as necessary-but-not-
+sufficient. Requires Claude to report what was checked in the commit
+summary so skipped perspectives are visible.
+
+Tradeoff: every commit now carries more self-review overhead (a few minutes
+at most). Acceptable because the user has flagged three separate rounds
+of follow-up fixes so far (mobile, date-picker alignment, right-edge
+overflow) that would have been caught by this gate.
+
 ## 2026-04-18 — Donut → horizontal bar for Engagement's reaction breakdown
 
 The 6-slice donut on Engagement broke Cleveland & McGill's perception

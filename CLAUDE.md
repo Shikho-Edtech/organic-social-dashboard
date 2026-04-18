@@ -159,10 +159,81 @@ stages silently go stale...") for the rationale and failure mode.
 
 ---
 
+## Pre-commit QA gate — multi-perspective pass
+
+`npm run build` is necessary but **not sufficient**. Every commit that changes
+UI, data flow, or user-facing logic must pass the seven perspectives below
+before it's reported done. This exists because past commits shipped with
+desktop-only assumptions, broken empty states, and keyboard-inaccessible
+controls that all compiled cleanly. Type-checks don't catch intent.
+
+Run this as a **self-review before commit**, not as a reason to ask the user
+to verify. Report what was checked and what was caught.
+
+### The seven perspectives
+
+1. **Viewport sweep.** Mentally (or via the running dev server) walk every
+   changed page at **360 / 768 / 1280px**. Anything that overflows, stacks
+   weirdly, or becomes untappable at 360px is a fail. This is the existing
+   mobile checklist — just run it, every time.
+
+2. **Data extremes.** What does this look like with:
+   - Empty data (0 rows, null artifact)
+   - A single row
+   - Max-realistic data (30% longer labels, 7-digit numbers, 60+ reels)
+   - A stale artifact (triggers StalenessBanner)
+
+   If the page crashes, renders a blank card, or truncates without
+   indication on any of these, fix before commit.
+
+3. **Interaction modes.** Tab through every new interactive element with
+   the keyboard. Confirm:
+   - Focus is visible (global `focus-visible` ring in `globals.css` handles
+     this — but confirm nothing disables it locally)
+   - Tab order is sensible (top-to-bottom, left-to-right)
+   - Every hover affordance has a tap/click equivalent
+   - No `:hover`-only tooltips or menus
+
+4. **Accessibility.** For each new piece of UI:
+   - Text contrast ≥ 4.5:1 on regular copy (use slate-500 minimum for
+     secondary text on white; slate-700 on slate-50 backgrounds)
+   - Dynamic content (banners, toasts) has `role="status"` / `aria-live`
+   - Icons that convey state have `aria-label` or visible text siblings
+   - Tap targets are ≥ 44×44px (pad with `py-2 px-3` minimum)
+
+5. **Error + loading states.** Confirm `app/loading.tsx` renders a sensible
+   skeleton and `app/error.tsx` triggers on a thrown error (temporarily
+   `throw new Error("qa")` in a server component to verify). Don't leave
+   the check for production.
+
+6. **Build + type-check.** `npm run build` must be green — no type errors,
+   no unused imports, no missing `"use client"` on event-handler components.
+   Warnings are tolerated; errors are not.
+
+7. **Cold-read test.** Reopen the changed page as if you'd never seen it.
+   Does the headline answer "what is this?" Does the first KPI answer "is
+   this good or bad?" Can a new user act on the page in under 30 seconds?
+   If not, the copy or layout needs one more pass.
+
+### What to report
+
+After running the gate, a commit summary should mention what was checked
+and what was caught — not as a wall of green checkmarks, but as prose:
+"Verified at 360/768/1280, empty-state renders, tab order is header → KPI
+→ chart, build green." If something was caught and fixed, call it out
+explicitly so the pattern ends up in LEARNINGS.
+
+If a perspective is **not applicable** (e.g., a pure copy change touches
+only viewport sweep + cold-read), say so. Skipping silently means the
+next commit quietly skips more.
+
+---
+
 ## Build + test
 
-- `npm run build` — the only verification that matters pre-commit. Compiles
-  in ~30s. Type-checks.
+- `npm run build` — required but not the only gate. See "Pre-commit QA gate"
+  above. Compiles in ~30s. Type-checks.
 - Dev server needs `.env.local` with Google Sheets creds; it's fine to verify
   on the live Vercel deployment instead.
-- No unit test suite. Changes are verified via build + live visual review.
+- No unit test suite. Changes are verified via build + QA gate + live visual
+  review on Vercel.
