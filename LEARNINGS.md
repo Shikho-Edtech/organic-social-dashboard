@@ -1,5 +1,80 @@
 # Learnings
 
+## 2026-04-18 — Tailwind's `!` override is the escape hatch for component-default classes (Batch 2b)
+
+KpiCard wraps `Card`, which emits a fixed `p-6 bg-white rounded-xl
+shadow-sm`. To give KPIs a subtle gradient + slightly smaller padding
+than the chart cards sharing the page, the clean approach would be to
+thread a `padding` + `bg` prop through Card. But Card already accepts
+a `className` that's appended AFTER its base classes — and Tailwind's
+last-rule-wins doesn't kick in reliably because `p-6` and `p-5` have
+the same specificity, so whichever wins depends on CSS source order.
+
+`!p-5 !bg-gradient-to-br from-white to-slate-50/60` via the `className`
+prop is the right escape hatch. The `!` generates `!important` which
+overrides Card's defaults regardless of CSS order. Ugly but
+single-purpose — don't reach for `!` on rules that aren't
+component-default overrides, or the cascade becomes impossible to
+reason about.
+
+Takeaway: when a shared component has opinionated defaults and you
+need to vary one instance, `!`-override on the `className` is
+cheaper than refactoring the component's API. Keep the refactor
+option in reserve for when three+ variants need to diverge.
+
+## 2026-04-18 — "Rendered" reads as UI metadata, "Data as of" reads as freshness (Batch 2c)
+
+PageHeader had been showing `Rendered {datetime} BDT` in the top-right
+since Batch 1. With `force-dynamic + revalidate=300`, that timestamp
+IS effectively the data freshness — yet every user reading "Rendered"
+interpreted it as an internal UI metric, not an answer to "how fresh
+is what I'm looking at?" Same value, wrong label → nobody looked at it.
+
+Renamed to `Data as of`. Zero implementation change — just a label
+swap — and the information actually reads as answering a question
+users care about. Corollary for any UI timestamp: label it by the
+question it answers, not by the technical event that produced it.
+
+## 2026-04-18 — Mobile card-list beats horizontal-scroll table even when the table works (Batch 2c, #14)
+
+Reels's Recent Reels table is 9 columns, inside `overflow-x-auto`.
+Desktop-fine. On mobile, horizontal scroll is invisible — the user
+sees the first 3 columns and no hint that 6 more are hidden to the
+right. Even with a scroll indicator, this is "primary content locked
+behind a touch gesture most users don't know to try."
+
+Solution: `hidden md:block` on the table + `md:hidden` on a
+vertically-stacked card list that renders the same rows with the key
+metrics in a 3-col grid (Plays/Watch/Follows on row 1, Hook3s/Replay/
+Replays on row 2). The table's dense scannability is still the right
+answer on desktop where you'd lose it by forcing cards; mobile gets
+the UX it needed.
+
+Rule: `overflow-x-auto` is acceptable for dense analytical tables on
+md:+ displays; **below md, stack the same data into per-row cards
+regardless of how many columns**. Horizontal-scroll-for-primary-content
+is already flagged as an anti-pattern in CLAUDE.md — this reinforces
+that the fix is vertical card stacking, not a better scroll indicator.
+
+## 2026-04-18 — Small multiples beat one big chart when the question is "does A correlate with B?" (Batch 2d, Pg-Tr)
+
+Trends has four full-size charts (daily volume, daily reach, weekly
+ER, weekly shares). Rich individually, but for the "did the reach dip
+line up with the volume dip?" question each reader had to scroll
+through four charts and hold the x-axis in their head.
+
+Added a 4-up small-multiples strip at the top: four 40px sparklines
+on the same week-based x-axis, with last-week absolute value + WoW %
+delta. Two seconds to see that the reach-ER-volume trio all dipped
+the same week (content problem, not cadence) vs. reach dipped but
+volume and ER held (delivery algorithm problem).
+
+Rule: **when the insight is cross-series correlation, the small-
+multiples strip is a better first-render than the full chart grid.**
+The full charts aren't redundant — they show the per-day granularity
+the sparkline smooths over — so both belong. The strip becomes the
+"summary/index", the full charts become the "deep dive."
+
 ## 2026-04-18 — `JSON.parse` inside a nested loop is silently O(n²) expensive
 
 Reels page aggregated an average retention curve by iterating every reel,

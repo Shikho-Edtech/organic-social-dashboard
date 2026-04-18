@@ -1,5 +1,55 @@
 # Changelog
 
+## 2026-04-18 — Batch 2 design pass: color system, visual family, data states, per-page callouts
+
+Four thematic commits landing the second of three design-roadmap batches.
+Not a rewrite — polish on top of Batch 1 that makes the dashboard read as
+one coherent product rather than eight independent pages.
+
+**2a — Color system.** New `lib/colors.ts` owns category-canonical hexes
+for format / hook / spotlight / funnel / pillar. `canonicalColor(field, value)`
+returns the brand-canonical color (falling back to djb2-hash for unknowns
+so colors are stable across renders). BarChart accepts a per-row `color`
+field so each bar carries its category color without the chart caring.
+FORMAT_COLORS now matches Plan's pill hues (Reel=pink, Photo=blue,
+Carousel=amber, Video=purple, Link=teal). Engagement's Best X strip
+switched from one-color-fits-all to per-category coloring. Default
+BarChart color flipped from cyan (`#06b6d4`) to brand indigo (`#4f46e5`).
+
+**2b — Visual family.** Three coordinated tweaks: (i) drop `text-[10px]`
+and `text-[9px]` entirely — collapse the below-14px scale to `text-xs`
+(12px) for labels and `text-[11px]` for eyebrow/uppercase; (ii) `gap-4
+mb-6` on every page-level section stack for consistent 24px rhythm; (iii)
+`shadow-sm hover:shadow transition-shadow` on Card plus a whisper
+`bg-gradient-to-br from-white to-slate-50/60` on KpiCard so KPIs read
+touchable.
+
+**2c — Data + states.** New `components/EmptyChart.tsx` — a single
+role-status empty-state used by Timing's four filter fallbacks (was
+four hand-rolled copies of `flex items-center justify-center h-48`).
+Reels table swaps to a mobile card-list below `md:` (the 9-col table
+at 360px forced horizontal scroll for primary content, an explicit
+CLAUDE.md anti-pattern). PageHeader's "Rendered {datetime} BDT" becomes
+"Data as of {datetime} BDT" — same timestamp, better honesty about what
+it represents.
+
+**2d — Per-page narrative callouts.** Overview's Engagement Mix donut
+(low-information, never shifts meaningfully) is replaced by a Biggest
+Movers card — top 3 risers + 3 fallers by pillar reach %-delta vs prev
+period, with a 5k-reach floor so tiny-base pillars can't hijack the
+list. Engagement gets a Recommendations callout under the Best X strip
+that synthesizes the four signals into 2-3 actionable sentences.
+Trends gets a 4-up small-multiples strip (reach / volume / shares /
+engagement rate sparklines on the same x-axis), so correlated weekly
+dips/spikes pop in two seconds. Login's 4-bullet workflow cadence block
+is replaced by a three-stop data-flow illustration (Source → Store →
+Surface) with daily and weekly cadences labelled on the arrows —
+communicates the pipeline shape in one visual pass.
+
+Build green across all four commits, 13 routes, no new warnings. Each
+commit passed the seven-perspective QA gate; specific catches captured
+in LEARNINGS (below).
+
 ## 2026-04-18 — Batch 1 foundation pass (WCAG AA, loading/error, brand palette, Strategy hero, Plan today marker)
 
 First of three design-roadmap batches. Foundation-level polish that every

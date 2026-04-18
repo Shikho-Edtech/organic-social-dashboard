@@ -1,5 +1,69 @@
 # Decisions
 
+## 2026-04-18 — Categorical color is a product concept, not a chart setting (Batch 2a)
+
+Pre-Batch-2, every chart component had its own `colorByIndex` toggle and
+its own interpretation of "what color should bar 3 be?" A Reel bar on
+Engagement was amber; the Reel pill on Plan was pink; the Reel slice on
+Overview's donut was cyan. Three surfaces, same category, three colors.
+Readers had no way to build the "oh, pink means Reel" association.
+
+Decided to centralize category→color in `lib/colors.ts` with:
+- `FORMAT_COLORS`, `HOOK_COLORS`, `SPOTLIGHT_COLORS`, `FUNNEL_COLORS` as
+  explicit maps (canonical brand-compatible hexes)
+- `canonicalColor(field, value)` as a single call-site that all pages use
+- A djb2 string-hash fallback for pillars (too many + open-ended, can't
+  be hand-mapped), so colors are STABLE across renders even for unknown
+  pillars — the same pillar name always hashes to the same palette slot
+
+Alternatives considered:
+
+- **Tailwind theme extend only**: tempting because it keeps class strings
+  clean, but Tailwind 3.4 can't compile classes at runtime from DB values.
+  `text-[${color}]` requires static analysis and silently fails — user
+  had hit this before. Inline `style={{ color }}` is uglier but it works.
+- **Recharts `colorBy` prop**: already exists but only on BarChart, and
+  it takes an index, not a category value. Would need a pre-compute step
+  per page anyway, so might as well do it in `canonicalColor`.
+- **Themed palettes per page**: rejected — the whole point is consistency
+  ACROSS pages, not within.
+
+Tradeoff: pages now have a handful of `canonicalColor("format", s.key)`
+calls instead of passing a single `color` string. Worth it; the visual
+cohesion payoff is immediate on Engagement (Best Format and Format
+Performance chart now agree on what color Reel is).
+
+## 2026-04-18 — Donut → Biggest Movers on Overview (Batch 2d, Pg-Ov)
+
+Overview had two donuts side-by-side in the lower row: Format Distribution
+(useful — answers "am I over-relying on one format?") and Engagement Mix
+(reactions vs comments vs shares). The Engagement Mix donut was
+aesthetically fine but informationally near-zero: the ratio rarely
+shifts enough to change a decision, and "Shikho's audience leaves more
+reactions than comments" is not a finding that drives content planning.
+
+Considered:
+
+- **Keep the donut, add a delta annotation**: still fundamentally
+  shows a ratio that doesn't change week-over-week. Lipstick on a pig.
+- **Swap to a follower trajectory chart**: already in the KPI strip
+  via the Followers card; would duplicate.
+- **"Biggest Movers"**: what the user actually wants to know when
+  opening Overview — "what changed vs last period, for good or bad?"
+
+Went with Movers: top 3 risers + 3 fallers by pillar reach %-delta,
+with a 5k-reach floor on either side. The floor matters — without it a
+pillar going from 50 reach to 200 is a "+300%" and would dominate the
+list over a pillar that actually moved meaningful audience (-15% off a
+200k base). Reach is used as the mover axis (not engagement rate)
+because reach is the primary signal on Overview and the deltas tend
+to be larger / more informative. Pillars color-code via
+`canonicalColor("pillar", key)` so color is consistent with Engagement's
+Pillar Performance chart.
+
+Follow-ups if needed: allow user to toggle the mover axis between reach
+and engagement rate; add a drilldown link to the pillar in Explore.
+
 ## 2026-04-18 — Pre-commit QA gate formalized in project CLAUDE.md
 
 User asked: "do we have this as a global rule to do extensive qa from multiple
