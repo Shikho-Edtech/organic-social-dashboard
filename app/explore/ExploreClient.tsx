@@ -143,13 +143,13 @@ export default function ExploreClient({ posts }: Props) {
           sm+: single flex-wrap row, same density as desktop today. */}
       <Card className="mb-6 !p-0">
         <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 px-4 py-3">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 sm:mr-1">Filter</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 sm:mr-1">Filter</span>
           <MultiSelect label="Content Pillar" options={pillarOptions} selected={pillars} onChange={setPillars} />
           <MultiSelect label="Format" options={formatOptions} selected={formats} onChange={setFormats} />
           <MultiSelect label="Audience" options={audienceOptions} selected={audiences} onChange={setAudiences} />
           <MultiSelect label="Spotlight" options={entityOptions} selected={entities} onChange={setEntities} searchable />
           <div className="hidden sm:block h-6 w-px bg-slate-200 mx-1" />
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mt-2 sm:mt-0">Group by</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mt-2 sm:mt-0">Group by</span>
           <GroupBySelect value={groupByDim} onChange={setGroupByDim} />
           <div className="sm:ml-auto flex items-center justify-between sm:justify-end gap-3 text-xs text-slate-500 mt-2 sm:mt-0 w-full sm:w-auto">
             <span>
@@ -182,7 +182,7 @@ export default function ExploreClient({ posts }: Props) {
         </Card>
       ) : (
         <>
-          <div className="mb-4">
+          <div className="mb-6">
             <ChartCard
               title="Reach Over Time"
               kind="observed"
@@ -193,7 +193,7 @@ export default function ExploreClient({ posts }: Props) {
             </ChartCard>
           </div>
 
-          <div className="mb-4">
+          <div className="mb-6">
             <ChartCard
               title={`Performance by ${groupByLabel}`}
               kind="ai"
@@ -339,7 +339,7 @@ function RangeDropdown({
             ))}
           </div>
           <div className="border-t border-slate-100 px-4 py-3 bg-slate-50/50">
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Custom range</div>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Custom range</div>
             <div className="flex items-center gap-2">
               <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)}
                 className="flex-1 px-2 py-1 rounded-md text-xs border border-slate-200 bg-white text-slate-700 focus:outline-none focus:border-brand-shikho-indigo" />
@@ -405,7 +405,7 @@ function MultiSelect({
       >
         <span>{label}</span>
         {count > 0 && (
-          <span className="px-1.5 py-0.5 rounded-full bg-brand-shikho-indigo text-white text-[10px] font-semibold leading-none">
+          <span className="px-1.5 py-0.5 rounded-full bg-brand-shikho-indigo text-white text-[11px] font-semibold leading-none">
             {count}
           </span>
         )}
@@ -417,7 +417,7 @@ function MultiSelect({
       {open && (
         <div className="absolute left-0 mt-2 w-96 max-w-[calc(100vw-2rem)] bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
           <div className="px-3 py-2 border-b border-slate-100 flex items-center justify-between">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{label}</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{label}</span>
             {count > 0 && (
               <button onClick={() => onChange([])} className="text-[11px] text-slate-500 hover:text-slate-800 underline underline-offset-2">
                 Clear

@@ -61,7 +61,7 @@ export default async function TrendsPage({ searchParams }: { searchParams: Recor
     <div>
       <PageHeader title="Trends" subtitle="Time-based patterns across the period" dateLabel={range.label} />
 
-      <div className="grid lg:grid-cols-2 gap-4 mb-4">
+      <div className="grid lg:grid-cols-2 gap-4 mb-6">
         <ChartCard
           title="Daily Posting Volume"
           kind="observed"

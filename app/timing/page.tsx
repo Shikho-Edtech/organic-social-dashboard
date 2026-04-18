@@ -145,7 +145,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
       {/* Best slots summary — ranked by 95% CI lower bound */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <Card className="!p-5">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Best for Reach (Day)</div>
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Best for Reach (Day)</div>
           <div className="text-xl sm:text-2xl font-bold text-brand-cyan mt-2 break-words leading-tight">{bestDayReach?.label || "—"}</div>
           <div className="text-xs text-slate-500 mt-1">
             {Math.round(bestDayReach?.reachSum.mean || 0).toLocaleString()} avg reach/post
@@ -158,7 +158,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
           </div>
         </Card>
         <Card className="!p-5">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Best for Engagement (Day)</div>
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Best for Engagement (Day)</div>
           <div className="text-xl sm:text-2xl font-bold text-brand-pink mt-2 break-words leading-tight">{bestDayEng?.label || "—"}</div>
           <div className="text-xs text-slate-500 mt-1">
             {(bestDayEng?.erSum.mean || 0).toFixed(2)}% avg eng rate
@@ -171,7 +171,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
           </div>
         </Card>
         <Card className="!p-5">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
             Best for Reach (Slot)
             {!anyRankable && <span className="ml-1 text-amber-500" title="No slot has n≥2 — ranking falls back to raw mean">*</span>}
           </div>
@@ -187,7 +187,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
           </div>
         </Card>
         <Card className="!p-5">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
             Best for Engagement (Slot)
             {!anyRankable && <span className="ml-1 text-amber-500" title="No slot has n≥2 — ranking falls back to raw mean">*</span>}
           </div>
@@ -204,7 +204,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
         </Card>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4 mb-4">
+      <div className="grid lg:grid-cols-2 gap-4 mb-6">
         <ChartCard
           title="Avg Reach by Time of Day"
           kind="observed"

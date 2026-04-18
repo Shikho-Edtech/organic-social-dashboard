@@ -302,34 +302,34 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
       {/* Secondary metric row — derived retention from per-second curve */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <Card className="!p-4">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Total Views</div>
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Total Views</div>
           <div className="text-xl font-bold text-brand-cyan mt-1">{totalViews.toLocaleString()}</div>
         </Card>
         <Card className="!p-4">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">15s Retention</div>
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">15s Retention</div>
           <div className="text-xl font-bold text-brand-green mt-1">{total15s.toLocaleString()}</div>
-          <div className="text-[10px] text-slate-500 mt-0.5">
+          <div className="text-[11px] text-slate-500 mt-0.5">
             {denom15s ? ((total15s / denom15s) * 100).toFixed(1) : "0"}% · {total15sBucket > 0 ? "Meta bucket" : "derived from curve"}
           </div>
         </Card>
         <Card className="!p-4">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">30s Retention</div>
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">30s Retention</div>
           <div className="text-xl font-bold text-brand-pink mt-1">{total30s.toLocaleString()}</div>
-          <div className="text-[10px] text-slate-500 mt-0.5">
+          <div className="text-[11px] text-slate-500 mt-0.5">
             {denom30s ? ((total30s / denom30s) * 100).toFixed(1) : "0"}% · {total30sBucket > 0 ? "Meta bucket" : "derived from curve"}
           </div>
         </Card>
         <Card className="!p-4">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Replay Rate</div>
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Replay Rate</div>
           <div className="text-xl font-bold text-brand-purple mt-1">{replayRate.toFixed(1)}%</div>
-          <div className="text-[10px] text-slate-500 mt-0.5">
+          <div className="text-[11px] text-slate-500 mt-0.5">
             {totalReplays.toLocaleString()} replays / {totalPlays.toLocaleString()} plays
           </div>
         </Card>
       </div>
 
       {/* Retention funnel — derived from per-second curve */}
-      <div className="grid lg:grid-cols-2 gap-4 mb-4">
+      <div className="grid lg:grid-cols-2 gap-4 mb-6">
         <ChartCard
           title="Retention Funnel"
           kind="derived"
@@ -361,7 +361,7 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
       </div>
 
       {/* Top performers */}
-      <div className="grid lg:grid-cols-2 gap-4 mb-4">
+      <div className="grid lg:grid-cols-2 gap-4 mb-6">
         <ChartCard
           title="Top 10 Reels by Plays"
           kind="observed"
@@ -385,7 +385,7 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
 
       {/* Followers gained chart */}
       {topByFollowers.length > 0 && (
-        <div className="mb-4">
+        <div className="mb-6">
           <ChartCard
             title="Top Reels by Followers Gained"
             kind="observed"
@@ -407,7 +407,7 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500">
+            <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500">
               <tr>
                 <th className="text-left px-4 py-2 font-semibold">Date</th>
                 <th className="text-left px-4 py-2 font-semibold">Caption</th>

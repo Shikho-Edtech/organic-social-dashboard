@@ -7,8 +7,14 @@ type Props = {
 };
 
 export function Card({ children, className = "" }: Props) {
+  // Shadow-sm is the lightest tailwind elevation; separates cards from the
+  // slate-50 page background without creating the heavy-drop-shadow look
+  // that reads as dated. Hover nudges the shadow up so cards feel
+  // touchable on desktop — a no-op cost on touch devices.
   return (
-    <div className={`bg-white border border-slate-200 rounded-xl p-6 ${className}`}>
+    <div
+      className={`bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow transition-shadow ${className}`}
+    >
       {children}
     </div>
   );
@@ -59,7 +65,7 @@ export function ChartCard({
           <h3 className="text-base font-semibold text-slate-900 min-w-0 break-words">{title}</h3>
           {definition && <InfoTooltip text={definition} />}
           {sampleSize && (
-            <span className="ml-auto text-[10px] font-semibold uppercase tracking-wider text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded translate-y-[2px] break-words">
+            <span className="ml-auto text-[11px] font-semibold uppercase tracking-wider text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded translate-y-[2px] break-words">
               {sampleSize}
             </span>
           )}

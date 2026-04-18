@@ -102,7 +102,7 @@ export default function DateRangePicker() {
           </div>
 
           <div className="border-t border-slate-100 px-4 py-3 bg-slate-50/50">
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Custom range</div>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Custom range</div>
             <div className="flex items-center gap-2">
               <input
                 type="date"

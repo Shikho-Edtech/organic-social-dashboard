@@ -157,7 +157,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
                 <div className="w-1.5 bg-gradient-to-b from-brand-shikho-pink via-brand-shikho-orange to-brand-shikho-indigo" />
                 <div className="flex-1 p-5 sm:p-7">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-slate-900 text-white">
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-slate-900 text-white">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                       </svg>
@@ -184,7 +184,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
                         </svg>
                       </span>
                       <div className="text-xs text-brand-purple leading-relaxed">
-                        <span className="font-semibold uppercase tracking-wider text-[10px]">Calendar alert · </span>
+                        <span className="font-semibold uppercase tracking-wider text-[11px]">Calendar alert · </span>
                         {diagnosis.exam_alert}
                       </div>
                     </div>
@@ -244,7 +244,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
               </svg>
             </div>
             <h3 className="text-base font-semibold text-slate-800">Key Findings</h3>
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider">{whatHappened.length} · click any to expand</span>
+            <span className="text-[11px] text-slate-500 uppercase tracking-wider">{whatHappened.length} · click any to expand</span>
           </div>
           <div className="grid md:grid-cols-2 gap-3">
             {whatHappened.map((item, i) => {
@@ -288,7 +288,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
               </svg>
             </div>
             <h3 className="text-base font-semibold text-slate-800">Top Performers</h3>
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider">click to expand</span>
+            <span className="text-[11px] text-slate-500 uppercase tracking-wider">click to expand</span>
           </div>
           <div className="space-y-2.5">
             {topPerformers.length === 0 && (
@@ -324,7 +324,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
                       )}
                       {tp.why_it_worked && (
                         <div className="pl-9">
-                          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Why it worked</div>
+                          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Why it worked</div>
                           <div className="text-xs text-slate-600 leading-relaxed">{tp.why_it_worked}</div>
                         </div>
                       )}
@@ -337,7 +337,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
                             </svg>
                           </span>
                           <div className="text-xs text-brand-cyan leading-relaxed">
-                            <span className="font-semibold uppercase tracking-wider text-[10px]">Replicate · </span>{tp.replicable_elements}
+                            <span className="font-semibold uppercase tracking-wider text-[11px]">Replicate · </span>{tp.replicable_elements}
                           </div>
                         </div>
                       )}
@@ -358,7 +358,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
               </svg>
             </div>
             <h3 className="text-base font-semibold text-slate-800">Underperformers</h3>
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider">click to expand</span>
+            <span className="text-[11px] text-slate-500 uppercase tracking-wider">click to expand</span>
           </div>
           <div className="space-y-2.5">
             {underperformers.length === 0 && (
@@ -394,7 +394,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
                       )}
                       {up.why_it_failed && (
                         <div className="pl-9">
-                          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Why it missed</div>
+                          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Why it missed</div>
                           <div className="text-xs text-slate-600 leading-relaxed">{up.why_it_failed}</div>
                         </div>
                       )}
@@ -408,7 +408,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
                             </svg>
                           </span>
                           <div className="text-xs text-brand-amber leading-relaxed">
-                            <span className="font-semibold uppercase tracking-wider text-[10px]">Lesson · </span>{up.lesson}
+                            <span className="font-semibold uppercase tracking-wider text-[11px]">Lesson · </span>{up.lesson}
                           </div>
                         </div>
                       )}
@@ -433,7 +433,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
               </svg>
             </div>
             <h3 className="text-base font-semibold text-slate-800">Watch-outs</h3>
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider">{watchOuts.length} · click any to expand</span>
+            <span className="text-[11px] text-slate-500 uppercase tracking-wider">{watchOuts.length} · click any to expand</span>
           </div>
           <div className="grid md:grid-cols-2 gap-3">
             {watchOuts.map((item, i) => {

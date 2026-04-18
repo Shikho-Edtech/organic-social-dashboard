@@ -10,9 +10,12 @@ type Props = {
 export default function KpiCard({ label, value, delta, sublabel }: Props) {
   const deltaColor = delta === undefined ? "" : delta > 0 ? "text-brand-green" : delta < 0 ? "text-brand-red" : "text-slate-500";
   const deltaText = delta !== undefined ? `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%` : null;
+  // Subtle gradient (white → slate-50/50) gives KPIs a touch more physical
+  // presence than flat cards without competing with the chart cards on
+  // the same page. Kept light so the big number stays the focal point.
   return (
-    <Card className="!p-5">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{label}</div>
+    <Card className="!p-5 !bg-gradient-to-br from-white to-slate-50/60">
+      <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{label}</div>
       {/* text-2xl on mobile so 7-digit numbers don't overflow a 2-col grid.
           sm+ bumps to text-3xl. `break-words` is belt-and-braces for string
           values (e.g. "1,234,567" or short labels). */}

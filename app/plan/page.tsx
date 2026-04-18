@@ -111,7 +111,7 @@ export default async function PlanPage() {
                         <div className="flex items-center gap-2">
                           <div className="text-lg font-bold leading-tight">{day}</div>
                           {isToday && (
-                            <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider bg-white text-slate-900 rounded px-1.5 py-0.5">
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider bg-white text-slate-900 rounded px-1.5 py-0.5">
                               <span className="w-1.5 h-1.5 rounded-full bg-brand-shikho-pink animate-pulse" />
                               Today
                             </span>
@@ -122,7 +122,7 @@ export default async function PlanPage() {
                       {/* Post count — on mobile it sits top-right next to date */}
                       <div className="ml-auto sm:hidden flex-shrink-0 text-right leading-none">
                         <div className="text-2xl font-bold">{slots.length}</div>
-                        <div className="text-[10px] font-semibold uppercase tracking-wider text-white/80 mt-1">post{slots.length > 1 ? "s" : ""}</div>
+                        <div className="text-[11px] font-semibold uppercase tracking-wider text-white/80 mt-1">post{slots.length > 1 ? "s" : ""}</div>
                       </div>
                     </div>
                     {/* Format chips — full-width row on mobile, flex-1 middle on sm+ */}
@@ -136,7 +136,7 @@ export default async function PlanPage() {
                     {/* Post count — sm+ only; mobile version lives in the day/date row above */}
                     <div className="hidden sm:block flex-shrink-0 text-right leading-none">
                       <div className="text-2xl font-bold">{slots.length}</div>
-                      <div className="text-[10px] font-semibold uppercase tracking-wider text-white/80 mt-1">post{slots.length > 1 ? "s" : ""}</div>
+                      <div className="text-[11px] font-semibold uppercase tracking-wider text-white/80 mt-1">post{slots.length > 1 ? "s" : ""}</div>
                     </div>
                   </div>
                 </div>
@@ -166,7 +166,7 @@ export default async function PlanPage() {
                             </svg>
                             {slot.time_bdt || "—"}
                           </div>
-                          <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-md ${fc.bg} ${fc.text} ring-1 ${fc.ring}`}>
+                          <span className={`text-[11px] font-semibold uppercase tracking-wider px-2 py-1 rounded-md ${fc.bg} ${fc.text} ring-1 ${fc.ring}`}>
                             {slot.format}
                           </span>
                         </div>
@@ -207,13 +207,13 @@ export default async function PlanPage() {
                           <div className="mt-3 space-y-1.5">
                             {slot.visual_direction && (
                               <div className="flex gap-2 text-xs">
-                                <span className="flex-shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-500 w-16">Visual</span>
+                                <span className="flex-shrink-0 text-[11px] font-semibold uppercase tracking-wider text-slate-500 w-16">Visual</span>
                                 <span className="text-slate-600 leading-relaxed">{slot.visual_direction}</span>
                               </div>
                             )}
                             {slot.cta && (
                               <div className="flex gap-2 text-xs">
-                                <span className="flex-shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-500 w-16">CTA</span>
+                                <span className="flex-shrink-0 text-[11px] font-semibold uppercase tracking-wider text-slate-500 w-16">CTA</span>
                                 <span className="text-slate-600 leading-relaxed">{slot.cta}</span>
                               </div>
                             )}

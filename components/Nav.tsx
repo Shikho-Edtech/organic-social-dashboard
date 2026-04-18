@@ -51,7 +51,7 @@ export default function Nav() {
               </div>
               <div className="leading-tight min-w-0">
                 <div className="text-sm font-semibold text-brand-shikho-indigo truncate">Shikho</div>
-                <div className="text-[10px] text-slate-500 -mt-0.5 truncate">Organic Social</div>
+                <div className="text-[11px] text-slate-500 -mt-0.5 truncate">Organic Social</div>
               </div>
             </Link>
             <span className="hidden sm:inline-flex ml-2 px-2 py-0.5 rounded-md bg-brand-shikho-indigo/10 text-brand-shikho-indigo text-[11px] font-semibold shrink-0">

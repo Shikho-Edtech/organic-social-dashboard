@@ -127,7 +127,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           dynamic `text-[#hex]`. */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <Card className="!p-5">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Best Format</div>
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Best Format</div>
           <div
             className="text-xl sm:text-2xl font-bold mt-2 break-words leading-tight"
             style={{ color: canonicalColor("format", bestFormat?.key) }}
@@ -142,7 +142,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           </div>
         </Card>
         <Card className="!p-5">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Best Pillar</div>
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Best Pillar</div>
           <div
             className="text-xl sm:text-2xl font-bold mt-2 break-words leading-tight"
             style={{ color: canonicalColor("pillar", bestPillar?.key) }}
@@ -157,7 +157,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           </div>
         </Card>
         <Card className="!p-5">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Best Hook</div>
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Best Hook</div>
           <div
             className="text-xl sm:text-2xl font-bold mt-2 break-words leading-tight"
             style={{ color: canonicalColor("hook", bestHook?.key) }}
@@ -172,7 +172,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           </div>
         </Card>
         <Card className="!p-5">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Best Spotlight Type</div>
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Best Spotlight Type</div>
           <div
             className="text-xl sm:text-2xl font-bold mt-2 break-words leading-tight"
             style={{ color: canonicalColor("spotlight", bestSpotlight?.key) }}
@@ -188,7 +188,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
         </Card>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4 mb-4">
+      <div className="grid lg:grid-cols-2 gap-4 mb-6">
         <ChartCard
           title="Format Performance"
           kind="ai"
@@ -210,7 +210,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
         </ChartCard>
       </div>
 
-      <div className="mb-4">
+      <div className="mb-6">
         <ChartCard
           title="Pillar Performance"
           kind="ai"
@@ -224,7 +224,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
       </div>
 
       {spotlightStats.length > 0 && (
-        <div className="grid lg:grid-cols-2 gap-4 mb-4">
+        <div className="grid lg:grid-cols-2 gap-4 mb-6">
           <ChartCard
             title="Spotlight Performance — Engagement"
             kind="ai"

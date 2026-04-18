@@ -107,7 +107,7 @@ export default function LoginPage() {
       <div className="lg:flex-1 flex items-center justify-center px-6 py-10 lg:py-0">
         <form onSubmit={submit} className="w-full max-w-sm">
           <div className="mb-8">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-shikho-indigo mb-2">Team access</div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-shikho-indigo mb-2">Team access</div>
             <div className="text-slate-900 text-2xl font-bold leading-tight">Sign in to the dashboard</div>
             <p className="text-slate-500 text-sm mt-2 leading-relaxed">
               Internal tool for the Shikho social team. Enter the shared team password to continue.
