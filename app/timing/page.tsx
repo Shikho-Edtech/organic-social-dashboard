@@ -1,25 +1,20 @@
 import { getPosts } from "@/lib/sheets";
-import { filterPosts, bdt, reach } from "@/lib/aggregate";
+import { filterPosts, bdt, reach, totalInteractions } from "@/lib/aggregate";
 import { summarize, bestByLowerBound, reliabilityLabel, minPostsForRange, type Summary } from "@/lib/stats";
 import { resolveRange } from "@/lib/daterange";
 import PageHeader from "@/components/PageHeader";
 import { Card, ChartCard } from "@/components/Card";
-import BarChartBase from "@/components/BarChart";
+import Heatmap, { type HeatmapCell } from "@/components/Heatmap";
 import EmptyChart from "@/components/EmptyChart";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
 
-// Day 2O: rank "Best X" KPIs by 95% CI lower bound of the mean.
-// Charts still display raw means so the visual doesn't hide signal —
-// the CI is a ranking-time concept, not a display-time one.
-
-type SlotRow = {
-  label: string;
-  reachSum: Summary;
-  erSum: Summary;
-  posts: number;
-};
+// Day 2O: rank "Best X" KPIs by 95% CI lower bound of the mean. Day×Hour
+// heatmap replaces the old 2×2 bar-chart grid (slot reach / slot ER /
+// day reach / day ER) — one canonical "when to post" viz instead of
+// four charts the reader had to cross-reference. Time-slot bucketing
+// (the old "Morning 9-12" etc.) is gone; hours are the native unit.
 
 type DayRow = {
   label: string;
@@ -41,7 +36,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
     return ((p.reactions || 0) + (p.comments || 0) + (p.shares || 0)) / r * 100;
   };
 
-  // Day of week (BDT)
+  // Day of week (BDT) — still computed for the Best-Day KPIs above the heatmap
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const postsByDayOfWeek: Record<string, typeof inRange> = {};
   dayNames.forEach((d) => (postsByDayOfWeek[d] = []));
@@ -61,83 +56,78 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
     };
   });
 
-  // Time of day slots (BDT)
-  const slots = [
-    { label: "Early (5-9)", hours: [5, 6, 7, 8] },
-    { label: "Morning (9-12)", hours: [9, 10, 11] },
-    { label: "Afternoon (12-15)", hours: [12, 13, 14] },
-    { label: "Late Aft (15-18)", hours: [15, 16, 17] },
-    { label: "Evening (18-21)", hours: [18, 19, 20] },
-    { label: "Night (21-24)", hours: [21, 22, 23] },
-  ];
-  const slotData: SlotRow[] = slots.map((s) => {
-    const bucket = inRange.filter((p) => {
-      if (!p.created_time) return false;
-      const d = bdt(p.created_time);
-      return s.hours.includes(d.getHours());
-    });
-    return {
-      label: s.label,
-      reachSum: summarize(bucket.map(postReach)),
-      erSum: summarize(bucket.map(postEngRate)),
-      posts: bucket.length,
-    };
-  });
+  // Day×Hour aggregation for the heatmap. Bucket posts by (day-of-week,
+  // publish-hour-in-BDT); compute reach-weighted ER per bucket (so a
+  // single monster post doesn't hijack the cell).
+  type CellBucket = { posts: number; reach: number; interactions: number; n: number };
+  const grid: CellBucket[][] = Array.from({ length: 7 }, () =>
+    Array.from({ length: 24 }, () => ({ posts: 0, reach: 0, interactions: 0, n: 0 }))
+  );
+  for (const p of inRange) {
+    if (!p.created_time) continue;
+    const d = bdt(p.created_time);
+    const day = d.getDay();
+    const hour = d.getHours();
+    const r = reach(p);
+    grid[day][hour].posts += 1;
+    grid[day][hour].reach += r;
+    grid[day][hour].interactions += totalInteractions(p);
+    grid[day][hour].n += 1;
+  }
+  const erCells: HeatmapCell[] = [];
+  const reachCells: HeatmapCell[] = [];
+  for (let d = 0; d < 7; d++) {
+    for (let h = 0; h < 24; h++) {
+      const b = grid[d][h];
+      const er = b.reach > 0 ? (b.interactions / b.reach) * 100 : 0;
+      const avgReach = b.posts > 0 ? b.reach / b.posts : 0;
+      erCells.push({ day: d, hour: h, value: er, n: b.n, totalReach: b.reach });
+      reachCells.push({ day: d, hour: h, value: avgReach, n: b.n, totalReach: b.reach });
+    }
+  }
 
-  // Day 2S: adaptive min-N per range. A slot/day with fewer than `minN`
-  // posts is HIDDEN from the chart entirely — not just dimmed — so a
-  // single-post bucket can't visually dominate the bar chart. Day-of-week
-  // uses the same threshold (7 buckets vs 6 — close enough in practice).
+  // Day 2S: adaptive min-N per range. Heatmap cells below MIN_N render
+  // dimmed (not hidden — a blank cell is still information), so a
+  // single-post cell can't visually dominate the grid.
   const rangeDays = Math.max(
     1,
     Math.round((range.end.getTime() - range.start.getTime()) / 86_400_000)
   );
   const MIN_N = minPostsForRange(rangeDays);
 
-  const slotReachChart = slotData
-    .filter((s) => s.posts >= MIN_N)
-    .map((s) => ({
-      label: s.label,
-      value: Math.round(s.reachSum.mean),
-      meta: s.posts,
-    }));
-  const slotEngChart = slotData
-    .filter((s) => s.posts >= MIN_N)
-    .map((s) => ({
-      label: s.label,
-      value: Number(s.erSum.mean.toFixed(2)),
-      meta: s.posts,
-    }));
-  const dayReachChart = dayData
-    .filter((d) => d.posts >= MIN_N)
-    .map((d) => ({
-      label: d.label,
-      value: Math.round(d.reachSum.mean),
-      meta: d.posts,
-    }));
-  const dayEngChart = dayData
-    .filter((d) => d.posts >= MIN_N)
-    .map((d) => ({
-      label: d.label,
-      value: Number(d.erSum.mean.toFixed(2)),
-      meta: d.posts,
-    }));
+  // Use per-hour minimum (scaled down from the per-day/slot minimum): a
+  // day×hour cell sees far fewer posts than a whole day bucket, so the
+  // bar for "reliable" has to be lower or every cell would be muted. Cap
+  // at 2 so we at least demand two posts before saying a cell is real.
+  const CELL_MIN_N = Math.max(2, Math.floor(MIN_N / 2));
 
-  const slotsShown = slotReachChart.length;
-  const daysShown = dayReachChart.length;
-
-  // Rank "Best X" by 95% CI lower bound of the mean among slots/days that
-  // also clear the MIN_N bar — so the "Best" KPI always names a bucket that
-  // actually appears in the chart below.
-  const eligibleSlots = slotData.filter((s) => s.posts >= MIN_N);
   const eligibleDays = dayData.filter((d) => d.posts >= MIN_N);
   const bestDayReach = bestByLowerBound(eligibleDays, (d) => d.reachSum);
   const bestDayEng = bestByLowerBound(eligibleDays, (d) => d.erSum);
-  const bestSlotReach = bestByLowerBound(eligibleSlots, (s) => s.reachSum);
-  const bestSlotEng = bestByLowerBound(eligibleSlots, (s) => s.erSum);
 
-  // Flag when no slot clears the gate so we can show a dash + hint.
-  const anyRankable = eligibleSlots.length > 0;
+  // "Best hour" from the heatmap: CI-ranked by engagement-rate. We
+  // synthesize a Summary per cell ad-hoc because hours aren't in dayData.
+  type HourRow = { label: string; erSum: Summary; reachSum: Summary; posts: number };
+  const hourRows: HourRow[] = [];
+  for (let h = 0; h < 24; h++) {
+    // All posts that published in hour h across all days in range.
+    const bucket = inRange.filter((p) => {
+      if (!p.created_time) return false;
+      return bdt(p.created_time).getHours() === h;
+    });
+    if (bucket.length < MIN_N) continue;
+    hourRows.push({
+      label: `${h.toString().padStart(2, "0")}:00`,
+      erSum: summarize(bucket.map(postEngRate)),
+      reachSum: summarize(bucket.map(postReach)),
+      posts: bucket.length,
+    });
+  }
+  const bestHourEng = bestByLowerBound(hourRows, (h) => h.erSum);
+  const bestHourReach = bestByLowerBound(hourRows, (h) => h.reachSum);
+
+  const totalCellsWithPosts = erCells.filter((c) => c.n > 0).length;
+  const totalCellsReliable = erCells.filter((c) => c.n >= CELL_MIN_N).length;
 
   return (
     <div>
@@ -172,108 +162,84 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
           </div>
         </Card>
         <Card className="!p-5">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-            Best for Reach (Slot)
-            {!anyRankable && <span className="ml-1 text-amber-500" title="No slot has n≥2 — ranking falls back to raw mean">*</span>}
-          </div>
-          <div className="text-xl sm:text-2xl font-bold text-brand-green mt-2 break-words leading-tight">{bestSlotReach?.label.split(" ")[0] || "—"}</div>
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Best for Reach (Hour)</div>
+          <div className="text-xl sm:text-2xl font-bold text-brand-green mt-2 break-words leading-tight">{bestHourReach?.label || "—"}</div>
           <div className="text-xs text-slate-500 mt-1">
-            {Math.round(bestSlotReach?.reachSum.mean || 0).toLocaleString()} avg reach/post
+            {Math.round(bestHourReach?.reachSum.mean || 0).toLocaleString()} avg reach/post
           </div>
           <div className="text-[11px] text-slate-500 mt-0.5">
-            {reliabilityLabel(bestSlotReach?.posts || 0)}
-            {bestSlotReach && isFinite(bestSlotReach.reachSum.lowerBound95) && (
-              <> · reliable floor {Math.max(0, Math.round(bestSlotReach.reachSum.lowerBound95)).toLocaleString()}</>
+            {reliabilityLabel(bestHourReach?.posts || 0)}
+            {bestHourReach && isFinite(bestHourReach.reachSum.lowerBound95) && (
+              <> · reliable floor {Math.max(0, Math.round(bestHourReach.reachSum.lowerBound95)).toLocaleString()}</>
             )}
           </div>
         </Card>
         <Card className="!p-5">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-            Best for Engagement (Slot)
-            {!anyRankable && <span className="ml-1 text-amber-500" title="No slot has n≥2 — ranking falls back to raw mean">*</span>}
-          </div>
-          <div className="text-xl sm:text-2xl font-bold text-brand-purple mt-2 break-words leading-tight">{bestSlotEng?.label.split(" ")[0] || "—"}</div>
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Best for Engagement (Hour)</div>
+          <div className="text-xl sm:text-2xl font-bold text-brand-purple mt-2 break-words leading-tight">{bestHourEng?.label || "—"}</div>
           <div className="text-xs text-slate-500 mt-1">
-            {(bestSlotEng?.erSum.mean || 0).toFixed(2)}% avg eng rate
+            {(bestHourEng?.erSum.mean || 0).toFixed(2)}% avg eng rate
           </div>
           <div className="text-[11px] text-slate-500 mt-0.5">
-            {reliabilityLabel(bestSlotEng?.posts || 0)}
-            {bestSlotEng && isFinite(bestSlotEng.erSum.lowerBound95) && (
-              <> · reliable floor {Math.max(0, bestSlotEng.erSum.lowerBound95).toFixed(2)}%</>
+            {reliabilityLabel(bestHourEng?.posts || 0)}
+            {bestHourEng && isFinite(bestHourEng.erSum.lowerBound95) && (
+              <> · reliable floor {Math.max(0, bestHourEng.erSum.lowerBound95).toFixed(2)}%</>
             )}
           </div>
         </Card>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4 mb-6">
+      {/* Primary heatmap: engagement rate by day×hour */}
+      <div className="mb-6">
         <ChartCard
-          title="Avg Reach by Time of Day"
-          kind="observed"
-          subtitle="Posts grouped into BDT time slots"
-          definition={`Posts are bucketed into 6 BDT time slots based on their publish hour. Each bar shows average unique reach per post in that slot. Slots with fewer than ${MIN_N} posts are HIDDEN (adaptive threshold: 7d→3, 14d→5, 30d→10, larger ranges scale up).`}
-          sampleSize={`${inRange.length} posts · ${slotsShown}/6 slots ≥ ${MIN_N}`}
-          caption={`Only slots with at least ${MIN_N} posts in a ${rangeDays}-day window are shown — a single viral post can't promote a time slot on its own.`}
-        >
-          {slotsShown > 0 ? (
-            <BarChartBase data={slotReachChart} color="#4f46e5" metricName="Avg reach / post" valueAxisLabel="Avg reach / post" categoryAxisLabel="Time slot (BDT)" />
-          ) : (
-            <EmptyChart
-              message={`Not enough posts per slot in this ${rangeDays}-day window`}
-              hint={`Need at least ${MIN_N} posts in a single slot to rank reliably. Widen the date range or wait for more posts.`}
-            />
-          )}
-        </ChartCard>
-        <ChartCard
-          title="Engagement Rate by Time of Day"
+          title="Engagement Rate · Day × Hour"
           kind="derived"
-          subtitle="Interactions ÷ reach by BDT slot"
-          definition={`For each BDT slot: mean of per-post engagement rates in that slot. Per-post ER = interactions ÷ that post's reach × 100. Slots with fewer than ${MIN_N} posts are hidden.`}
-          sampleSize={`${slotsShown}/6 slots ≥ ${MIN_N}`}
-          caption={`Same threshold as the reach chart: a slot needs ≥ ${MIN_N} posts to appear.`}
+          subtitle="Reach-weighted ER for each (day-of-week, publish hour) cell"
+          definition={`For each (day, hour) cell: (Σ interactions ÷ Σ reach) × 100 across all posts that cell. Color saturation encodes the rate — darker = stronger engagement. Cells with fewer than ${CELL_MIN_N} posts are dimmed (still visible so zero-post slots are distinguishable from low-confidence ones). Reach-weighted so a single viral post can't hijack a cell's color.`}
+          sampleSize={`${totalCellsReliable} / ${totalCellsWithPosts} cells reliable (n≥${CELL_MIN_N}), ${inRange.length} posts total`}
+          caption={`Read left-to-right for daily patterns, top-to-bottom for weekday patterns. Dark diagonal bands suggest consistent "best time" windows. Bangladesh Time (UTC+6).`}
         >
-          {slotsShown > 0 ? (
-            <BarChartBase data={slotEngChart} valueFormat="percent" color="#ec4899" metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Time slot (BDT)" />
-          ) : (
+          {totalCellsWithPosts === 0 ? (
             <EmptyChart
-              message={`Not enough posts per slot`}
-              hint={`Need ${MIN_N}+ posts in a single slot for a ${rangeDays}-day window.`}
+              message="No posts in this date range"
+              hint="Widen the range or check that posts exist for this window."
+            />
+          ) : (
+            <Heatmap
+              cells={erCells}
+              minN={CELL_MIN_N}
+              metricLabel="engagement rate"
+              valueFormat={(v) => v.toFixed(2) + "%"}
+              minColor="#fdf2f8" // pink-50
+              maxColor="#ec4899" // pink-500 — matches the "ER" family color
             />
           )}
         </ChartCard>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4">
+      {/* Secondary heatmap: avg reach by day×hour */}
+      <div className="mb-6">
         <ChartCard
-          title="Avg Reach by Day of Week"
+          title="Avg Reach · Day × Hour"
           kind="observed"
-          subtitle="BDT days"
-          definition={`Posts are bucketed by day-of-week (Sunday to Saturday, BDT). Each bar = average unique reach per post on that day. Days with fewer than ${MIN_N} posts in the window are hidden.`}
-          sampleSize={`${daysShown}/7 days ≥ ${MIN_N}`}
-          caption={`Day-level reach patterns. Days need ≥ ${MIN_N} posts in a ${rangeDays}-day window to appear.`}
+          subtitle="Per-post unique reach averaged for each (day, hour) cell"
+          definition={`For each (day, hour) cell: Σ reach ÷ N posts that cell. Color encodes average reach per post; cells with fewer than ${CELL_MIN_N} posts are dimmed. Pair with the engagement rate heatmap above — reach and ER can diverge (a cell can deliver high reach with low ER, or vice versa).`}
+          sampleSize={`${totalCellsReliable} / ${totalCellsWithPosts} cells reliable (n≥${CELL_MIN_N})`}
+          caption={`Dark cells here + dark cells above = that day/hour is your best publish window on both axes.`}
         >
-          {daysShown > 0 ? (
-            <BarChartBase data={dayReachChart} color="#4f46e5" metricName="Avg reach / post" valueAxisLabel="Avg reach / post" categoryAxisLabel="Day of week" />
-          ) : (
+          {totalCellsWithPosts === 0 ? (
             <EmptyChart
-              message={`Not enough posts per day-of-week`}
-              hint={`Need ${MIN_N}+ posts on a single weekday for a ${rangeDays}-day window.`}
+              message="No posts in this date range"
+              hint="Widen the range or check that posts exist for this window."
             />
-          )}
-        </ChartCard>
-        <ChartCard
-          title="Engagement Rate by Day of Week"
-          kind="derived"
-          subtitle="BDT days"
-          definition={`For each day-of-week: mean of per-post engagement rates across all posts published that day. Days with fewer than ${MIN_N} posts are hidden.`}
-          sampleSize={`${daysShown}/7 days ≥ ${MIN_N}`}
-          caption={`When the audience is most active. Same ≥ ${MIN_N} threshold as the reach chart.`}
-        >
-          {daysShown > 0 ? (
-            <BarChartBase data={dayEngChart} valueFormat="percent" color="#ec4899" metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Day of week" />
           ) : (
-            <EmptyChart
-              message={`Not enough posts per day-of-week`}
-              hint={`Need ${MIN_N}+ posts on a single weekday for a ${rangeDays}-day window.`}
+            <Heatmap
+              cells={reachCells}
+              minN={CELL_MIN_N}
+              metricLabel="avg reach"
+              valueFormat={(v) => Math.round(v).toLocaleString()}
+              minColor="#eef2ff" // indigo-50
+              maxColor="#4f46e5" // indigo-600
             />
           )}
         </ChartCard>

@@ -1,0 +1,217 @@
+"use client";
+import { useState, useRef, useEffect } from "react";
+
+// Day × hour heatmap. Replaces the old 2×2 bar-chart grid on Timing:
+// one 7-row × 24-column panel answers "when should we post?" instead of
+// the reader cross-referencing a by-slot bar chart with a by-day one.
+//
+// Recharts doesn't have a native heatmap; custom CSS grid is the
+// cheapest path. Cells are interpolated between `minColor` and
+// `maxColor` based on a normalized 0..1 value. Cells below `minN` are
+// dimmed so a single-post bucket can't visually dominate the grid.
+//
+// Responsive: at 360px width, 24 columns leaves ~13px per cell after
+// the day-label gutter. Cells are square on lg+, squished-rectangular
+// on mobile (min-height 18px, stretches to container width).
+
+export type HeatmapCell = {
+  day: number;        // 0 = Sun .. 6 = Sat
+  hour: number;       // 0 .. 23
+  value: number;      // the metric to encode (e.g. ER%, avg reach)
+  n: number;          // post count in this cell
+  totalReach: number;
+};
+
+type Props = {
+  cells: HeatmapCell[];
+  /** Threshold: cells with fewer posts render dimmed regardless of value. */
+  minN: number;
+  /** Human label for the value axis, used in tooltips. */
+  metricLabel: string;
+  /** Formatter for the value in tooltips. */
+  valueFormat?: (v: number) => string;
+  /** Low-end color (value near 0). Defaults to indigo-50. */
+  minColor?: string;
+  /** High-end color (value at max). Defaults to brand indigo (indigo-600). */
+  maxColor?: string;
+};
+
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DAY_NAMES_SHORT = ["S", "M", "T", "W", "T", "F", "S"];
+
+// Parse a hex like "#4f46e5" into [r, g, b].
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+  return [
+    parseInt(full.slice(0, 2), 16),
+    parseInt(full.slice(2, 4), 16),
+    parseInt(full.slice(4, 6), 16),
+  ];
+}
+
+// Linear RGB interpolation. Close enough for a sequential scale at
+// this contrast range; perceptual accuracy (LAB/OKLab) isn't worth the
+// runtime cost for 168 cells rendered client-side.
+function interpolate(t: number, a: [number, number, number], b: [number, number, number]): string {
+  const r = Math.round(a[0] + (b[0] - a[0]) * t);
+  const g = Math.round(a[1] + (b[1] - a[1]) * t);
+  const bl = Math.round(a[2] + (b[2] - a[2]) * t);
+  return `rgb(${r}, ${g}, ${bl})`;
+}
+
+function formatHour(h: number): string {
+  const suffix = h >= 12 ? "pm" : "am";
+  const display = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${display}${suffix}`;
+}
+
+export default function Heatmap({
+  cells,
+  minN,
+  metricLabel,
+  valueFormat = (v) => v.toFixed(2),
+  minColor = "#eef2ff", // indigo-50
+  maxColor = "#4f46e5", // indigo-600
+}: Props) {
+  const [hovered, setHovered] = useState<HeatmapCell | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Close on Escape for keyboard users who've focused a cell and want
+  // to dismiss the tooltip without tabbing away.
+  useEffect(() => {
+    if (!hovered) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setHovered(null);
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [hovered]);
+
+  // Index cells by (day,hour) so we can render a dense 7×24 grid even
+  // when the caller only provides non-empty cells. Empty cells render
+  // as neutral slate-50 with n=0.
+  const cellMap = new Map<string, HeatmapCell>();
+  for (const c of cells) cellMap.set(`${c.day}-${c.hour}`, c);
+
+  // Determine max value across ELIGIBLE cells (n >= minN). Using all
+  // cells would let a single low-n outlier stretch the scale flat.
+  const eligible = cells.filter((c) => c.n >= minN);
+  const maxValue = eligible.reduce((m, c) => Math.max(m, c.value), 0);
+
+  const minRgb = hexToRgb(minColor);
+  const maxRgb = hexToRgb(maxColor);
+
+  // Ticks on the hour axis every 3 hours so 360px stays readable.
+  const hourTicks = [0, 3, 6, 9, 12, 15, 18, 21];
+
+  return (
+    <div ref={rootRef} className="relative">
+      {/* Grid: day-label gutter + 24 hour columns. `minmax(0, 1fr)` so
+          cells don't overflow at narrow widths. */}
+      <div
+        className="grid gap-[2px]"
+        style={{ gridTemplateColumns: "auto repeat(24, minmax(0, 1fr))" }}
+      >
+        {/* Empty corner */}
+        <div />
+        {/* Hour axis (top) */}
+        {Array.from({ length: 24 }, (_, h) => (
+          <div
+            key={`h-${h}`}
+            className="text-[10px] text-slate-400 text-center tabular-nums"
+            aria-hidden="true"
+          >
+            {hourTicks.includes(h) ? formatHour(h).replace("am", "").replace("pm", "") : ""}
+          </div>
+        ))}
+
+        {/* Day rows */}
+        {DAY_NAMES.map((day, d) => (
+          <div key={`row-${d}`} className="contents">
+            <div className="text-[11px] font-semibold text-slate-500 pr-2 flex items-center">
+              <span className="hidden sm:inline">{day}</span>
+              <span className="sm:hidden">{DAY_NAMES_SHORT[d]}</span>
+            </div>
+            {Array.from({ length: 24 }, (_, h) => {
+              const cell = cellMap.get(`${d}-${h}`) || { day: d, hour: h, value: 0, n: 0, totalReach: 0 };
+              const eligible = cell.n >= minN;
+              const t = eligible && maxValue > 0 ? Math.min(1, cell.value / maxValue) : 0;
+              const color = eligible
+                ? interpolate(t, minRgb, maxRgb)
+                : cell.n > 0
+                ? "#f1f5f9" // slate-100 — posts exist but below gate
+                : "#fafbfc"; // almost blank — no posts
+              const isHover =
+                hovered && hovered.day === d && hovered.hour === h;
+              return (
+                <button
+                  key={`c-${d}-${h}`}
+                  type="button"
+                  onMouseEnter={() => setHovered(cell)}
+                  onMouseLeave={() => setHovered(null)}
+                  onFocus={() => setHovered(cell)}
+                  onBlur={() => setHovered(null)}
+                  className={`aspect-square min-h-[18px] rounded-[2px] transition-transform ${
+                    isHover ? "ring-2 ring-slate-900 scale-110 z-10 relative" : ""
+                  }`}
+                  style={{ backgroundColor: color }}
+                  aria-label={`${day} ${formatHour(h)}: ${cell.n} posts, ${valueFormat(cell.value)} ${metricLabel.toLowerCase()}`}
+                />
+              );
+            })}
+          </div>
+        ))}
+      </div>
+
+      {/* Legend */}
+      <div className="mt-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-slate-500">Low</span>
+          <div
+            className="h-2 w-32 rounded-full"
+            style={{ background: `linear-gradient(90deg, ${minColor}, ${maxColor})` }}
+            aria-hidden="true"
+          />
+          <span className="text-[11px] text-slate-500">High</span>
+        </div>
+        <div className="flex items-center gap-3 text-[11px] text-slate-500">
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-3 h-3 rounded-[2px] bg-[#f1f5f9]" aria-hidden="true" />
+            Below n≥{minN}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-3 h-3 rounded-[2px] bg-[#fafbfc] border border-slate-200" aria-hidden="true" />
+            No posts
+          </span>
+        </div>
+      </div>
+
+      {/* Tooltip */}
+      {hovered && (
+        <div
+          role="tooltip"
+          className="pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full z-20 bg-slate-900 text-white text-[11px] leading-snug rounded-md px-3 py-2 shadow-lg whitespace-nowrap"
+        >
+          <div className="font-semibold">
+            {DAY_NAMES[hovered.day]} · {formatHour(hovered.hour)}
+          </div>
+          <div className="mt-0.5 text-white/80">
+            {hovered.n} {hovered.n === 1 ? "post" : "posts"}
+            {hovered.n > 0 && (
+              <>
+                {" · "}
+                {valueFormat(hovered.value)} {metricLabel.toLowerCase()}
+              </>
+            )}
+          </div>
+          {hovered.n > 0 && hovered.n < minN && (
+            <div className="mt-0.5 text-amber-300 text-[10px]">
+              Below reliability threshold (n≥{minN})
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
