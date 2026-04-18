@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-04-18 — Mobile nav fix
+
+[components/Nav.tsx](components/Nav.tsx) — Replaced the horizontal
+overflow-x-auto tab strip with a dropdown menu on < md breakpoint.
+The 8-tab bar was ~600px wide; on a 375px phone only the first 1-2
+were visible and nothing indicated the rest were swipeable, so mobile
+users thought the dashboard had a single page. Desktop behaviour
+unchanged. Header also tightened on narrow screens (badge hidden,
+padding reduced, truncation added).
+
 ## 2026-04-17 — Dashboard batch: Reels page, Timing KPI tightening, Strategy clarity, Login redesign
 
 Ships alongside pipeline Day 2G/2H/2I/2J. Six interrelated items from a
