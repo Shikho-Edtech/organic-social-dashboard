@@ -1,4 +1,4 @@
-import { getPosts, getLatestDiagnosis, getRunStatus, computeStaleness } from "@/lib/sheets";
+import { getPosts, getLatestDiagnosis, getDiagnosisByWeek, getRunStatus, computeStaleness, getStageEngine } from "@/lib/sheets";
 import { filterPosts, groupStats } from "@/lib/aggregate";
 import { minPostsForRange } from "@/lib/stats";
 import { resolveRange, rangeDays as computeRangeDays } from "@/lib/daterange";
@@ -6,6 +6,9 @@ import PageHeader from "@/components/PageHeader";
 import { Card, ChartCard } from "@/components/Card";
 import BarChartBase from "@/components/BarChart";
 import StalenessBanner from "@/components/StalenessBanner";
+import AIDisabledEmptyState from "@/components/AIDisabledEmptyState";
+import ArchivalLine from "@/components/ArchivalLine";
+import { STAGES } from "@/lib/stages";
 import { canonicalColor } from "@/lib/colors";
 
 export const dynamic = "force-dynamic";
@@ -75,6 +78,23 @@ function extractMetrics(text: string): Segment[] {
   return segments.length ? segments : [{ kind: "text", value: text }];
 }
 
+// Step 3: map a "Last Successful Diagnosis At" ISO timestamp to the
+// corresponding Weekly_Analysis row's `Week Ending` key. Pragmatic rule:
+// the weekly pipeline fires on Mondays and writes a row whose Week Ending
+// is the preceding Sunday (YYYY-MM-DD). We walk back from the success
+// timestamp to the nearest Sunday. This only needs to be approximate — the
+// `getDiagnosisByWeek` lookup then does an exact-match find against the
+// actual row values, and falls back cleanly when it doesn't match.
+function extractWeekEnding(iso: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const dow = d.getUTCDay(); // 0=Sun
+  const back = dow === 0 ? 0 : dow;
+  const sunday = new Date(d.getTime() - back * 86400000);
+  return sunday.toISOString().slice(0, 10);
+}
+
 function HeadlineWithMetrics({ text, metricClass }: { text: string; metricClass: string }) {
   const segments = extractMetrics(text);
   return (
@@ -92,12 +112,23 @@ function HeadlineWithMetrics({ text, metricClass }: { text: string; metricClass:
 
 export default async function StrategyPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   const range = resolveRange(searchParams);
-  const [posts, diagnosis, runStatus] = await Promise.all([
+
+  // Step 3 archival mode: `?archived=<week-ending>` switches the page into
+  // read-only mode against a specific prior diagnosis row. Absent param =
+  // live mode (current behaviour). Invalid key = live mode + silent fallback.
+  const archivedParam = typeof searchParams.archived === "string" ? searchParams.archived : "";
+  const isArchival = Boolean(archivedParam);
+
+  const [posts, liveDiagnosis, archivedDiagnosis, runStatus, diagnosisEngine] = await Promise.all([
     getPosts(),
-    getLatestDiagnosis(),
+    isArchival ? Promise.resolve(null) : getLatestDiagnosis(),
+    isArchival ? getDiagnosisByWeek(archivedParam) : Promise.resolve(null),
     getRunStatus(),
+    getStageEngine("diagnosis"),
   ]);
+  const diagnosis = isArchival ? archivedDiagnosis : liveDiagnosis;
   const staleness = computeStaleness("diagnosis", runStatus);
+  const aiDisabled = diagnosisEngine === "native" || diagnosisEngine === "off";
   const inRange = filterPosts(posts, { start: range.start, end: range.end });
 
   // Funnel distribution
@@ -136,10 +167,90 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
 
   const verdictSplit = splitHeadline(diagnosis?.headline || "");
 
+  // Archival vs live copy: the page header subtitle + banner suppression.
+  // When viewing an archive, the banner is replaced by the persistent slate
+  // ArchivalLine — it's a read-only snapshot, the live-freshness banner
+  // would be misleading here.
+  const archiveDateLabel = isArchival && diagnosis?.week_ending
+    ? new Date(diagnosis.week_ending).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    : archivedParam;
+
+  // When the AI diagnosis stage is deliberately off AND we're NOT in archival
+  // read mode, the primary view is the empty-state card. The regular
+  // diagnosis blocks (verdict, key findings, top/under, watch-outs) are
+  // suppressed; only the funnel charts render beneath — they read native
+  // classifier data that's always fresh.
+  if (aiDisabled && !isArchival) {
+    return (
+      <div>
+        <StalenessBanner
+          info={staleness}
+          artifact="diagnosis"
+          runStatus={runStatus}
+          aiDisabled
+          hasData={!!diagnosis}
+        />
+        <PageHeader
+          title="Strategy"
+          subtitle="Claude's diagnosis and recommended actions"
+          dateLabel={`${range.label} · Funnel charts reflect native classification; AI diagnosis off`}
+          lastScrapedAt={runStatus.last_run_at}
+        />
+        <AIDisabledEmptyState
+          stage={STAGES.diagnosis}
+          lastSuccessfulAt={runStatus.last_successful_diagnosis_at}
+          archiveKey={runStatus.last_successful_diagnosis_at
+            ? extractWeekEnding(runStatus.last_successful_diagnosis_at)
+            : ""}
+          noun="AI diagnosis"
+          readsDescription="This page reads the weekly AI diagnosis."
+        />
+        <div className="grid lg:grid-cols-2 gap-4 mb-6">
+          <ChartCard
+            title="Funnel Distribution"
+            kind="observed"
+            subtitle="Posts by marketing stage"
+            definition="TOFU (top-of-funnel): awareness / education. MOFU (middle): consideration / demo. BOFU (bottom): direct conversion asks. Funnel stage is assigned by the weekly classifier."
+            sampleSize={`n = ${inRange.length} post${inRange.length === 1 ? "" : "s"}`}
+            caption="Based on native classifier only — no AI."
+          >
+            <BarChartBase data={funnelDist} metricName="Posts" valueAxisLabel="Posts" categoryAxisLabel="Funnel stage" showPercent />
+          </ChartCard>
+          <ChartCard
+            title="Funnel Engagement"
+            kind="observed"
+            subtitle="Avg engagement rate by stage"
+            definition={`For each funnel stage: total interactions ÷ total reach across all posts in that stage. Reach-weighted. Stages with fewer than ${MIN_N_FUNNEL} posts in the period are hidden (zeroed bar).`}
+            sampleSize={`min ${MIN_N_FUNNEL} posts per stage · ${rangeDays}d window`}
+            caption="Which funnel stage resonates most in terms of interaction rate."
+          >
+            <BarChartBase data={funnelEng} valueFormat="percent" metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Funnel stage" />
+          </ChartCard>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div>
-      <StalenessBanner info={staleness} artifact="diagnosis" hasData={!!diagnosis} />
-      <PageHeader title="Strategy" subtitle="Claude's diagnosis and recommended actions" dateLabel={`${range.label} · Funnel charts filtered; verdict = latest weekly snapshot`} lastScrapedAt={runStatus.last_run_at} />
+    <div className={isArchival ? "opacity-[0.97] [filter:saturate(0.9)]" : ""}>
+      {isArchival ? (
+        <ArchivalLine archiveDateLabel={archiveDateLabel} livePath="/strategy" />
+      ) : (
+        <StalenessBanner
+          info={staleness}
+          artifact="diagnosis"
+          runStatus={runStatus}
+          hasData={!!diagnosis}
+        />
+      )}
+      <PageHeader
+        title="Strategy"
+        subtitle={isArchival
+          ? `Archived diagnosis for week ending ${archiveDateLabel}`
+          : "Claude's diagnosis and recommended actions"}
+        dateLabel={`${range.label} · Funnel charts filtered; verdict = ${isArchival ? "archived snapshot" : "latest weekly snapshot"}`}
+        lastScrapedAt={runStatus.last_run_at}
+      />
 
       {/* Weekly verdict — hero. Big gradient block, headline reads as the
           single most important sentence on the page. Click anywhere on the

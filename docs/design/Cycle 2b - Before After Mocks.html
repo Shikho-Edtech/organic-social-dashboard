@@ -1,0 +1,1076 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Cycle 2b — Strategy / Plan / Reels / Explore before &amp; after</title>
+<script src="https://cdn.tailwindcss.com?plugins=line-clamp"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "system-ui", "sans-serif"] },
+        colors: {
+          brand: {
+            "shikho-indigo": "#1e2a78",
+            "shikho-blue": "#2e47b8",
+            "shikho-pink": "#e6247d",
+            "shikho-orange": "#f79620",
+            cyan: "#06b6d4", green: "#10b981", amber: "#f59e0b",
+            red: "#ef4444", pink: "#ec4899", purple: "#8b5cf6",
+          },
+        },
+      },
+    },
+  };
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  html, body { background: #eef2f7; font-family: "Inter", sans-serif; color: #0f172a; }
+  .frame { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; overflow: hidden; box-shadow: 0 8px 24px -12px rgba(15,23,42,0.08); }
+  .frame-head { background: #0f172a; color: #e2e8f0; font-size: 11px; letter-spacing: 0.04em; font-weight: 600; padding: 6px 12px; display: flex; align-items: center; justify-content: space-between; }
+  .frame-head .dot { width: 7px; height: 7px; border-radius: 50%; background: #475569; display: inline-block; margin-right: 5px; }
+  .frame-head .dot.r { background: #ef4444; }
+  .frame-head .dot.g { background: #22c55e; }
+  .device-360 { width: 360px; } .device-1280 { width: 1280px; }
+  .annot { font-size: 12px; color: #475569; line-height: 1.5; }
+  .annot b { color: #0f172a; font-weight: 600; }
+  .section-title { font-weight: 700; font-size: 28px; letter-spacing: -0.01em; color: #0f172a; }
+  .section-sub { color: #475569; font-size: 14px; margin-top: 4px; }
+  .kicker { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #64748b; }
+  .rule { height: 1px; background: #cbd5e1; margin: 28px 0 36px; }
+  .tabular { font-variant-numeric: tabular-nums; }
+  :focus-visible { outline: 2px solid #1e2a78; outline-offset: 2px; border-radius: 4px; }
+  .canvas-bg {
+    background-image:
+      linear-gradient(to right, rgba(148,163,184,0.15) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(148,163,184,0.15) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+</style>
+</head>
+<body class="canvas-bg">
+
+<header class="max-w-[1360px] mx-auto px-8 pt-12 pb-6">
+  <div class="kicker">Cycle 2b · Before &amp; after · Strategy / Plan / Reels / Explore</div>
+  <h1 class="mt-2 text-4xl font-bold tracking-tight text-slate-900">Four pages, rebuilt to a single page template</h1>
+  <p class="mt-3 max-w-3xl text-[15px] leading-relaxed text-slate-600">
+    Pixel-accurate mocks at 360 and 1280. Left column in each row is the current production UI; right is the proposal. Every token is real — brand indigo
+    <code class="text-[13px] bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded">#1e2a78</code>, slate-500 for body
+    <code class="text-[13px] bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded">#64748b</code>, AA-compliant throughout.
+  </p>
+  <p class="mt-3 max-w-3xl text-[13px] text-slate-500">
+    Template: <b>Header → Hero (artifact or KPI strip) → Primary viz → 2-up secondary → Detail</b>. Every page follows it.
+  </p>
+</header>
+
+<div class="rule max-w-[1360px] mx-auto"></div>
+
+<!-- STRATEGY -->
+<section class="max-w-[1360px] mx-auto px-8">
+  <div class="kicker">Page 1 of 4</div>
+  <h2 class="section-title mt-1">Strategy — Weekly Verdict hero</h2>
+  <p class="section-sub">The most important sentence on the dashboard is currently a collapsible with a line-clamped headline. The hero deserves more.</p>
+
+  <div class="mt-8 grid grid-cols-2 gap-8">
+    <div>
+      <div class="kicker mb-2">Before · 1280</div>
+      <div class="frame" style="width:100%">
+        <div class="frame-head"><span><span class="dot r"></span>Current · collapsed · headline truncated to one line</span><span>/strategy</span></div>
+        <div class="bg-slate-50 p-6">
+          <div class="h-10 bg-white border border-slate-200 rounded flex items-center px-3 text-xs text-slate-500 mb-5">
+            <span class="font-semibold text-brand-shikho-indigo mr-3">Shikho</span>
+            <span class="mr-3">Overview</span><span class="mr-3">Trends</span><span class="mr-3">Engagement</span><span class="mr-3">Timing</span><span class="mr-3">Reels</span>
+            <span class="mr-3 border-b-2 border-brand-shikho-indigo pb-1 text-brand-shikho-indigo font-medium">Strategy</span>
+            <span class="mr-3">Plan</span><span>Explore</span>
+          </div>
+          <div class="flex items-start justify-between mb-5">
+            <div>
+              <h3 class="text-xl font-bold text-slate-900">Strategy</h3>
+              <p class="text-[11px] text-slate-500 mt-0.5">Claude's diagnosis and recommended actions</p>
+            </div>
+            <div class="h-7 w-36 bg-white border border-slate-200 rounded-md"></div>
+          </div>
+          <div class="rounded-2xl border border-slate-200 overflow-hidden" style="background: linear-gradient(135deg, rgba(230,36,125,0.08), rgba(247,150,32,0.04), rgba(30,42,120,0.08));">
+            <div class="flex">
+              <div class="w-1.5" style="background: linear-gradient(to bottom, #e6247d, #f79620, #1e2a78);"></div>
+              <div class="flex-1 p-6">
+                <span class="inline-flex gap-1 text-[9px] font-bold uppercase px-2 py-1 rounded-full bg-slate-900 text-white">★ Weekly verdict</span>
+                <div class="text-[22px] font-bold text-slate-900 mt-3 leading-tight truncate">Reels carried the week; Teacher spotlights drove <span class="text-brand-shikho-pink">38%</span> of reach with just 4 posts…</div>
+                <div class="mt-3 text-[11px] font-semibold text-brand-shikho-indigo">Read full verdict ↓</div>
+              </div>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3 mt-5">
+            <div class="bg-white border border-slate-200 rounded-xl h-40 p-3">
+              <div class="text-[10px] font-semibold uppercase text-slate-500">Funnel distribution</div>
+              <div class="mt-3 flex items-end gap-6 h-24">
+                <div class="w-10 bg-brand-shikho-indigo rounded-t" style="height:90%"></div>
+                <div class="w-10 bg-brand-shikho-pink rounded-t" style="height:50%"></div>
+                <div class="w-10 bg-brand-shikho-orange rounded-t" style="height:20%"></div>
+              </div>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-xl h-40"></div>
+          </div>
+        </div>
+      </div>
+      <div class="annot mt-3">
+        <b>Issues.</b> Headline truncated (critical sentence hidden). Pastel gradient is low contrast. "Read full verdict" CTA is buried. Top/underperformers are below fold with no preview.
+      </div>
+    </div>
+
+    <div>
+      <div class="kicker mb-2">After · 1280</div>
+      <div class="frame" style="width:100%">
+        <div class="frame-head"><span><span class="dot g"></span>Proposed · full headline · inline counts · verdict-first</span><span>/strategy</span></div>
+        <div class="bg-slate-50 p-6">
+          <div class="h-10 bg-white border border-slate-200 rounded flex items-center px-3 text-xs text-slate-500 mb-5">
+            <span class="font-semibold text-brand-shikho-indigo mr-3">Shikho</span>
+            <span class="mr-3">Overview</span>
+            <span class="mr-3 border-b-2 border-brand-shikho-indigo pb-1 text-brand-shikho-indigo font-medium">Strategy</span>
+            <span class="mr-3">Plan</span><span class="mr-3">Explore</span><span>Reels</span>
+          </div>
+          <div class="flex items-start justify-between mb-5">
+            <div>
+              <h3 class="text-xl font-bold text-slate-900">Strategy</h3>
+              <p class="text-[11px] text-slate-500 mt-0.5">Diagnosis &amp; recommended actions · Week ending Apr 11</p>
+            </div>
+            <div class="h-7 w-36 bg-white border border-slate-200 rounded-md"></div>
+          </div>
+          <div class="rounded-2xl overflow-hidden text-white relative" style="background: linear-gradient(135deg, #1e2a78 0%, #2e47b8 60%, #e6247d 120%);">
+            <div class="absolute -top-20 -right-20 w-64 h-64 rounded-full" style="background: rgba(247,150,32,0.25); filter: blur(48px);"></div>
+            <div class="absolute -bottom-16 -left-16 w-56 h-56 rounded-full" style="background: rgba(230,36,125,0.3); filter: blur(56px);"></div>
+            <div class="relative p-7">
+              <div class="flex items-center gap-2 mb-4">
+                <span class="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-white/15 text-white ring-1 ring-white/30">★ Weekly verdict</span>
+                <span class="text-[11px] text-white/70">Apr 5 – Apr 11 · ran Apr 12, 3:14 BDT</span>
+              </div>
+              <div class="text-[28px] font-bold leading-[1.15] tracking-tight" style="max-width: 64ch;">
+                Reels carried the week; <span class="inline-flex items-baseline gap-0.5 px-1.5 py-0 rounded bg-brand-shikho-orange/95 text-slate-900">Teacher spotlights</span> drove
+                <span class="inline-flex items-baseline px-1.5 rounded bg-white text-brand-shikho-indigo">38% of reach</span>
+                with just <span class="inline-flex items-baseline px-1.5 rounded bg-white text-brand-shikho-indigo">4 posts</span> — double down next week.
+              </div>
+              <div class="mt-5 flex items-center gap-5 text-[12px] text-white/90">
+                <span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>5 key findings</span>
+                <span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-brand-shikho-orange"></span>3 top performers</span>
+                <span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-rose-300"></span>2 underperformers</span>
+                <span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-amber-300"></span>4 watch-outs</span>
+                <span class="ml-auto inline-flex items-center gap-1 font-semibold text-white">Jump to findings →</span>
+              </div>
+            </div>
+            <div class="relative px-7 py-3 border-t border-white/10 bg-black/10 text-[12px] flex items-center gap-2">
+              <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-300 text-slate-900">Calendar</span>
+              <span class="text-white/90">HSC exam window begins <b>Apr 24</b> — rotate in exam-prep carousels starting Tue.</span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-3 mt-5">
+            <div class="bg-white border border-slate-200 rounded-xl p-4 border-l-4 border-l-emerald-500">
+              <div class="text-[10px] font-bold uppercase tracking-wider text-emerald-700 mb-2">Top performer</div>
+              <div class="text-[13px] font-medium text-slate-800 leading-snug">Ms. Rumana's "3-minute derivative trick" hit <span class="text-emerald-600 font-bold">142k reach</span> — 4.8× pillar avg.</div>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-xl p-4 border-l-4 border-l-rose-500">
+              <div class="text-[10px] font-bold uppercase tracking-wider text-rose-700 mb-2">Underperformer</div>
+              <div class="text-[13px] font-medium text-slate-800 leading-snug">Static pricing carousel landed at <span class="text-rose-600 font-bold">0.4% ER</span> — promo format fatigue.</div>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-xl p-4 border-l-4 border-l-amber-500">
+              <div class="text-[10px] font-bold uppercase tracking-wider text-amber-700 mb-2">Watch-out</div>
+              <div class="text-[13px] font-medium text-slate-800 leading-snug">Reel share of mix rose to <span class="text-amber-600 font-bold">62%</span> — diversify before Ramadan.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="annot mt-3">
+        <b>Changes.</b> Full-bleed indigo hero; key numbers become <b>inline pills</b> in brand orange + white. Counters preview what's below. Calendar alert in its own bar. Three peek-cards visible above the fold.
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-12 grid grid-cols-[360px_360px_1fr] gap-8">
+    <div>
+      <div class="kicker mb-2">Before · 360</div>
+      <div class="frame device-360">
+        <div class="frame-head"><span><span class="dot r"></span>Current</span><span>/strategy</span></div>
+        <div class="bg-slate-50 p-4">
+          <div class="text-lg font-bold text-slate-900">Strategy</div>
+          <p class="text-[11px] text-slate-500 mt-0.5">Claude's diagnosis</p>
+          <div class="mt-3 h-7 w-full bg-white border border-slate-200 rounded-md"></div>
+          <div class="mt-4 rounded-2xl border border-slate-200 overflow-hidden" style="background: linear-gradient(135deg, rgba(230,36,125,0.08), rgba(247,150,32,0.04), rgba(30,42,120,0.08));">
+            <div class="flex">
+              <div class="w-1.5" style="background: linear-gradient(to bottom, #e6247d, #f79620, #1e2a78);"></div>
+              <div class="flex-1 p-5">
+                <span class="inline-flex gap-1 text-[9px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-900 text-white">★ Weekly verdict</span>
+                <div class="text-lg font-bold text-slate-900 mt-3 leading-tight truncate">Reels carried the week; Teacher spotlights…</div>
+                <div class="mt-3 text-[11px] font-semibold text-brand-shikho-indigo">Read full verdict ↓</div>
+              </div>
+            </div>
+          </div>
+          <div class="mt-3 h-24 rounded-xl bg-white border border-slate-200"></div>
+          <div class="mt-3 h-24 rounded-xl bg-white border border-slate-200"></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="kicker mb-2">After · 360</div>
+      <div class="frame device-360">
+        <div class="frame-head"><span><span class="dot g"></span>Proposed</span><span>/strategy</span></div>
+        <div class="bg-slate-50 p-4">
+          <div class="text-lg font-bold text-slate-900">Strategy</div>
+          <p class="text-[11px] text-slate-500 mt-0.5">Week ending Apr 11</p>
+          <div class="mt-3 h-7 w-full bg-white border border-slate-200 rounded-md"></div>
+          <div class="mt-4 rounded-xl overflow-hidden text-white relative" style="background: linear-gradient(135deg, #1e2a78 0%, #2e47b8 70%, #e6247d 130%);">
+            <div class="absolute -bottom-8 -right-8 w-32 h-32 rounded-full" style="background: rgba(247,150,32,0.3); filter: blur(32px);"></div>
+            <div class="relative p-4">
+              <span class="inline-flex gap-1 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/15 ring-1 ring-white/30">★ Weekly verdict</span>
+              <div class="text-[17px] font-bold leading-snug mt-3">
+                Reels carried the week; <span class="px-1 rounded bg-brand-shikho-orange text-slate-900">Teacher spotlights</span> drove
+                <span class="px-1 rounded bg-white text-brand-shikho-indigo">38%</span> of reach from just
+                <span class="px-1 rounded bg-white text-brand-shikho-indigo">4 posts</span>.
+              </div>
+              <div class="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-white/80">
+                <span>5 findings</span><span>3 top</span><span>2 under</span><span>4 watch</span>
+              </div>
+            </div>
+            <div class="relative px-4 py-2 bg-black/10 border-t border-white/10 text-[11px]">
+              <span class="inline-flex items-center px-1 py-0.5 rounded text-[9px] font-bold uppercase bg-amber-300 text-slate-900 mr-1.5">Cal</span>
+              <span class="text-white/90">HSC window Apr 24 — rotate exam prep.</span>
+            </div>
+          </div>
+          <div class="mt-3 space-y-2">
+            <div class="bg-white border border-slate-200 rounded-lg p-3 border-l-4 border-l-emerald-500">
+              <div class="text-[9px] font-bold uppercase text-emerald-700">Top performer</div>
+              <div class="text-[12px] font-medium text-slate-800 mt-1 leading-snug">Rumana derivative trick · <b class="text-emerald-600">142k</b> (4.8× avg)</div>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-lg p-3 border-l-4 border-l-rose-500">
+              <div class="text-[9px] font-bold uppercase text-rose-700">Underperformer</div>
+              <div class="text-[12px] font-medium text-slate-800 mt-1 leading-snug">Pricing carousel · <b class="text-rose-600">0.4% ER</b> — promo fatigue</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="annot self-start">
+      <b>Mobile-critical.</b> Headline no longer <code class="bg-slate-100 text-slate-800 px-1 rounded text-[11px]">line-clamp-1</code> — on 360px, clamping hides ~80 characters, defeating the purpose of a weekly verdict. Inline pills survive the dark gradient. Peek-cards <i>are</i> the disclosure.
+    </div>
+  </div>
+</section>
+
+<div class="rule max-w-[1360px] mx-auto"></div>
+
+<!-- PLAN -->
+<section class="max-w-[1360px] mx-auto px-8">
+  <div class="kicker">Page 2 of 4</div>
+  <h2 class="section-title mt-1">Plan — Content calendar</h2>
+  <p class="section-sub">7 stacked day cards require ~6 scrolls. Proposal: 7-column week grid; today expanded inline.</p>
+
+  <div class="mt-8 grid grid-cols-2 gap-8">
+    <div>
+      <div class="kicker mb-2">Before · 1280</div>
+      <div class="frame" style="width:100%">
+        <div class="frame-head"><span><span class="dot r"></span>Current · 7 full-width rows, colored gradient headers</span><span>/plan</span></div>
+        <div class="bg-slate-50 p-6">
+          <div class="flex items-start justify-between mb-4">
+            <div>
+              <h3 class="text-xl font-bold text-slate-900">Plan</h3>
+              <p class="text-[11px] text-slate-500">Next week's content calendar — click a day to expand</p>
+            </div>
+          </div>
+          <div class="space-y-3">
+            <div class="rounded-xl overflow-hidden border border-slate-200">
+              <div class="px-4 py-3 text-white text-sm font-semibold flex items-center gap-3" style="background: linear-gradient(to right, rgba(99,102,241,0.9), rgba(59,130,246,0.8));">
+                <span>▾</span><span class="font-bold">Monday</span><span class="ml-auto text-[11px] opacity-80">2 Reel · 1 Photo · 1 Carousel</span><span class="text-xl font-bold ml-3">4</span>
+              </div>
+            </div>
+            <div class="rounded-xl overflow-hidden border-2 ring-2 ring-brand-shikho-indigo ring-offset-2 ring-offset-slate-50 border-slate-200">
+              <div class="px-4 py-3 text-white text-sm font-semibold flex items-center gap-3" style="background: linear-gradient(to right, rgba(6,182,212,0.9), rgba(20,184,166,0.8));">
+                <span>▴</span><span class="font-bold">Tuesday</span>
+                <span class="inline-flex items-center gap-1 text-[9px] font-bold uppercase bg-white text-slate-900 rounded px-1.5 py-0.5 ml-1"><span class="w-1.5 h-1.5 rounded-full bg-brand-shikho-pink"></span>Today</span>
+                <span class="ml-auto text-[11px] opacity-80">3 Reel · 1 Photo</span><span class="text-xl font-bold ml-3">4</span>
+              </div>
+              <div class="divide-y divide-slate-200 bg-white">
+                <div class="p-4">
+                  <div class="flex gap-3">
+                    <div class="text-[11px] bg-slate-100 rounded px-2 py-1 font-semibold">10:00 AM</div>
+                    <div class="text-[9px] font-bold uppercase px-2 py-1 rounded bg-pink-50 text-pink-700">Reel</div>
+                  </div>
+                  <div class="text-sm font-semibold text-slate-800 mt-2">Derivative shortcut for HSC Math — 30-sec teacher pov</div>
+                </div>
+                <div class="p-4">
+                  <div class="flex gap-3">
+                    <div class="text-[11px] bg-slate-100 rounded px-2 py-1 font-semibold">2:00 PM</div>
+                    <div class="text-[9px] font-bold uppercase px-2 py-1 rounded bg-blue-50 text-blue-700">Photo</div>
+                  </div>
+                  <div class="text-sm font-semibold text-slate-800 mt-2">Topper testimonial — Adiba, Dhaka Board</div>
+                </div>
+              </div>
+            </div>
+            <div class="h-12 rounded-xl border border-slate-200 bg-white"></div>
+            <div class="h-12 rounded-xl border border-slate-200 bg-white"></div>
+            <div class="h-12 rounded-xl border border-slate-200 bg-white"></div>
+          </div>
+        </div>
+      </div>
+      <div class="annot mt-3">
+        <b>Issues.</b> Today is ring-highlighted but still buried mid-stack. 7 × 48px collapsed rows = ~336px of chrome. Each gradient header fights the next. No glanceable week view.
+      </div>
+    </div>
+
+    <div>
+      <div class="kicker mb-2">After · 1280</div>
+      <div class="frame" style="width:100%">
+        <div class="frame-head"><span><span class="dot g"></span>Proposed · 7-col week grid · today prominent</span><span>/plan</span></div>
+        <div class="bg-slate-50 p-6">
+          <div class="flex items-start justify-between mb-4">
+            <div>
+              <h3 class="text-xl font-bold text-slate-900">Plan</h3>
+              <p class="text-[11px] text-slate-500">Week of Apr 21 – Apr 27 · 23 posts across the week</p>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-lg border border-slate-200 grid grid-cols-5 divide-x divide-slate-100 mb-4">
+            <div class="px-4 py-3"><div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Total slots</div><div class="text-xl font-bold text-slate-900 mt-0.5 tabular">23</div></div>
+            <div class="px-4 py-3"><div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Reels</div><div class="text-xl font-bold text-brand-shikho-pink mt-0.5 tabular">11</div></div>
+            <div class="px-4 py-3"><div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Carousels</div><div class="text-xl font-bold text-brand-shikho-orange mt-0.5 tabular">6</div></div>
+            <div class="px-4 py-3"><div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Photos</div><div class="text-xl font-bold text-brand-shikho-blue mt-0.5 tabular">4</div></div>
+            <div class="px-4 py-3"><div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Videos</div><div class="text-xl font-bold text-slate-900 mt-0.5 tabular">2</div></div>
+          </div>
+
+          <div class="grid grid-cols-8 gap-2">
+            <div class="bg-white border border-slate-200 rounded-lg p-2.5">
+              <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Mon</div>
+              <div class="text-[11px] text-slate-400">Apr 21</div>
+              <div class="mt-1.5 text-lg font-bold text-slate-900 tabular">4</div>
+              <div class="mt-2 flex flex-col gap-1">
+                <span class="h-1.5 rounded-full bg-brand-shikho-pink"></span>
+                <span class="h-1.5 rounded-full bg-brand-shikho-pink"></span>
+                <span class="h-1.5 rounded-full bg-brand-shikho-blue"></span>
+                <span class="h-1.5 rounded-full bg-brand-shikho-orange"></span>
+              </div>
+            </div>
+            <div class="col-span-2 rounded-lg p-3 text-white relative overflow-hidden" style="background: linear-gradient(135deg, #1e2a78, #2e47b8);">
+              <div class="flex items-baseline gap-2">
+                <div class="text-[10px] font-bold uppercase tracking-wider">Tue</div>
+                <span class="text-[9px] font-bold uppercase bg-white text-brand-shikho-indigo rounded px-1 py-0.5">Today</span>
+              </div>
+              <div class="text-[11px] text-white/70">Apr 22</div>
+              <div class="mt-1.5 text-lg font-bold tabular">4 posts</div>
+              <div class="mt-2 space-y-1.5 text-[11px]">
+                <div class="bg-white/15 rounded px-2 py-1 flex items-baseline gap-1.5">
+                  <span class="tabular text-white/70">10:00</span>
+                  <span class="px-1 rounded bg-brand-shikho-pink text-[9px] font-bold uppercase">Reel</span>
+                  <span class="truncate">Derivative trick HSC</span>
+                </div>
+                <div class="bg-white/15 rounded px-2 py-1 flex items-baseline gap-1.5">
+                  <span class="tabular text-white/70">14:00</span>
+                  <span class="px-1 rounded bg-brand-shikho-blue text-[9px] font-bold uppercase">Photo</span>
+                  <span class="truncate">Topper testimonial</span>
+                </div>
+                <div class="bg-white/15 rounded px-2 py-1 flex items-baseline gap-1.5">
+                  <span class="tabular text-white/70">18:30</span>
+                  <span class="px-1 rounded bg-brand-shikho-pink text-[9px] font-bold uppercase">Reel</span>
+                  <span class="truncate">Q&amp;A with Shadman sir</span>
+                </div>
+                <div class="bg-white/15 rounded px-2 py-1 flex items-baseline gap-1.5">
+                  <span class="tabular text-white/70">21:00</span>
+                  <span class="px-1 rounded bg-brand-shikho-pink text-[9px] font-bold uppercase">Reel</span>
+                  <span class="truncate">Exam anxiety tips</span>
+                </div>
+              </div>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-lg p-2.5">
+              <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Wed</div>
+              <div class="text-[11px] text-slate-400">Apr 23</div>
+              <div class="mt-1.5 text-lg font-bold text-slate-900 tabular">3</div>
+              <div class="mt-2 flex flex-col gap-1">
+                <span class="h-1.5 rounded-full bg-brand-shikho-pink"></span>
+                <span class="h-1.5 rounded-full bg-brand-shikho-orange"></span>
+                <span class="h-1.5 rounded-full bg-brand-shikho-blue"></span>
+              </div>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-lg p-2.5">
+              <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Thu</div>
+              <div class="text-[11px] text-slate-400">Apr 24</div>
+              <div class="mt-1.5 text-lg font-bold text-slate-900 tabular">4</div>
+              <div class="mt-2 flex flex-col gap-1">
+                <span class="h-1.5 rounded-full bg-brand-shikho-pink"></span>
+                <span class="h-1.5 rounded-full bg-brand-shikho-pink"></span>
+                <span class="h-1.5 rounded-full bg-brand-shikho-orange"></span>
+                <span class="h-1.5 rounded-full bg-purple-500"></span>
+              </div>
+              <div class="mt-2 text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-amber-100 text-amber-700 inline-block">HSC starts</div>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-lg p-2.5">
+              <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Fri</div>
+              <div class="text-[11px] text-slate-400">Apr 25</div>
+              <div class="mt-1.5 text-lg font-bold text-slate-900 tabular">3</div>
+              <div class="mt-2 flex flex-col gap-1">
+                <span class="h-1.5 rounded-full bg-brand-shikho-pink"></span>
+                <span class="h-1.5 rounded-full bg-brand-shikho-orange"></span>
+                <span class="h-1.5 rounded-full bg-brand-shikho-pink"></span>
+              </div>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-lg p-2.5">
+              <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Sat</div>
+              <div class="text-[11px] text-slate-400">Apr 26</div>
+              <div class="mt-1.5 text-lg font-bold text-slate-900 tabular">3</div>
+              <div class="mt-2 flex flex-col gap-1">
+                <span class="h-1.5 rounded-full bg-brand-shikho-pink"></span>
+                <span class="h-1.5 rounded-full bg-brand-shikho-blue"></span>
+                <span class="h-1.5 rounded-full bg-brand-shikho-orange"></span>
+              </div>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-lg p-2.5">
+              <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Sun</div>
+              <div class="text-[11px] text-slate-400">Apr 27</div>
+              <div class="mt-1.5 text-lg font-bold text-slate-900 tabular">2</div>
+              <div class="mt-2 flex flex-col gap-1">
+                <span class="h-1.5 rounded-full bg-brand-shikho-pink"></span>
+                <span class="h-1.5 rounded-full bg-purple-500"></span>
+              </div>
+            </div>
+          </div>
+          <p class="mt-3 text-[11px] text-slate-500">Click any day to swap it into the expanded slot. Each bar = one post, colored by format.</p>
+        </div>
+      </div>
+      <div class="annot mt-3">
+        <b>Changes.</b> Whole week in one screen. Today column is 2× wide with actual briefs. Other days show count + format bars. Week totals bar = mix at a glance. Calendar alerts surface inline.
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-12 grid grid-cols-[360px_360px_1fr] gap-8">
+    <div>
+      <div class="kicker mb-2">Before · 360</div>
+      <div class="frame device-360">
+        <div class="frame-head"><span><span class="dot r"></span>Current</span><span>/plan</span></div>
+        <div class="bg-slate-50 p-4">
+          <div class="text-lg font-bold text-slate-900">Plan</div>
+          <div class="mt-3 space-y-2">
+            <div class="h-12 rounded-lg" style="background: linear-gradient(to right, rgba(99,102,241,0.9), rgba(59,130,246,0.8));"></div>
+            <div class="h-48 rounded-lg border-2 border-white ring-2 ring-brand-shikho-indigo bg-white"></div>
+            <div class="h-12 rounded-lg" style="background: linear-gradient(to right, rgba(16,185,129,0.9), rgba(34,197,94,0.8));"></div>
+            <div class="h-12 rounded-lg" style="background: linear-gradient(to right, rgba(245,158,11,0.9), rgba(249,115,22,0.8));"></div>
+            <div class="h-12 rounded-lg" style="background: linear-gradient(to right, rgba(244,63,94,0.9), rgba(236,72,153,0.8));"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="kicker mb-2">After · 360</div>
+      <div class="frame device-360">
+        <div class="frame-head"><span><span class="dot g"></span>Proposed</span><span>/plan</span></div>
+        <div class="bg-slate-50 p-4">
+          <div class="text-lg font-bold text-slate-900">Plan</div>
+          <p class="text-[11px] text-slate-500">Week of Apr 21 · 23 posts</p>
+          <div class="mt-3 flex gap-1.5 overflow-x-auto pb-1">
+            <div class="shrink-0 w-12 bg-white border border-slate-200 rounded p-1.5 text-center">
+              <div class="text-[9px] font-bold uppercase text-slate-500">Mon</div>
+              <div class="text-sm font-bold tabular">4</div>
+            </div>
+            <div class="shrink-0 w-14 rounded p-1.5 text-center text-white" style="background: linear-gradient(135deg, #1e2a78, #2e47b8);">
+              <div class="text-[9px] font-bold uppercase">Tue</div>
+              <div class="text-sm font-bold tabular">4</div>
+              <div class="text-[8px] font-bold uppercase mt-0.5 bg-white text-brand-shikho-indigo rounded px-0.5">Today</div>
+            </div>
+            <div class="shrink-0 w-12 bg-white border border-slate-200 rounded p-1.5 text-center"><div class="text-[9px] font-bold uppercase text-slate-500">Wed</div><div class="text-sm font-bold tabular">3</div></div>
+            <div class="shrink-0 w-12 bg-white border border-slate-200 rounded p-1.5 text-center"><div class="text-[9px] font-bold uppercase text-slate-500">Thu</div><div class="text-sm font-bold tabular">4</div></div>
+            <div class="shrink-0 w-12 bg-white border border-slate-200 rounded p-1.5 text-center"><div class="text-[9px] font-bold uppercase text-slate-500">Fri</div><div class="text-sm font-bold tabular">3</div></div>
+            <div class="shrink-0 w-12 bg-white border border-slate-200 rounded p-1.5 text-center"><div class="text-[9px] font-bold uppercase text-slate-500">Sat</div><div class="text-sm font-bold tabular">3</div></div>
+            <div class="shrink-0 w-12 bg-white border border-slate-200 rounded p-1.5 text-center"><div class="text-[9px] font-bold uppercase text-slate-500">Sun</div><div class="text-sm font-bold tabular">2</div></div>
+          </div>
+          <div class="mt-3 rounded-lg p-3 text-white" style="background: linear-gradient(135deg, #1e2a78, #2e47b8);">
+            <div class="flex items-baseline gap-2">
+              <div class="text-sm font-bold">Tuesday · Apr 22</div>
+              <span class="text-[8px] font-bold uppercase bg-white text-brand-shikho-indigo rounded px-1 py-0.5">Today</span>
+            </div>
+            <div class="mt-2 space-y-1.5 text-[11px]">
+              <div class="bg-white/15 rounded px-2 py-1.5 flex items-baseline gap-1.5">
+                <span class="tabular text-white/70">10:00</span>
+                <span class="px-1 rounded bg-brand-shikho-pink text-[8px] font-bold uppercase">Reel</span>
+                <span class="truncate">Derivative trick HSC</span>
+              </div>
+              <div class="bg-white/15 rounded px-2 py-1.5 flex items-baseline gap-1.5">
+                <span class="tabular text-white/70">14:00</span>
+                <span class="px-1 rounded bg-brand-shikho-blue text-[8px] font-bold uppercase">Photo</span>
+                <span class="truncate">Topper testimonial</span>
+              </div>
+              <div class="bg-white/15 rounded px-2 py-1.5 flex items-baseline gap-1.5">
+                <span class="tabular text-white/70">18:30</span>
+                <span class="px-1 rounded bg-brand-shikho-pink text-[8px] font-bold uppercase">Reel</span>
+                <span class="truncate">Q&amp;A Shadman sir</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="annot self-start">
+      <b>Mobile pattern shift.</b> Horizontal day strip (<code class="bg-slate-100 text-slate-800 px-1 rounded text-[11px]">overflow-x-auto</code> is fine here — secondary nav within a page, not primary). Today's brief promoted to hero. Tap any day to swap. Zero scroll to answer "what am I posting today?".
+    </div>
+  </div>
+</section>
+
+<div class="rule max-w-[1360px] mx-auto"></div>
+
+<!-- REELS -->
+<section class="max-w-[1360px] mx-auto px-8">
+  <div class="kicker">Page 3 of 4</div>
+  <h2 class="section-title mt-1">Reels — Retention-first layout</h2>
+  <p class="section-sub">5 KPIs + 2 charts + 9-col table. The retention curve is the signal; promote it, fold bucket views under it.</p>
+
+  <div class="mt-8 grid grid-cols-2 gap-8">
+    <div>
+      <div class="kicker mb-2">Before · 1280</div>
+      <div class="frame" style="width:100%">
+        <div class="frame-head"><span><span class="dot r"></span>Current · 5 KPIs, funnel+curve side-by-side</span><span>/reels</span></div>
+        <div class="bg-slate-50 p-6">
+          <div class="flex items-start justify-between mb-4">
+            <div><h3 class="text-xl font-bold text-slate-900">Reels</h3><p class="text-[11px] text-slate-500">Video watch time, retention, and follower conversion</p></div>
+          </div>
+          <div class="grid grid-cols-5 gap-3 mb-4">
+            <div class="bg-white border border-slate-200 rounded-xl p-4"><div class="text-[10px] uppercase text-slate-500 font-semibold">Reels posted</div><div class="text-2xl font-bold mt-1 tabular">42</div><div class="text-[10px] text-slate-500 mt-1">in range</div></div>
+            <div class="bg-white border border-slate-200 rounded-xl p-4"><div class="text-[10px] uppercase text-slate-500 font-semibold">Total plays</div><div class="text-2xl font-bold mt-1 tabular">2,104,382</div><div class="text-[10px] text-slate-500 mt-1">12.4% replay rate</div></div>
+            <div class="bg-white border border-slate-200 rounded-xl p-4"><div class="text-[10px] uppercase text-slate-500 font-semibold">Avg watch time</div><div class="text-2xl font-bold mt-1 tabular">8.3s</div></div>
+            <div class="bg-white border border-slate-200 rounded-xl p-4"><div class="text-[10px] uppercase text-slate-500 font-semibold">Hook ret. (3s)</div><div class="text-2xl font-bold mt-1 tabular">74.2%</div></div>
+            <div class="bg-white border border-slate-200 rounded-xl p-4"><div class="text-[10px] uppercase text-slate-500 font-semibold">Followers gained</div><div class="text-2xl font-bold mt-1 tabular">+1,248</div></div>
+          </div>
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div class="bg-white border border-slate-200 rounded-xl p-4 border-l-4 border-l-purple-500">
+              <div class="text-sm font-semibold text-slate-900">Retention Funnel</div>
+              <div class="mt-3 flex items-end gap-2 h-36">
+                <div class="w-8 bg-brand-shikho-indigo rounded-t" style="height:100%"></div>
+                <div class="w-8 bg-brand-shikho-indigo rounded-t" style="height:82%"></div>
+                <div class="w-8 bg-brand-shikho-indigo rounded-t" style="height:74%"></div>
+                <div class="w-8 bg-brand-shikho-indigo rounded-t" style="height:55%"></div>
+                <div class="w-8 bg-brand-shikho-indigo rounded-t" style="height:36%"></div>
+                <div class="w-8 bg-brand-shikho-indigo rounded-t" style="height:22%"></div>
+                <div class="w-8 bg-brand-shikho-indigo rounded-t" style="height:11%"></div>
+              </div>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-xl p-4 border-l-4 border-l-purple-500">
+              <div class="text-sm font-semibold text-slate-900">Average retention curve</div>
+              <svg viewBox="0 0 200 100" class="w-full h-36 mt-2" preserveAspectRatio="none">
+                <polyline points="0,8 3,10 8,15 15,28 30,45 50,60 80,72 120,82 160,90 200,94" fill="none" stroke="#ec4899" stroke-width="2" />
+              </svg>
+            </div>
+          </div>
+          <div class="bg-white border border-slate-200 rounded-xl p-3">
+            <div class="text-[11px] uppercase font-semibold text-slate-500 tabular grid grid-cols-9 gap-2">
+              <span>Date</span><span class="col-span-2">Caption</span><span>Pillar</span><span class="text-right">Plays</span><span class="text-right">Replays</span><span class="text-right">Watch</span><span class="text-right">Hook3</span><span class="text-right">Follows</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="annot mt-3">
+        <b>Issues.</b> Two charts at equal weight — but one is derivative of the other. No benchmark context (is 8.3s good?). 9-col table forces eye zigzag.
+      </div>
+    </div>
+
+    <div>
+      <div class="kicker mb-2">After · 1280</div>
+      <div class="frame" style="width:100%">
+        <div class="frame-head"><span><span class="dot g"></span>Proposed · full-width curve · benchmark overlay</span><span>/reels</span></div>
+        <div class="bg-slate-50 p-6">
+          <div class="flex items-start justify-between mb-4">
+            <div><h3 class="text-xl font-bold text-slate-900">Reels</h3><p class="text-[11px] text-slate-500">42 reels · 3.4M seconds watched · +1,248 followers · Apr 5 – Apr 11</p></div>
+          </div>
+          <div class="grid grid-cols-5 gap-3 mb-4">
+            <div class="bg-white border border-slate-200 rounded-xl p-4">
+              <div class="text-[10px] uppercase text-slate-500 font-semibold">Reels posted</div>
+              <div class="text-2xl font-bold mt-1 tabular">42</div>
+              <div class="text-[11px] mt-1"><span class="text-emerald-600 font-semibold">+12%</span> <span class="text-slate-500">vs prev</span></div>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-xl p-4">
+              <div class="text-[10px] uppercase text-slate-500 font-semibold">Total plays</div>
+              <div class="text-2xl font-bold mt-1 tabular">2.10M</div>
+              <div class="text-[11px] mt-1"><span class="text-emerald-600 font-semibold">+8.4%</span> <span class="text-slate-500">vs prev</span></div>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-xl p-4 ring-2 ring-brand-shikho-indigo/30">
+              <div class="text-[10px] uppercase text-slate-500 font-semibold">Avg watch time</div>
+              <div class="text-2xl font-bold mt-1 tabular">8.3s</div>
+              <div class="text-[11px] mt-1"><span class="text-rose-600 font-semibold">−0.4s</span> <span class="text-slate-500">· 68% of length</span></div>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-xl p-4 ring-2 ring-brand-shikho-indigo/30">
+              <div class="text-[10px] uppercase text-slate-500 font-semibold">Hook retention 3s</div>
+              <div class="text-2xl font-bold mt-1 tabular text-emerald-600">74.2%</div>
+              <div class="text-[11px] mt-1"><span class="text-slate-500">bench 60% · </span><span class="text-emerald-600 font-semibold">strong</span></div>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-xl p-4">
+              <div class="text-[10px] uppercase text-slate-500 font-semibold">Followers gained</div>
+              <div class="text-2xl font-bold mt-1 tabular">+1,248</div>
+              <div class="text-[11px] mt-1 text-slate-500">29.7 per reel</div>
+            </div>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-xl p-5 mb-4 border-l-4 border-l-brand-shikho-pink">
+            <div class="flex items-start justify-between mb-3">
+              <div>
+                <div class="text-base font-semibold text-slate-900">Average retention curve</div>
+                <div class="text-xs text-slate-500">View-weighted · 42 reels · 0–60s</div>
+              </div>
+              <div class="flex items-center gap-3 text-[11px]">
+                <span class="inline-flex items-center gap-1.5"><span class="w-3 h-0.5 bg-brand-shikho-pink"></span><span class="text-slate-700 font-medium">This week</span></span>
+                <span class="inline-flex items-center gap-1.5"><span class="w-3 h-0.5 border-t border-dashed border-slate-400"></span><span class="text-slate-500">4-wk avg</span></span>
+                <span class="inline-flex items-center gap-1.5"><span class="w-3 h-0.5 bg-emerald-500"></span><span class="text-slate-500">Benchmark</span></span>
+              </div>
+            </div>
+            <svg viewBox="0 0 800 200" class="w-full" style="height: 200px;" preserveAspectRatio="none">
+              <line x1="0" y1="40" x2="800" y2="40" stroke="#e2e8f0" stroke-dasharray="2 3" />
+              <line x1="0" y1="80" x2="800" y2="80" stroke="#e2e8f0" stroke-dasharray="2 3" />
+              <line x1="0" y1="120" x2="800" y2="120" stroke="#e2e8f0" stroke-dasharray="2 3" />
+              <line x1="0" y1="160" x2="800" y2="160" stroke="#e2e8f0" stroke-dasharray="2 3" />
+              <polyline points="0,20 60,40 120,65 220,100 360,130 500,150 680,170 800,180" fill="none" stroke="#10b981" stroke-width="1.5" opacity="0.6" />
+              <polyline points="0,15 60,28 120,55 220,85 360,115 500,140 680,160 800,175" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 4" />
+              <path d="M0,10 L40,22 L80,34 L160,55 L240,72 L360,96 L500,120 L680,150 L800,165 L800,200 L0,200 Z" fill="rgba(230,36,125,0.08)" />
+              <polyline points="0,10 40,22 80,34 160,55 240,72 360,96 500,120 680,150 800,165" fill="none" stroke="#e6247d" stroke-width="2.5" />
+              <circle cx="40" cy="22" r="4" fill="#e6247d" />
+              <circle cx="40" cy="22" r="9" fill="none" stroke="#e6247d" stroke-width="1.5" opacity="0.3" />
+              <text x="0" y="195" font-size="10" fill="#64748b">0s</text>
+              <text x="38" y="195" font-size="10" fill="#e6247d" font-weight="600">3s · 74%</text>
+              <text x="215" y="195" font-size="10" fill="#64748b">15s</text>
+              <text x="355" y="195" font-size="10" fill="#64748b">25s</text>
+              <text x="495" y="195" font-size="10" fill="#64748b">40s</text>
+              <text x="775" y="195" font-size="10" fill="#64748b">60s</text>
+            </svg>
+            <div class="mt-2 grid grid-cols-3 gap-4 text-[12px] text-slate-600 border-t border-slate-100 pt-3">
+              <div><b class="text-slate-900">Hook</b> · 74% past 3s — above 60% benchmark, above own 4-wk avg.</div>
+              <div><b class="text-slate-900">Mid-drop</b> · sharpest decline 6s–15s. Hook lands, promise misses.</div>
+              <div><b class="text-slate-900">Tail</b> · 20% still watching at 60s — good for 12+ reels.</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-3">
+            <div class="col-span-1 bg-white border border-slate-200 rounded-xl p-4">
+              <div class="text-xs font-semibold text-slate-900">Retention funnel</div>
+              <div class="mt-3 space-y-2 text-[11px]">
+                <div class="flex items-center gap-2"><span class="tabular w-8 text-slate-500">0s</span><div class="flex-1 bg-slate-100 h-4 rounded-sm overflow-hidden"><div class="h-full bg-brand-shikho-indigo" style="width:100%"></div></div><span class="tabular w-14 text-right text-slate-700">2.10M</span></div>
+                <div class="flex items-center gap-2"><span class="tabular w-8 text-slate-500">3s</span><div class="flex-1 bg-slate-100 h-4 rounded-sm overflow-hidden"><div class="h-full bg-brand-shikho-indigo" style="width:74%"></div></div><span class="tabular w-14 text-right text-slate-700">1.56M</span></div>
+                <div class="flex items-center gap-2"><span class="tabular w-8 text-slate-500">15s</span><div class="flex-1 bg-slate-100 h-4 rounded-sm overflow-hidden"><div class="h-full bg-brand-shikho-indigo" style="width:45%"></div></div><span class="tabular w-14 text-right text-slate-700">946k</span></div>
+                <div class="flex items-center gap-2"><span class="tabular w-8 text-slate-500">30s</span><div class="flex-1 bg-slate-100 h-4 rounded-sm overflow-hidden"><div class="h-full bg-brand-shikho-indigo" style="width:28%"></div></div><span class="tabular w-14 text-right text-slate-700">589k</span></div>
+                <div class="flex items-center gap-2"><span class="tabular w-8 text-slate-500">60s</span><div class="flex-1 bg-slate-100 h-4 rounded-sm overflow-hidden"><div class="h-full bg-brand-shikho-indigo" style="width:20%"></div></div><span class="tabular w-14 text-right text-slate-700">420k</span></div>
+              </div>
+            </div>
+            <div class="col-span-2 bg-white border border-slate-200 rounded-xl p-4">
+              <div class="text-xs font-semibold text-slate-900">Top 3 by hook retention (≥500 views)</div>
+              <div class="mt-3 space-y-2 text-[12px]">
+                <div class="flex items-baseline gap-2"><span class="w-10 h-5 rounded bg-emerald-100 text-emerald-700 text-[10px] font-bold flex items-center justify-center">92%</span><span class="truncate flex-1">Rumana · "3-minute derivative trick"</span><span class="tabular text-slate-500">142k plays</span></div>
+                <div class="flex items-baseline gap-2"><span class="w-10 h-5 rounded bg-emerald-100 text-emerald-700 text-[10px] font-bold flex items-center justify-center">88%</span><span class="truncate flex-1">Shadman · "The trick they don't teach in class"</span><span class="tabular text-slate-500">98k plays</span></div>
+                <div class="flex items-baseline gap-2"><span class="w-10 h-5 rounded bg-emerald-100 text-emerald-700 text-[10px] font-bold flex items-center justify-center">84%</span><span class="truncate flex-1">Adiba · "From 65 to GPA 5 in 4 months"</span><span class="tabular text-slate-500">86k plays</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="annot mt-3">
+        <b>Changes.</b> Curve goes full-width with 4-wk avg (dashed grey) + benchmark (green) overlaid. 3s dot annotated — the hook decision moment. Funnel bars fold into compact 200px strip. Three in-context captions make it a chart anyone can read.
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-12 grid grid-cols-[360px_360px_1fr] gap-8">
+    <div>
+      <div class="kicker mb-2">Before · 360</div>
+      <div class="frame device-360">
+        <div class="frame-head"><span><span class="dot r"></span>Current</span><span>/reels</span></div>
+        <div class="bg-slate-50 p-4">
+          <div class="text-lg font-bold">Reels</div>
+          <div class="mt-3 grid grid-cols-2 gap-2">
+            <div class="bg-white border border-slate-200 rounded-lg p-3 h-20"><div class="text-[9px] uppercase text-slate-500 font-semibold">Reels posted</div><div class="text-xl font-bold tabular">42</div></div>
+            <div class="bg-white border border-slate-200 rounded-lg p-3 h-20"><div class="text-[9px] uppercase text-slate-500 font-semibold">Total plays</div><div class="text-xl font-bold tabular">2,104,382</div></div>
+            <div class="bg-white border border-slate-200 rounded-lg p-3 h-20"><div class="text-[9px] uppercase text-slate-500 font-semibold">Avg watch</div><div class="text-xl font-bold tabular">8.3s</div></div>
+            <div class="bg-white border border-slate-200 rounded-lg p-3 h-20"><div class="text-[9px] uppercase text-slate-500 font-semibold">Hook 3s</div><div class="text-xl font-bold tabular">74.2%</div></div>
+            <div class="col-span-2 bg-white border border-slate-200 rounded-lg p-3"><div class="text-[9px] uppercase text-slate-500 font-semibold">Followers gained</div><div class="text-xl font-bold tabular">+1,248</div></div>
+          </div>
+          <div class="mt-3 h-40 bg-white border border-slate-200 rounded-lg"></div>
+          <div class="mt-3 h-40 bg-white border border-slate-200 rounded-lg"></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="kicker mb-2">After · 360</div>
+      <div class="frame device-360">
+        <div class="frame-head"><span><span class="dot g"></span>Proposed</span><span>/reels</span></div>
+        <div class="bg-slate-50 p-4">
+          <div class="text-lg font-bold">Reels</div>
+          <p class="text-[11px] text-slate-500">42 reels · 2.10M plays · +1,248 follows</p>
+          <div class="mt-3 bg-white border border-slate-200 rounded-lg p-3 border-l-4 border-l-brand-shikho-pink">
+            <div class="flex items-baseline gap-2">
+              <div class="text-2xl font-bold text-emerald-600 tabular">74%</div>
+              <div class="text-[11px] text-slate-600 leading-tight">past the 3s hook<br><span class="text-emerald-600 font-semibold">above 60% benchmark</span></div>
+            </div>
+            <svg viewBox="0 0 200 60" class="w-full mt-2" preserveAspectRatio="none" style="height:60px">
+              <polyline points="0,5 10,10 20,16 50,28 100,40 150,48 200,52" fill="none" stroke="#e6247d" stroke-width="2.5" />
+              <polyline points="0,8 10,15 20,25 50,35 100,45 150,50 200,54" fill="none" stroke="#94a3b8" stroke-width="1" stroke-dasharray="3 3" />
+              <circle cx="10" cy="10" r="3" fill="#e6247d" />
+            </svg>
+            <div class="mt-1 flex justify-between text-[9px] text-slate-500 tabular">
+              <span>0s</span><span class="text-brand-shikho-pink font-semibold">3s</span><span>30s</span><span>60s</span>
+            </div>
+          </div>
+          <div class="mt-3 bg-white border border-slate-200 rounded-lg divide-y divide-slate-100">
+            <div class="px-3 py-2 flex items-baseline justify-between"><span class="text-[11px] text-slate-500">Avg watch</span><span class="text-sm font-bold tabular">8.3s<span class="text-rose-600 ml-1 text-[11px]">−0.4</span></span></div>
+            <div class="px-3 py-2 flex items-baseline justify-between"><span class="text-[11px] text-slate-500">Total plays</span><span class="text-sm font-bold tabular">2.10M<span class="text-emerald-600 ml-1 text-[11px]">+8%</span></span></div>
+            <div class="px-3 py-2 flex items-baseline justify-between"><span class="text-[11px] text-slate-500">Replay rate</span><span class="text-sm font-bold tabular">12.4%</span></div>
+            <div class="px-3 py-2 flex items-baseline justify-between"><span class="text-[11px] text-slate-500">Follows</span><span class="text-sm font-bold tabular text-emerald-600">+1,248</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="annot self-start">
+      <b>Mobile strategy.</b> Promote the curve + single insight (<b>74% past 3s, above benchmark</b>), demote KPIs to a stacked list. The user's actual question is answered above the fold.
+    </div>
+  </div>
+</section>
+
+<div class="rule max-w-[1360px] mx-auto"></div>
+
+<!-- EXPLORE -->
+<section class="max-w-[1360px] mx-auto px-8">
+  <div class="kicker">Page 4 of 4</div>
+  <h2 class="section-title mt-1">Explore — Query-builder workbench</h2>
+  <p class="section-sub">Filter-first UX is already correct. Proposal: saved views, sortable column headers, richer per-row metadata, segment-delta summary.</p>
+
+  <div class="mt-8 grid grid-cols-2 gap-8">
+    <div>
+      <div class="kicker mb-2">Before · 1280</div>
+      <div class="frame" style="width:100%">
+        <div class="frame-head"><span><span class="dot r"></span>Current</span><span>/explore</span></div>
+        <div class="bg-slate-50 p-6">
+          <div class="flex items-start justify-between mb-4">
+            <div><h3 class="text-xl font-bold text-slate-900">Explore</h3><p class="text-[11px] text-slate-500">Filter by any dimension, group by any dimension</p></div>
+            <div class="h-7 w-36 bg-white border border-slate-200 rounded-md"></div>
+          </div>
+          <div class="bg-slate-50 border-b border-slate-200 -mx-6 px-6 py-3 mb-4 flex flex-wrap items-center gap-2 text-[11px]">
+            <span class="font-bold uppercase text-slate-500">Filter</span>
+            <span class="px-2.5 py-1.5 rounded-md border border-slate-200 bg-white">Content Pillar</span>
+            <span class="px-2.5 py-1.5 rounded-md border border-brand-shikho-indigo/30 bg-brand-shikho-indigo/5 text-brand-shikho-indigo font-semibold">Format <span class="ml-1 px-1.5 rounded-full bg-brand-shikho-indigo text-white text-[10px]">2</span></span>
+            <span class="px-2.5 py-1.5 rounded-md border border-slate-200 bg-white">Audience</span>
+            <span class="px-2.5 py-1.5 rounded-md border border-slate-200 bg-white">Spotlight</span>
+            <span class="h-5 w-px bg-slate-200 mx-1"></span>
+            <span class="font-bold uppercase text-slate-500">Group by</span>
+            <span class="px-2.5 py-1.5 rounded-md border border-slate-200 bg-white">Content Pillar</span>
+            <span class="ml-auto text-slate-700"><b>142</b> posts match</span>
+          </div>
+          <div class="grid grid-cols-5 bg-white border border-slate-200 rounded-xl divide-x divide-slate-100 mb-4">
+            <div class="p-3"><div class="text-[10px] uppercase text-slate-500 font-semibold">Posts</div><div class="text-base font-bold tabular">142</div></div>
+            <div class="p-3"><div class="text-[10px] uppercase text-slate-500 font-semibold">Total reach</div><div class="text-base font-bold tabular">4,208,913</div></div>
+            <div class="p-3"><div class="text-[10px] uppercase text-slate-500 font-semibold">Avg reach</div><div class="text-base font-bold tabular">29,640</div></div>
+            <div class="p-3"><div class="text-[10px] uppercase text-slate-500 font-semibold">Interactions</div><div class="text-base font-bold tabular">186,422</div></div>
+            <div class="p-3"><div class="text-[10px] uppercase text-slate-500 font-semibold">Eng. rate</div><div class="text-base font-bold tabular">4.43%</div></div>
+          </div>
+          <div class="bg-white border border-slate-200 rounded-xl p-4">
+            <div class="flex items-end justify-between mb-3">
+              <div><div class="text-sm font-semibold">Top Posts</div><div class="text-[11px] text-slate-500">Ranked by unique reach · 142 matching</div></div>
+              <div class="flex gap-1 text-[11px]"><span class="px-2 py-1 rounded border border-brand-shikho-indigo/30 bg-brand-shikho-indigo/5 text-brand-shikho-indigo font-semibold">25</span><span class="px-2 py-1 rounded border border-slate-200">50</span><span class="px-2 py-1 rounded border border-slate-200">100</span></div>
+            </div>
+            <div class="space-y-3">
+              <div class="border-l-2 border-brand-shikho-pink pl-3 py-1">
+                <div class="text-[13px] font-medium text-slate-900"><span class="text-slate-400 tabular">#1</span> <span class="text-brand-shikho-indigo font-bold">142,830</span> reach · 6.2% engagement · 1,204 shares</div>
+                <div class="text-[12px] text-slate-600 mt-1 line-clamp-1">Rumana's 3-minute derivative trick for HSC Math — part 1…</div>
+                <div class="text-[11px] text-slate-500 mt-1"><span class="text-brand-shikho-pink font-medium">Study Tips</span> · Reel · 2026-04-09 · <span class="text-brand-shikho-orange">Ms. Rumana (Teacher)</span></div>
+              </div>
+              <div class="border-l-2 border-brand-shikho-pink pl-3 py-1">
+                <div class="text-[13px] font-medium text-slate-900"><span class="text-slate-400 tabular">#2</span> <span class="text-brand-shikho-indigo font-bold">98,410</span> reach · 5.8% engagement · 812 shares</div>
+                <div class="text-[12px] text-slate-600 mt-1 line-clamp-1">Shadman sir's trick for understanding calculus integrals fast…</div>
+                <div class="text-[11px] text-slate-500 mt-1"><span class="text-brand-shikho-pink font-medium">Study Tips</span> · Reel · 2026-04-07 · <span class="text-brand-shikho-orange">Shadman sir (Teacher)</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="annot mt-3">
+        <b>Issues.</b> No saved filters. List items have no scannable sort. "Format = 2" doesn't show <i>which</i>. No delta — is 4.43% ER good for this segment?
+      </div>
+    </div>
+
+    <div>
+      <div class="kicker mb-2">After · 1280</div>
+      <div class="frame" style="width:100%">
+        <div class="frame-head"><span><span class="dot g"></span>Proposed · active chips · saved views · sortable · delta</span><span>/explore</span></div>
+        <div class="bg-slate-50 p-6">
+          <div class="flex items-start justify-between mb-4">
+            <div><h3 class="text-xl font-bold text-slate-900">Explore</h3><p class="text-[11px] text-slate-500">Query the post library · filter, group, and pin views</p></div>
+            <div class="flex gap-2">
+              <button class="h-7 px-3 rounded-md border border-slate-200 bg-white text-[11px] font-medium text-slate-700">★ Save view</button>
+              <div class="h-7 w-36 bg-white border border-slate-200 rounded-md"></div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 mb-3 text-[11px]">
+            <span class="font-bold uppercase text-slate-500">Saved:</span>
+            <button class="px-2.5 py-1 rounded-full border border-brand-shikho-indigo/40 bg-brand-shikho-indigo/5 text-brand-shikho-indigo font-semibold">Reels only · 30d</button>
+            <button class="px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-700">Teacher spotlights</button>
+            <button class="px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-700">Study Tips · all</button>
+            <button class="px-2.5 py-1 rounded-full border border-slate-200 bg-white text-slate-700">Viral posts (100k+)</button>
+          </div>
+          <div class="bg-white rounded-xl border border-slate-200 p-3 mb-4">
+            <div class="flex flex-wrap items-center gap-2 text-[11px]">
+              <span class="font-bold uppercase text-slate-500">Filter</span>
+              <div class="flex items-center gap-1 px-2 py-1 rounded-md border border-brand-shikho-indigo/30 bg-brand-shikho-indigo/5 text-brand-shikho-indigo font-semibold">
+                Format: <span class="inline-flex px-1.5 rounded bg-brand-shikho-pink text-white text-[10px]">Reel</span> <span class="inline-flex px-1.5 rounded bg-brand-shikho-orange text-white text-[10px]">Carousel</span>
+                <span class="text-brand-shikho-indigo/60 ml-1">×</span>
+              </div>
+              <button class="px-2 py-1 rounded-md border border-dashed border-slate-300 bg-white text-slate-500">+ Pillar</button>
+              <button class="px-2 py-1 rounded-md border border-dashed border-slate-300 bg-white text-slate-500">+ Audience</button>
+              <button class="px-2 py-1 rounded-md border border-dashed border-slate-300 bg-white text-slate-500">+ Spotlight</button>
+              <span class="h-5 w-px bg-slate-200 mx-1"></span>
+              <span class="font-bold uppercase text-slate-500">Group by</span>
+              <button class="px-2 py-1 rounded-md border border-slate-200 bg-white font-medium">Content Pillar ▾</button>
+              <span class="ml-auto text-slate-700"><b class="tabular">142</b> posts match</span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-5 bg-white border border-slate-200 rounded-xl divide-x divide-slate-100 mb-4">
+            <div class="p-3">
+              <div class="text-[10px] uppercase text-slate-500 font-semibold">Posts</div>
+              <div class="text-lg font-bold tabular">142</div>
+              <div class="text-[10px] text-slate-500">of 387 total</div>
+            </div>
+            <div class="p-3">
+              <div class="text-[10px] uppercase text-slate-500 font-semibold">Total reach</div>
+              <div class="text-lg font-bold tabular">4.21M</div>
+              <div class="text-[10px] text-slate-500">52% of all-post reach</div>
+            </div>
+            <div class="p-3">
+              <div class="text-[10px] uppercase text-slate-500 font-semibold">Avg reach</div>
+              <div class="text-lg font-bold tabular">29,640</div>
+              <div class="text-[10px]"><span class="text-emerald-600 font-semibold">+38%</span> <span class="text-slate-500">vs all</span></div>
+            </div>
+            <div class="p-3">
+              <div class="text-[10px] uppercase text-slate-500 font-semibold">Interactions</div>
+              <div class="text-lg font-bold tabular">186k</div>
+              <div class="text-[10px] text-slate-500">1,312 per post</div>
+            </div>
+            <div class="p-3">
+              <div class="text-[10px] uppercase text-slate-500 font-semibold">Eng. rate</div>
+              <div class="text-lg font-bold tabular">4.43%</div>
+              <div class="text-[10px]"><span class="text-emerald-600 font-semibold">+0.82pp</span> <span class="text-slate-500">vs all</span></div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-[360px_1fr] gap-3">
+            <div class="bg-white border border-slate-200 rounded-xl p-4">
+              <div class="text-sm font-semibold text-slate-900">By Content Pillar</div>
+              <div class="text-[11px] text-slate-500">Reach, within filter</div>
+              <div class="mt-3 space-y-1.5 text-[11px]">
+                <div class="flex items-center gap-2"><span class="w-20 truncate text-slate-600">Study Tips</span><div class="flex-1 h-4 bg-slate-100 rounded-sm overflow-hidden"><div class="h-full bg-brand-shikho-pink" style="width:100%"></div></div><span class="tabular w-12 text-right">1.8M</span></div>
+                <div class="flex items-center gap-2"><span class="w-20 truncate text-slate-600">Teacher POV</span><div class="flex-1 h-4 bg-slate-100 rounded-sm overflow-hidden"><div class="h-full" style="width:68%;background:#f79620"></div></div><span class="tabular w-12 text-right">1.2M</span></div>
+                <div class="flex items-center gap-2"><span class="w-20 truncate text-slate-600">Exam Prep</span><div class="flex-1 h-4 bg-slate-100 rounded-sm overflow-hidden"><div class="h-full bg-brand-shikho-indigo" style="width:41%"></div></div><span class="tabular w-12 text-right">730k</span></div>
+                <div class="flex items-center gap-2"><span class="w-20 truncate text-slate-600">Topper Stor.</span><div class="flex-1 h-4 bg-slate-100 rounded-sm overflow-hidden"><div class="h-full bg-cyan-500" style="width:28%"></div></div><span class="tabular w-12 text-right">498k</span></div>
+                <div class="flex items-center gap-2"><span class="w-20 truncate text-slate-600">Inspiration</span><div class="flex-1 h-4 bg-slate-100 rounded-sm overflow-hidden"><div class="h-full bg-emerald-500" style="width:12%"></div></div><span class="tabular w-12 text-right">212k</span></div>
+              </div>
+            </div>
+
+            <div class="bg-white border border-slate-200 rounded-xl">
+              <div class="flex items-end justify-between px-4 py-3 border-b border-slate-100">
+                <div><div class="text-sm font-semibold">Top posts in segment</div><div class="text-[11px] text-slate-500">Click a column to sort</div></div>
+                <div class="flex gap-1 text-[11px]">
+                  <span class="px-2 py-1 rounded border border-brand-shikho-indigo/30 bg-brand-shikho-indigo/5 text-brand-shikho-indigo font-semibold">25</span>
+                  <span class="px-2 py-1 rounded border border-slate-200">50</span>
+                  <span class="px-2 py-1 rounded border border-slate-200">100</span>
+                </div>
+              </div>
+              <div class="grid grid-cols-[auto_1fr_110px_90px_70px] gap-2 px-4 py-2 bg-slate-50 border-b border-slate-100 text-[10px] uppercase font-bold text-slate-500 tabular">
+                <span>#</span><span>Post</span>
+                <span class="text-right inline-flex items-center justify-end gap-0.5 text-brand-shikho-indigo">Reach ▾</span>
+                <span class="text-right">ER</span>
+                <span class="text-right">Shares</span>
+              </div>
+              <div class="divide-y divide-slate-100">
+                <div class="grid grid-cols-[auto_1fr_110px_90px_70px] gap-2 px-4 py-2.5 items-baseline">
+                  <span class="text-slate-400 tabular text-xs">1</span>
+                  <div>
+                    <div class="text-[12px] text-slate-800 truncate">Rumana's 3-minute derivative trick for HSC Math…</div>
+                    <div class="text-[10px] text-slate-500 mt-0.5">
+                      <span class="inline-flex px-1 rounded bg-pink-50 text-pink-700 font-medium">Study Tips</span>
+                      · Reel · Apr 9 · <span class="text-brand-shikho-orange">Rumana (Teacher)</span>
+                    </div>
+                  </div>
+                  <span class="text-right tabular text-[12px] text-brand-shikho-indigo font-bold">142,830</span>
+                  <span class="text-right tabular text-[12px] text-emerald-600 font-semibold">6.2%</span>
+                  <span class="text-right tabular text-[12px] text-slate-700">1,204</span>
+                </div>
+                <div class="grid grid-cols-[auto_1fr_110px_90px_70px] gap-2 px-4 py-2.5 items-baseline bg-slate-50/40">
+                  <span class="text-slate-400 tabular text-xs">2</span>
+                  <div>
+                    <div class="text-[12px] text-slate-800 truncate">Shadman sir's trick for calculus integrals fast…</div>
+                    <div class="text-[10px] text-slate-500 mt-0.5">
+                      <span class="inline-flex px-1 rounded bg-pink-50 text-pink-700 font-medium">Study Tips</span>
+                      · Reel · Apr 7 · <span class="text-brand-shikho-orange">Shadman (Teacher)</span>
+                    </div>
+                  </div>
+                  <span class="text-right tabular text-[12px] text-brand-shikho-indigo font-bold">98,410</span>
+                  <span class="text-right tabular text-[12px] text-emerald-600 font-semibold">5.8%</span>
+                  <span class="text-right tabular text-[12px] text-slate-700">812</span>
+                </div>
+                <div class="grid grid-cols-[auto_1fr_110px_90px_70px] gap-2 px-4 py-2.5 items-baseline">
+                  <span class="text-slate-400 tabular text-xs">3</span>
+                  <div>
+                    <div class="text-[12px] text-slate-800 truncate">Topper Adiba · "From 65 to GPA 5 in 4 months"</div>
+                    <div class="text-[10px] text-slate-500 mt-0.5">
+                      <span class="inline-flex px-1 rounded bg-amber-50 text-amber-700 font-medium">Topper Stories</span>
+                      · Carousel · Apr 8 · <span class="text-brand-shikho-orange">Adiba (Student)</span>
+                    </div>
+                  </div>
+                  <span class="text-right tabular text-[12px] text-brand-shikho-indigo font-bold">86,120</span>
+                  <span class="text-right tabular text-[12px] text-slate-700">4.1%</span>
+                  <span class="text-right tabular text-[12px] text-slate-700">431</span>
+                </div>
+                <div class="grid grid-cols-[auto_1fr_110px_90px_70px] gap-2 px-4 py-2.5 items-baseline bg-slate-50/40">
+                  <span class="text-slate-400 tabular text-xs">4</span>
+                  <div>
+                    <div class="text-[12px] text-slate-800 truncate">5 mistakes HSC students make in Physics MCQ</div>
+                    <div class="text-[10px] text-slate-500 mt-0.5">
+                      <span class="inline-flex px-1 rounded bg-pink-50 text-pink-700 font-medium">Study Tips</span>
+                      · Carousel · Apr 4
+                    </div>
+                  </div>
+                  <span class="text-right tabular text-[12px] text-brand-shikho-indigo font-bold">71,208</span>
+                  <span class="text-right tabular text-[12px] text-slate-700">3.9%</span>
+                  <span class="text-right tabular text-[12px] text-slate-700">389</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="annot mt-3">
+        <b>Changes.</b> <b>Saved views</b> pill row; <b>active filter chips</b> show actual picked values; <b>segment summary delta</b> ("+38% vs all") explains <i>why</i> this segment matters; sortable tabular list for outlier-scanning.
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-12 grid grid-cols-[360px_360px_1fr] gap-8">
+    <div>
+      <div class="kicker mb-2">Before · 360</div>
+      <div class="frame device-360">
+        <div class="frame-head"><span><span class="dot r"></span>Current</span><span>/explore</span></div>
+        <div class="bg-slate-50 p-4">
+          <div class="text-lg font-bold">Explore</div>
+          <div class="mt-3 flex flex-wrap gap-1.5 text-[10px]">
+            <span class="px-2 py-1 rounded border border-slate-200 bg-white">Pillar</span>
+            <span class="px-2 py-1 rounded border border-brand-shikho-indigo/30 bg-brand-shikho-indigo/5 text-brand-shikho-indigo font-semibold">Format (2)</span>
+            <span class="px-2 py-1 rounded border border-slate-200 bg-white">Audience</span>
+            <span class="px-2 py-1 rounded border border-slate-200 bg-white">Spotlight</span>
+            <span class="px-2 py-1 rounded border border-slate-200 bg-white">Group: Pillar</span>
+          </div>
+          <div class="mt-3 h-16 bg-white border border-slate-200 rounded"></div>
+          <div class="mt-3 h-32 bg-white border border-slate-200 rounded"></div>
+          <div class="mt-3 h-32 bg-white border border-slate-200 rounded"></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="kicker mb-2">After · 360</div>
+      <div class="frame device-360">
+        <div class="frame-head"><span><span class="dot g"></span>Proposed</span><span>/explore</span></div>
+        <div class="bg-slate-50 p-4">
+          <div class="text-lg font-bold">Explore</div>
+          <div class="mt-3 flex gap-1.5 overflow-x-auto pb-1 text-[10px]">
+            <span class="shrink-0 px-2 py-1 rounded-full border border-brand-shikho-indigo/40 bg-brand-shikho-indigo/5 text-brand-shikho-indigo font-semibold">★ Reels 30d</span>
+            <span class="shrink-0 px-2 py-1 rounded-full border border-slate-200 bg-white">Teacher spotlights</span>
+            <span class="shrink-0 px-2 py-1 rounded-full border border-slate-200 bg-white">Viral 100k+</span>
+            <span class="shrink-0 px-2 py-1 rounded-full border border-slate-200 bg-white">Study Tips</span>
+          </div>
+          <div class="mt-3 flex flex-wrap gap-1.5 text-[10px]">
+            <span class="px-2 py-1 rounded-md border border-brand-shikho-indigo/30 bg-brand-shikho-indigo/5 text-brand-shikho-indigo font-semibold inline-flex items-center gap-1">Format: <span class="px-1 rounded bg-brand-shikho-pink text-white text-[9px]">Reel</span> <span class="px-1 rounded bg-brand-shikho-orange text-white text-[9px]">Carousel</span> <span class="text-brand-shikho-indigo/60">×</span></span>
+            <span class="px-2 py-1 rounded-md border border-dashed border-slate-300 bg-white text-slate-500">+ Pillar</span>
+            <span class="px-2 py-1 rounded-md border border-dashed border-slate-300 bg-white text-slate-500">+ More</span>
+          </div>
+          <div class="mt-3 bg-white rounded-lg border border-slate-200 p-3">
+            <div class="flex items-baseline justify-between">
+              <div class="text-[10px] font-bold uppercase text-slate-500">142 posts match</div>
+              <div class="text-[10px] text-slate-500">of 387</div>
+            </div>
+            <div class="mt-2 grid grid-cols-3 gap-2 text-center">
+              <div><div class="text-[10px] text-slate-500">Avg reach</div><div class="text-sm font-bold tabular">29.6k</div><div class="text-[9px] text-emerald-600 font-semibold">+38%</div></div>
+              <div><div class="text-[10px] text-slate-500">ER</div><div class="text-sm font-bold tabular">4.43%</div><div class="text-[9px] text-emerald-600 font-semibold">+0.82pp</div></div>
+              <div><div class="text-[10px] text-slate-500">Shares</div><div class="text-sm font-bold tabular">186k</div></div>
+            </div>
+          </div>
+          <div class="mt-3 flex items-center justify-between text-[10px] text-slate-500">
+            <span>Top posts · <span class="font-semibold text-slate-700">142</span></span>
+            <span class="px-2 py-1 rounded border border-slate-200 bg-white font-medium text-slate-700">Sort: Reach ▾</span>
+          </div>
+          <div class="mt-2 space-y-2">
+            <div class="bg-white rounded-lg border border-slate-200 p-3 border-l-2 border-l-brand-shikho-pink">
+              <div class="flex items-baseline justify-between">
+                <div class="text-[10px] text-slate-400 tabular">#1</div>
+                <div class="text-[10px] font-semibold text-emerald-600">6.2% ER</div>
+              </div>
+              <div class="text-[12px] font-bold text-brand-shikho-indigo tabular mt-0.5">142,830 reach</div>
+              <div class="text-[11px] text-slate-800 mt-1 line-clamp-2">Rumana's 3-minute derivative trick for HSC Math</div>
+              <div class="text-[10px] text-slate-500 mt-1"><span class="inline-flex px-1 rounded bg-pink-50 text-pink-700">Study Tips</span> · Reel · Apr 9</div>
+            </div>
+            <div class="bg-white rounded-lg border border-slate-200 p-3 border-l-2 border-l-brand-shikho-pink">
+              <div class="flex items-baseline justify-between">
+                <div class="text-[10px] text-slate-400 tabular">#2</div>
+                <div class="text-[10px] font-semibold text-emerald-600">5.8% ER</div>
+              </div>
+              <div class="text-[12px] font-bold text-brand-shikho-indigo tabular mt-0.5">98,410 reach</div>
+              <div class="text-[11px] text-slate-800 mt-1 line-clamp-2">Shadman sir calculus integrals fast</div>
+              <div class="text-[10px] text-slate-500 mt-1"><span class="inline-flex px-1 rounded bg-pink-50 text-pink-700">Study Tips</span> · Reel · Apr 7</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="annot self-start">
+      <b>Mobile tightening.</b> Saved-views + active-filter chips + compact segment summary with deltas + explicit sort control. Every tap has a clear outcome.
+    </div>
+  </div>
+</section>
+
+<div class="rule max-w-[1360px] mx-auto"></div>
+
+<!-- CLOSING -->
+<section class="max-w-[1360px] mx-auto px-8 pb-20">
+  <div class="kicker">Closing · consistency matrix</div>
+  <h2 class="section-title mt-1">Patterns that repeat across all four pages</h2>
+
+  <div class="mt-6 grid grid-cols-4 gap-5">
+    <div class="bg-white border border-slate-200 rounded-xl p-5">
+      <div class="text-[10px] font-bold uppercase text-slate-500">Pattern 1</div>
+      <div class="text-base font-semibold mt-1 text-slate-900">Inline metric pills</div>
+      <div class="mt-2 text-[12px] text-slate-600 leading-snug">Numbers in prose get promoted to <span class="px-1 rounded bg-brand-shikho-pink text-white text-[11px]">142k</span> or <span class="px-1 rounded bg-white ring-1 ring-slate-300 text-brand-shikho-indigo text-[11px] font-semibold">38%</span>. Eye lands on signal.</div>
+    </div>
+    <div class="bg-white border border-slate-200 rounded-xl p-5">
+      <div class="text-[10px] font-bold uppercase text-slate-500">Pattern 2</div>
+      <div class="text-base font-semibold mt-1 text-slate-900">Benchmark overlays</div>
+      <div class="mt-2 text-[12px] text-slate-600 leading-snug">Every primary chart shows a reference line: prior period, industry benchmark, or all-post baseline. No number floats alone.</div>
+    </div>
+    <div class="bg-white border border-slate-200 rounded-xl p-5">
+      <div class="text-[10px] font-bold uppercase text-slate-500">Pattern 3</div>
+      <div class="text-base font-semibold mt-1 text-slate-900">One viz is primary</div>
+      <div class="mt-2 text-[12px] text-slate-600 leading-snug">Each page has one hero viz at full width; everything else folds beneath it. No more side-by-side charts of equal weight.</div>
+    </div>
+    <div class="bg-white border border-slate-200 rounded-xl p-5">
+      <div class="text-[10px] font-bold uppercase text-slate-500">Pattern 4</div>
+      <div class="text-base font-semibold mt-1 text-slate-900">Glance → scan → dig</div>
+      <div class="mt-2 text-[12px] text-slate-600 leading-snug">3-tier depth on every page: Hero = 1 number. Secondary = 4–6 items. Detail = list/chart/table.</div>
+    </div>
+  </div>
+
+  <div class="mt-10 rounded-2xl p-6 text-white relative overflow-hidden" style="background: linear-gradient(135deg, #1e2a78, #2e47b8);">
+    <div class="absolute -top-16 -right-16 w-48 h-48 rounded-full" style="background: rgba(247,150,32,0.25); filter: blur(40px);"></div>
+    <div class="relative max-w-3xl">
+      <div class="text-[10px] font-bold uppercase tracking-[0.14em] text-white/70">Next</div>
+      <div class="text-xl font-bold mt-2">Cycle 2c — Overview + Engagement + Timing at full fidelity</div>
+      <p class="mt-2 text-[13px] text-white/85 leading-relaxed">Completes the 5-page IA mockset. Will include the day×hour heatmap that replaces the pair of Timing bar charts.</p>
+    </div>
+  </div>
+
+  <footer class="mt-12 text-center text-[12px] text-slate-500">Cycle 2b · Pixel-accurate mocks · Tokens: #1e2a78 / #e6247d / #f79620 · WCAG AA throughout</footer>
+</section>
+
+</body>
+</html>

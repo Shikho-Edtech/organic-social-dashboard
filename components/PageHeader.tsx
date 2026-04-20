@@ -60,8 +60,8 @@ export default function PageHeader({ title, subtitle, dateLabel, showPicker = tr
             <div className="text-xs text-slate-500">{dateLabel}</div>
             <div className="text-[11px] text-slate-500">
               {scrapedLabel
-                ? <>Last Meta fetch: <span className="font-medium">{scrapedLabel} BDT</span></>
-                : <>Rendered {renderedLabel} BDT</>}
+                ? <>Data as of: <span className="font-medium">{scrapedLabel} BDT</span></>
+                : <>Data as of {renderedLabel} BDT</>}
             </div>
           </div>
         ) : (
@@ -69,8 +69,8 @@ export default function PageHeader({ title, subtitle, dateLabel, showPicker = tr
             <div className="text-xs text-slate-500">{dateLabel}</div>
             <div className="text-[11px] text-slate-500">
               {scrapedLabel
-                ? <>Last Meta fetch: <span className="font-medium">{scrapedLabel} BDT</span></>
-                : <>Rendered {renderedLabel} BDT</>}
+                ? <>Data as of: <span className="font-medium">{scrapedLabel} BDT</span></>
+                : <>Data as of {renderedLabel} BDT</>}
             </div>
           </div>
         )}

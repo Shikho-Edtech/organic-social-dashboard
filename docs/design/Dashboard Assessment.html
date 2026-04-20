@@ -1,0 +1,935 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Organic Social Dashboard — Design Assessment</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#f6f5f2;
+    --paper:#ffffff;
+    --ink:#0f172a;
+    --ink-2:#334155;
+    --mute:#64748b;
+    --mute-2:#94a3b8;
+    --line:#e6e4df;
+    --line-2:#eeece6;
+    --indigo:#1e2a78;
+    --indigo-2:#2e47b8;
+    --pink:#e6247d;
+    --orange:#f79620;
+    --cyan:#06b6d4;
+    --green:#10b981;
+    --amber:#f59e0b;
+    --red:#ef4444;
+    --violet:#8b5cf6;
+    --bg-tint:#fbfaf7;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:"Inter",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;-webkit-font-smoothing:antialiased;font-feature-settings:"ss01","cv11"}
+  .mono{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace}
+
+  /* Layout */
+  .wrap{max-width:1200px;margin:0 auto;padding:56px 28px 120px}
+  @media (max-width:720px){.wrap{padding:32px 16px 80px}}
+
+  /* Header */
+  .eyebrow{display:inline-flex;align-items:center;gap:10px;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:#fff;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+  .eyebrow .dot{width:6px;height:6px;border-radius:999px;background:var(--pink)}
+  h1.hero{font-size:clamp(36px,5vw,56px);line-height:1.02;letter-spacing:-0.025em;font-weight:800;margin:18px 0 10px;text-wrap:balance}
+  h1.hero em{font-style:normal;background:linear-gradient(100deg,var(--indigo) 0%,var(--pink) 55%,var(--orange) 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .lede{font-size:19px;line-height:1.55;color:var(--ink-2);max-width:760px;text-wrap:pretty}
+
+  .meta-row{display:flex;flex-wrap:wrap;gap:24px 32px;margin-top:28px;padding-top:20px;border-top:1px solid var(--line)}
+  .meta-row .k{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);font-weight:600;margin-bottom:4px}
+  .meta-row .v{font-size:14px;color:var(--ink);font-weight:500}
+
+  /* Section */
+  section{margin-top:72px}
+  .sec-head{display:flex;align-items:baseline;gap:16px;margin-bottom:28px;flex-wrap:wrap}
+  .sec-num{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--mute);letter-spacing:.1em}
+  h2{font-size:clamp(26px,3.2vw,34px);line-height:1.15;letter-spacing:-0.02em;font-weight:700;margin:0;text-wrap:balance}
+  .sec-sub{color:var(--mute);font-size:15px;margin-top:6px;max-width:700px;line-height:1.55}
+
+  /* Verdict */
+  .verdict{display:grid;grid-template-columns:1.4fr 1fr;gap:20px;margin-top:12px}
+  @media (max-width:900px){.verdict{grid-template-columns:1fr}}
+  .score-card{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:28px;position:relative;overflow:hidden}
+  .score-card .label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);font-weight:600}
+  .score-big{display:flex;align-items:baseline;gap:10px;margin-top:10px;font-variant-numeric:tabular-nums}
+  .score-big .num{font-size:88px;line-height:.9;font-weight:800;letter-spacing:-.04em;color:var(--indigo)}
+  .score-big .den{font-size:24px;color:var(--mute);font-weight:500}
+  .score-big .grade{margin-left:auto;font-size:14px;padding:6px 12px;border-radius:999px;background:#f0ecff;color:var(--indigo);font-weight:600;align-self:center}
+  .score-desc{margin-top:16px;font-size:14px;color:var(--ink-2);line-height:1.6}
+  .score-bars{margin-top:22px;display:grid;gap:10px}
+  .sbar{display:grid;grid-template-columns:140px 1fr 44px;align-items:center;gap:14px;font-size:12px}
+  .sbar .t{color:var(--ink-2);font-weight:500}
+  .sbar .track{height:6px;background:var(--line-2);border-radius:999px;overflow:hidden}
+  .sbar .fill{height:100%;background:var(--indigo);border-radius:999px}
+  .sbar .fill.pink{background:var(--pink)}
+  .sbar .fill.orange{background:var(--orange)}
+  .sbar .fill.green{background:var(--green)}
+  .sbar .fill.amber{background:var(--amber)}
+  .sbar .num{text-align:right;color:var(--mute);font-variant-numeric:tabular-nums}
+
+  .pull{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:28px;position:relative}
+  .pull::before{content:"";position:absolute;top:28px;left:-1px;width:4px;height:44px;background:linear-gradient(180deg,var(--pink),var(--orange));border-radius:0 4px 4px 0}
+  .pull .q{font-size:20px;line-height:1.35;font-weight:600;letter-spacing:-.01em;text-wrap:pretty}
+  .pull .q em{font-style:normal;color:var(--pink)}
+  .pull .by{margin-top:18px;font-size:12px;color:var(--mute);letter-spacing:.06em;text-transform:uppercase;font-weight:600}
+
+  /* Snapshot grid */
+  .snap{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:24px}
+  @media (max-width:900px){.snap{grid-template-columns:repeat(2,1fr)}}
+  .stat{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:20px}
+  .stat .k{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);font-weight:600}
+  .stat .v{font-size:30px;font-weight:700;letter-spacing:-.02em;margin-top:8px;font-variant-numeric:tabular-nums}
+  .stat .v.good{color:var(--green)}
+  .stat .v.warn{color:var(--amber)}
+  .stat .v.bad{color:var(--red)}
+  .stat .v.brand{color:var(--indigo)}
+  .stat .d{font-size:12px;color:var(--mute);margin-top:4px}
+
+  /* Strengths / Opportunities */
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:8px}
+  @media (max-width:900px){.two{grid-template-columns:1fr}}
+  .so{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:24px}
+  .so h3{margin:0 0 14px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;display:flex;align-items:center;gap:10px}
+  .so.good h3{color:var(--green)}
+  .so.opp h3{color:var(--orange)}
+  .so .tag{width:22px;height:22px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+  .so.good .tag{background:#d1fae5;color:#065f46}
+  .so.opp .tag{background:#ffedd5;color:#9a3412}
+  .so ol{margin:0;padding-left:22px}
+  .so li{margin:10px 0;font-size:14px;line-height:1.55;color:var(--ink-2);text-wrap:pretty}
+  .so li b{color:var(--ink)}
+
+  /* Finding cards */
+  .finding-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px}
+  @media (max-width:900px){.finding-grid{grid-template-columns:1fr}}
+  .fc{background:var(--paper);border:1px solid var(--line);border-left:3px solid var(--mute);border-radius:12px;padding:18px 20px;position:relative}
+  .fc.crit{border-left-color:var(--red)}
+  .fc.major{border-left-color:var(--orange)}
+  .fc.minor{border-left-color:var(--amber)}
+  .fc.polish{border-left-color:var(--mute-2)}
+  .fc .head{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
+  .fc .sev{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;padding:2px 7px;border-radius:4px}
+  .fc .sev.crit{background:#fee2e2;color:#991b1b}
+  .fc .sev.major{background:#ffedd5;color:#9a3412}
+  .fc .sev.minor{background:#fef3c7;color:#92400e}
+  .fc .sev.polish{background:#f1f5f9;color:#475569}
+  .fc .eff{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;padding:2px 7px;border-radius:4px;background:#ede9fe;color:#5b21b6}
+  .fc .t{font-weight:600;font-size:14.5px;line-height:1.35;color:var(--ink);margin-bottom:6px;text-wrap:pretty}
+  .fc .d{font-size:13px;color:var(--ink-2);line-height:1.55}
+  .fc .loc{margin-top:10px;font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--mute)}
+
+  /* Before/after mockup block */
+  .ba{margin-top:28px}
+  .ba-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+  .ba-head h3{margin:0;font-size:22px;letter-spacing:-.015em;font-weight:700}
+  .ba-head .pill{font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;padding:3px 9px;border-radius:999px;background:#f1f5f9;color:var(--mute)}
+  .ba-head .note{color:var(--mute);font-size:14px}
+  .ba-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media (max-width:900px){.ba-cols{grid-template-columns:1fr}}
+  .frame{background:var(--paper);border:1px solid var(--line);border-radius:14px;overflow:hidden;position:relative}
+  .frame .tag{position:absolute;top:10px;left:10px;z-index:5;font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;padding:3px 8px;border-radius:4px}
+  .frame.before .tag{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
+  .frame.after .tag{background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0}
+
+  /* ==== Mockup primitives (shared) ==== */
+  .mk{padding:16px;font-size:12px}
+  .mk .topnav{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;margin-bottom:14px}
+  .mk .brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;color:var(--indigo)}
+  .mk .brand .logo{width:24px;height:24px;border-radius:6px;background:linear-gradient(135deg,var(--indigo),var(--pink));display:inline-block}
+  .mk .tabs{display:flex;gap:10px;font-size:11px;color:var(--mute);font-weight:500}
+  .mk .tabs .active{color:var(--indigo);border-bottom:2px solid var(--indigo);padding-bottom:2px}
+
+  .mk .page-h{display:flex;justify-content:space-between;align-items:end;margin-bottom:12px}
+  .mk .page-h h4{font-size:18px;font-weight:700;margin:0;letter-spacing:-.01em}
+  .mk .page-h .sub{font-size:11px;color:var(--mute);margin-top:3px}
+  .mk .picker{font-size:10px;padding:5px 9px;border:1px solid var(--line);border-radius:6px;color:var(--ink-2);background:#fff}
+
+  .mk .kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:10px}
+  .mk .kpi{background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px}
+  .mk .kpi .k{font-size:8px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);font-weight:600}
+  .mk .kpi .v{font-size:16px;font-weight:700;margin-top:3px;letter-spacing:-.01em}
+  .mk .kpi .d{font-size:9px;color:var(--green);margin-top:1px}
+  .mk .kpi .d.bad{color:var(--red)}
+
+  .mk .chart-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+  .mk .chart{background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px;min-height:140px}
+  .mk .chart .ct{font-size:11px;font-weight:600;margin-bottom:8px}
+  .mk .chart .cs{font-size:9px;color:var(--mute);font-weight:500;margin-top:-6px;margin-bottom:8px}
+  .mk .chart.kind-obs{border-left:3px solid var(--cyan)}
+  .mk .chart.kind-ai{border-left:3px solid var(--indigo)}
+  .mk .chart.kind-der{border-left:3px solid var(--violet)}
+
+  /* tiny chart SVG helpers */
+  .mk svg{display:block}
+
+  /* Roadmap table */
+  .roadmap{width:100%;border-collapse:collapse;margin-top:18px;background:var(--paper);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .roadmap th,.roadmap td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--line-2);font-size:13px;vertical-align:top}
+  .roadmap thead th{background:#fbfaf7;color:var(--mute);font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700}
+  .roadmap tbody tr:last-child td{border-bottom:none}
+  .roadmap td.n{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--indigo);font-weight:700;width:36px}
+  .roadmap td.e{width:64px}
+  .roadmap td.e span{font-family:"JetBrains Mono",monospace;font-size:10px;padding:2px 7px;border-radius:4px;font-weight:700;letter-spacing:.06em}
+  .eS{background:#dcfce7;color:#14532d}
+  .eM{background:#ffedd5;color:#7c2d12}
+  .eL{background:#fee2e2;color:#7f1d1d}
+  .roadmap td code{font-family:"JetBrains Mono",monospace;font-size:11px;background:#f1f5f9;padding:1px 5px;border-radius:3px;color:var(--ink-2)}
+  .roadmap td.loc{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--mute);white-space:nowrap}
+
+  /* design-system redo */
+  .ds-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}
+  @media (max-width:900px){.ds-grid{grid-template-columns:1fr}}
+  .ds{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:20px}
+  .ds h4{margin:0 0 12px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--ink)}
+  .ds .sw{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+  .ds .sw span{width:34px;height:34px;border-radius:6px;border:1px solid rgba(0,0,0,.06)}
+  .ds .type-sample{font-size:26px;font-weight:700;letter-spacing:-.02em}
+  .ds .type-sub{color:var(--mute);font-size:12px;margin-top:4px}
+  .ds .tok{display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px dashed var(--line-2)}
+  .ds .tok:last-child{border:none}
+  .ds .tok code{font-family:"JetBrains Mono",monospace;color:var(--mute)}
+
+  /* Footer */
+  footer{margin-top:80px;padding-top:24px;border-top:1px solid var(--line);color:var(--mute);font-size:13px;text-align:center;line-height:1.7}
+
+  /* helpers */
+  .spacer-lg{height:18px}
+  .row{display:flex;gap:8px;align-items:center}
+  .muted{color:var(--mute)}
+
+  /* ===== Specific mockup styles ===== */
+
+  /* Overview current "flat KPI strip" representation */
+  .mk-flat .kpi{background:#fff}
+  .mk-flat .chart{background:#fff}
+
+  /* Overview redesigned with hero number + secondary strip */
+  .mk-after .hero-metric{background:linear-gradient(180deg,#fff,#fbfaf7);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:10px;position:relative;overflow:hidden}
+  .mk-after .hero-metric::after{content:"";position:absolute;right:-20px;top:-20px;width:90px;height:90px;background:radial-gradient(circle,rgba(230,36,125,.08),transparent 70%)}
+  .mk-after .hero-metric .k{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);font-weight:600}
+  .mk-after .hero-metric .v{font-size:42px;font-weight:800;letter-spacing:-.03em;margin:4px 0 2px;background:linear-gradient(90deg,var(--indigo),var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .mk-after .hero-metric .d{font-size:10px;color:var(--ink-2)}
+  .mk-after .hero-metric .d .up{color:var(--green);font-weight:600}
+  .mk-after .kpi-row.small{grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:10px}
+  .mk-after .kpi.small{padding:6px}
+  .mk-after .kpi.small .v{font-size:13px}
+
+  /* Strategy verdict card */
+  .mk-verdict{position:relative;border-radius:10px;padding:14px;margin-bottom:10px;overflow:hidden;background:
+    radial-gradient(circle at 85% 0%,rgba(230,36,125,.14),transparent 55%),
+    radial-gradient(circle at 10% 100%,rgba(30,42,120,.16),transparent 55%),
+    linear-gradient(180deg,#fff,#fbf7ff);
+    border:1px solid var(--line)}
+  .mk-verdict .stripe{position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,var(--pink),var(--orange),var(--indigo))}
+  .mk-verdict .pill{display:inline-flex;align-items:center;gap:4px;background:#0f172a;color:#fff;font-size:8px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;padding:2px 7px;border-radius:999px;margin-left:8px}
+  .mk-verdict .head-line{font-size:16px;font-weight:700;line-height:1.25;margin:10px 0 0 8px;letter-spacing:-.01em}
+  .mk-verdict .head-line em{color:var(--pink);font-style:normal;font-weight:800}
+  .mk-verdict .sub-line{font-size:11px;color:var(--mute);margin:4px 0 0 8px}
+  .mk-verdict .cta{display:inline-block;margin:10px 0 0 8px;font-size:10px;color:var(--indigo);font-weight:600}
+
+  /* Strategy findings cards */
+  .mk .findings{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .mk .f-item{background:#fff;border:1px solid var(--line);border-radius:6px;padding:7px 9px;font-size:10px;color:var(--ink-2);line-height:1.4}
+  .mk .f-item .n{display:inline-block;width:16px;height:16px;border-radius:50%;background:#e0f2fe;color:#0369a1;font-weight:700;font-size:9px;text-align:center;line-height:16px;margin-right:6px}
+  .mk .f-item em{color:var(--pink);font-style:normal;font-weight:700}
+
+  /* Plan page day card */
+  .mk-plan .day{border:1px solid var(--line);border-radius:8px;margin-bottom:6px;overflow:hidden;background:#fff}
+  .mk-plan .day .d-head{padding:8px 10px;color:#fff;display:flex;justify-content:space-between;align-items:center}
+  .mk-plan .day.tue .d-head{background:linear-gradient(90deg,#06b6d4,#14b8a6)}
+  .mk-plan .day.wed .d-head{background:linear-gradient(90deg,#10b981,#22c55e)}
+  .mk-plan .day.thu .d-head{background:linear-gradient(90deg,#f59e0b,#f97316)}
+  .mk-plan .day.fri .d-head{background:linear-gradient(90deg,#f43f5e,#ec4899);position:relative}
+  .mk-plan .day.fri .today{background:#fff;color:#0f172a;font-size:8px;padding:2px 5px;border-radius:3px;font-weight:700;margin-left:4px}
+  .mk-plan .day.today-ring{box-shadow:0 0 0 2px var(--indigo),0 0 0 4px #fff}
+  .mk-plan .d-head .l{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700}
+  .mk-plan .d-head .r{display:flex;gap:4px}
+  .mk-plan .chip{font-size:8.5px;background:rgba(255,255,255,.2);color:#fff;padding:2px 5px;border-radius:3px;font-weight:600;border:1px solid rgba(255,255,255,.2)}
+
+  /* Redesigned hero + heatmap */
+  .heatmap{display:grid;grid-template-columns:42px repeat(12,1fr);gap:2px;margin-top:8px;font-size:9px}
+  .heatmap .lbl{color:var(--mute);align-self:center}
+  .heatmap .cell{aspect-ratio:1.1;border-radius:2px;background:#f1f5f9}
+  .heatmap .h1{background:#dbeafe}
+  .heatmap .h2{background:#93c5fd}
+  .heatmap .h3{background:#3b82f6}
+  .heatmap .h4{background:#1e40af}
+  .heatmap .h5{background:#1e2a78}
+  .heatmap .head{font-size:8px;color:var(--mute);text-align:center;font-family:"JetBrains Mono",monospace}
+
+  /* Tags and decorative indicator */
+  .indicator{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--mute)}
+  .indicator .d{width:6px;height:6px;border-radius:50%;background:var(--pink)}
+
+  /* Loading skeleton shimmer preview */
+  .skel{background:linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%);background-size:200% 100%;border-radius:6px;height:14px;animation:shim 1.4s ease-in-out infinite}
+  @keyframes shim{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+  /* simple legend / chart bar */
+  .bars{display:flex;gap:4px;height:70px;align-items:flex-end;margin-top:8px}
+  .bars .b{flex:1;border-radius:3px 3px 0 0;background:var(--indigo);min-height:6px;position:relative}
+  .bars .b.pink{background:var(--pink)}
+  .bars .b.orange{background:var(--orange)}
+  .bars .b.cyan{background:var(--cyan)}
+  .bars .b.green{background:var(--green)}
+  .bars .b.violet{background:var(--violet)}
+  .bars .b.muted{background:#cbd5e1}
+  .bars-lbl{display:flex;gap:4px;margin-top:4px}
+  .bars-lbl span{flex:1;text-align:center;font-size:8px;color:var(--mute)}
+
+  /* Sparkline containers */
+  .sparkline{width:100%;height:50px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <span class="eyebrow"><span class="dot"></span> Internal design review · 18 Apr 2026</span>
+  <h1 class="hero">A <em>trustworthy</em> dashboard that doesn't yet feel like a <em>product</em>.</h1>
+  <p class="lede">The organic social dashboard reads clearly, respects mobile, and treats data provenance as a first-class concern — which is rare. What's missing is the polish layer that would turn "competent internal tool" into something the team shows off. This assessment covers visual system, information architecture, accessibility, and chart choices, with before/after mockups for the four pages that carry the most weight.</p>
+  <div class="meta-row">
+    <div><div class="k">Scope</div><div class="v">8 pages · 12 components · web + mobile</div></div>
+    <div><div class="k">Method</div><div class="v">Heuristic eval · code review · WCAG audit</div></div>
+    <div><div class="k">Stack context</div><div class="v">Next.js · Tailwind · Recharts</div></div>
+    <div><div class="k">Primary users</div><div class="v">Social team · phone-first</div></div>
+  </div>
+</header>
+
+<!-- 01 Verdict -->
+<section>
+  <div class="sec-head">
+    <span class="sec-num">01 — Verdict</span>
+  </div>
+  <h2>Solid bones. Generic skin. Under-deployed brand.</h2>
+  <div class="verdict">
+    <div class="score-card">
+      <div class="label">Overall design health</div>
+      <div class="score-big">
+        <span class="num">6.4</span>
+        <span class="den">/ 10</span>
+        <span class="grade">B−</span>
+      </div>
+      <p class="score-desc">Above the bar for an internal tool, below the bar for something you'd use externally. The lift required to move it to an 8+ is mostly taste and discipline, not re-architecture.</p>
+      <div class="score-bars">
+        <div class="sbar"><span class="t">Information clarity</span><span class="track"><span class="fill" style="width:82%"></span></span><span class="num">8.2</span></div>
+        <div class="sbar"><span class="t">Mobile experience</span><span class="track"><span class="fill green" style="width:78%"></span></span><span class="num">7.8</span></div>
+        <div class="sbar"><span class="t">Data honesty</span><span class="track"><span class="fill green" style="width:90%"></span></span><span class="num">9.0</span></div>
+        <div class="sbar"><span class="t">Visual system</span><span class="track"><span class="fill amber" style="width:52%"></span></span><span class="num">5.2</span></div>
+        <div class="sbar"><span class="t">Brand expression</span><span class="track"><span class="fill pink" style="width:38%"></span></span><span class="num">3.8</span></div>
+        <div class="sbar"><span class="t">Accessibility (AA)</span><span class="track"><span class="fill orange" style="width:48%"></span></span><span class="num">4.8</span></div>
+        <div class="sbar"><span class="t">Information architecture</span><span class="track"><span class="fill amber" style="width:58%"></span></span><span class="num">5.8</span></div>
+        <div class="sbar"><span class="t">Loading &amp; error states</span><span class="track"><span class="fill orange" style="width:30%"></span></span><span class="num">3.0</span></div>
+      </div>
+    </div>
+    <div class="pull">
+      <p class="q">The dashboard is <em>trustworthy</em> and <em>functional</em>.<br/>It is not yet <em>opinionated</em>.</p>
+      <p class="q" style="font-size:15px;margin-top:14px;color:var(--ink-2);font-weight:500">Eight pages for one data source, a brand palette used once at login, and a visual language that looks like the Tailwind default. Fixable in a focused week.</p>
+      <div class="by">One-line diagnosis</div>
+    </div>
+  </div>
+
+  <div class="snap">
+    <div class="stat"><div class="k">Pages</div><div class="v brand">8</div><div class="d">Could be 5 with merges</div></div>
+    <div class="stat"><div class="k">WCAG AA failures</div><div class="v bad">40+</div><div class="d"><code>text-slate-400</code> on white = 2.85:1</div></div>
+    <div class="stat"><div class="k">Brand colour usage</div><div class="v warn">~8%</div><div class="d">Appears on login + nav only</div></div>
+    <div class="stat"><div class="k">Skeleton / empty states</div><div class="v bad">0</div><div class="d">Cold loads look broken</div></div>
+  </div>
+</section>
+
+<!-- 02 Strengths & Opportunities -->
+<section>
+  <div class="sec-head">
+    <span class="sec-num">02 — Top 5 strengths &amp; opportunities</span>
+  </div>
+  <h2>What's working, and what's holding it back.</h2>
+  <p class="sec-sub">Keep the first column. The second column is this assessment's playbook.</p>
+
+  <div class="two">
+    <div class="so good">
+      <h3><span class="tag">✓</span> Strengths</h3>
+      <ol>
+        <li><b>Data provenance is a first-class design element.</b> The <code>kind</code> prop (observed / ai / derived), sample-size badges, and definition tooltips on every chart build real trust. Most dashboards skip this.</li>
+        <li><b>Mobile-first is enforced, not aspirational.</b> The CLAUDE.md checklist, the dynamic <code>yAxisWidth</code> on <code>BarChart</code>, and the <code>flex-col sm:flex-row</code> header pattern all show evidence of iteration after real regressions.</li>
+        <li><b>Progressive disclosure on the Plan page.</b> Native <code>&lt;details&gt;</code> per day with format-chip previews is the right density tradeoff and respects touch.</li>
+        <li><b>Adaptive min-N gating (Timing, Engagement, Strategy).</b> <code>minPostsForRange</code> prevents the "one viral dawn post wins Early" trap — intellectually honest.</li>
+        <li><b>Staleness banner + DataFooter.</b> Telling the user when data is old, and where it came from, is the rare kind of transparency that earns trust over months.</li>
+      </ol>
+    </div>
+    <div class="so opp">
+      <h3><span class="tag">→</span> Biggest opportunities</h3>
+      <ol>
+        <li><b>Brand palette is under-deployed.</b> The dashboard feels like shadcn, not Shikho. Indigo/pink/orange exist but only appear on login and the nav bar. Promote them into the primary chart color, the Weekly Verdict hero, focus rings, and KPI accents.</li>
+        <li><b>Accessibility below WCAG AA.</b> <code>text-slate-400</code> on white (2.85:1) is used for actual content in ~80 places. Recharts axis ticks use the same colour. Focus rings missing from most interactive elements.</li>
+        <li><b>Missing loading and error states.</b> Cold loads look like a broken page for 300–1500ms. Add a skeleton per page type plus a friendly <code>error.tsx</code>.</li>
+        <li><b>Eight pages is too many for one data source.</b> Engagement / Timing / Strategy overlap in intent. Consolidate to five: Overview, Content, Timing (merged into Overview), Strategy+Plan (merged), Explore.</li>
+        <li><b>No page template.</b> Each page invents its own layout. Establish a canonical shape: Header → KPI strip (max 6) → 1 hero chart → 2-up secondary → detail. Everything feels the same shape thereafter.</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- 03 Findings -->
+<section>
+  <div class="sec-head">
+    <span class="sec-num">03 — Detailed findings</span>
+  </div>
+  <h2>Twelve things worth fixing, grouped by theme.</h2>
+
+  <div class="finding-grid">
+    <div class="fc crit">
+      <div class="head"><span class="sev crit">Critical</span><span class="eff">Eff: S</span></div>
+      <div class="t">WCAG AA failures for body-level content</div>
+      <div class="d"><code>text-slate-400 (#94a3b8)</code> on white hits 2.85:1 — below the 4.5:1 AA bar. It's used for captions, sublabels, sample sizes, and axis ticks. Fix with a global find/replace to <code>text-slate-500 (#64748b)</code>, which clears 4.6:1.</div>
+      <div class="loc">components/* · recharts axis fills</div>
+    </div>
+    <div class="fc crit">
+      <div class="head"><span class="sev crit">Critical</span><span class="eff">Eff: S</span></div>
+      <div class="t">No skeleton or error pages at app root</div>
+      <div class="d">Cold loads render the page chrome and then blank panels for 300–1500ms. Add <code>app/loading.tsx</code> with a KPI-strip + chart skeleton, and an <code>app/error.tsx</code> that explains pipeline failure in plain English (not a stack trace).</div>
+      <div class="loc">app/loading.tsx · app/error.tsx</div>
+    </div>
+    <div class="fc major">
+      <div class="head"><span class="sev major">Major</span><span class="eff">Eff: S</span></div>
+      <div class="t">Brand palette isn't the primary chart color</div>
+      <div class="d">Default bar color is cyan (#06b6d4); PALETTE leads with indigo then cyan. Re-order so <code>shikho-indigo</code> + <code>shikho-pink</code> are first and make shikho-indigo the default. One line in Donut.tsx + BarChart.tsx — visible lift everywhere.</div>
+      <div class="loc">components/BarChart.tsx:23 · Donut.tsx:4</div>
+    </div>
+    <div class="fc major">
+      <div class="head"><span class="sev major">Major</span><span class="eff">Eff: M</span></div>
+      <div class="t">Timing page uses two bar charts where a heatmap would work better</div>
+      <div class="d">"When to post" is the canonical heatmap use case — day-of-week × hour, colour encoding mean reach. Two separate bar charts force users to cross-reference. A single 7×24 grid answers the question at a glance.</div>
+      <div class="loc">app/timing/page.tsx</div>
+    </div>
+    <div class="fc major">
+      <div class="head"><span class="sev major">Major</span><span class="eff">Eff: S</span></div>
+      <div class="t">6-slice donut in Engagement Breakdown</div>
+      <div class="d">Cleveland &amp; McGill: angle comparison breaks down past 3–4 slices. The 6-way reaction/comment/share breakdown should be a horizontal bar with descending sort — which the Engagement page already does correctly. The Overview "Engagement Mix" donut has the same problem and should also flip.</div>
+      <div class="loc">app/page.tsx:57</div>
+    </div>
+    <div class="fc major">
+      <div class="head"><span class="sev major">Major</span><span class="eff">Eff: M</span></div>
+      <div class="t">IA: 8 pages is ~3 too many</div>
+      <div class="d">Engagement / Timing / Strategy all answer "what's working and why". Proposed: merge Trends into Overview (as a timeline strip), merge Plan into Strategy (as a "Next week" section), and keep Engagement + Timing + Reels as a unified "Content" section with three tabs.</div>
+      <div class="loc">components/Nav.tsx · overall IA</div>
+    </div>
+    <div class="fc major">
+      <div class="head"><span class="sev major">Major</span><span class="eff">Eff: S</span></div>
+      <div class="t">Overview KPI row has no visual hierarchy</div>
+      <div class="d">All six KPIs are the same size, same colour, same weight. The single most important metric (Total Reach or Engagement Rate, depending on the week) should be hero-sized, with the other five as a secondary strip. See the Overview mockup below.</div>
+      <div class="loc">app/page.tsx</div>
+    </div>
+    <div class="fc minor">
+      <div class="head"><span class="sev minor">Minor</span><span class="eff">Eff: S</span></div>
+      <div class="t">"Rendered {timestamp}" is a lie</div>
+      <div class="d">The timestamp shown on every PageHeader is the <i>render</i> time, not the <i>data fetch</i> time. After 5 minutes of cache, the label still updates every reload even though the numbers don't. Rename to "Data as of" and wire to the Sheets fetch time from <code>getRunStatus()</code>.</div>
+      <div class="loc">components/PageHeader.tsx</div>
+    </div>
+    <div class="fc minor">
+      <div class="head"><span class="sev minor">Minor</span><span class="eff">Eff: S</span></div>
+      <div class="t">Avg Retention Curve on Reels is 60 bars</div>
+      <div class="d">Retention is a continuous curve. 60 bars reads as 60 discrete events. Flip to <code>TrendChart variant="line"</code> with no dots — the curve shape is the insight.</div>
+      <div class="loc">app/reels/page.tsx:336</div>
+    </div>
+    <div class="fc minor">
+      <div class="head"><span class="sev minor">Minor</span><span class="eff">Eff: S</span></div>
+      <div class="t"><code>colorByIndex</code> overused on value-comparison charts</div>
+      <div class="d">Every bar a different colour signals categorical unrelatedness. On a ranked bar chart, it fights the sort. Reserve <code>colorByIndex</code> for legends where colour is cross-referenced elsewhere (Funnel, Spotlight type). Default value-comparison charts to a single brand colour.</div>
+      <div class="loc">BarChart.tsx · all consumers</div>
+    </div>
+    <div class="fc polish">
+      <div class="head"><span class="sev polish">Polish</span><span class="eff">Eff: S</span></div>
+      <div class="t">Kind "text badge" was removed — keep going</div>
+      <div class="d">Good: the left-border stripe now carries <code>kind</code>. But the three colors (cyan / indigo / violet) aren't explained anywhere the user sees. Add a tiny legend once in the DataFooter: "Chart edge colours — cyan: observed · indigo: AI-classified · violet: derived."</div>
+      <div class="loc">components/DataFooter.tsx</div>
+    </div>
+    <div class="fc polish">
+      <div class="head"><span class="sev polish">Polish</span><span class="eff">Eff: S</span></div>
+      <div class="t">Typography is all-Inter-all-weights</div>
+      <div class="d">One sans works, but big numbers deserve a voice. Introduce a display face (or just Inter's tighter tracking + <code>font-variant-numeric:tabular-nums</code>) for KPI values, Weekly Verdict headline, and page titles. Keeps body copy honest while making the metrics pop.</div>
+      <div class="loc">globals.css · tailwind.config.ts</div>
+    </div>
+  </div>
+</section>
+
+<!-- 04 Before/After — Overview -->
+<section>
+  <div class="sec-head">
+    <span class="sec-num">04 — Before &amp; after</span>
+  </div>
+  <h2>Four redesigned screens, side-by-side.</h2>
+  <p class="sec-sub">All mockups are schematic — layout, hierarchy, and colour direction, not pixel-perfect specs. They illustrate the points from sections 02 and 03.</p>
+
+  <!-- Overview -->
+  <div class="ba">
+    <div class="ba-head">
+      <h3>Overview</h3>
+      <span class="pill">Home · most-visited page</span>
+      <span class="note">Promote one metric to hero. Re-order KPIs. Fix the donuts.</span>
+    </div>
+    <div class="ba-cols">
+      <!-- BEFORE -->
+      <div class="frame before">
+        <span class="tag">Before</span>
+        <div class="mk mk-flat">
+          <div class="topnav">
+            <div class="brand"><span class="logo"></span> Shikho</div>
+            <div class="tabs"><span class="active">Overview</span><span>Trends</span><span>Engage</span><span>Timing</span><span>Strategy</span></div>
+          </div>
+          <div class="page-h">
+            <div><h4>Overview</h4><div class="sub">Key performance at a glance · last 14 days</div></div>
+            <div class="picker">Last 14d ▾</div>
+          </div>
+          <div class="kpi-row">
+            <div class="kpi"><div class="k">Posts</div><div class="v">42</div><div class="d">+12%</div></div>
+            <div class="kpi"><div class="k">Reach</div><div class="v">1.2M</div><div class="d">+8%</div></div>
+            <div class="kpi"><div class="k">Interact</div><div class="v">34K</div><div class="d">&nbsp;</div></div>
+            <div class="kpi"><div class="k">Eng Rate</div><div class="v">2.8%</div><div class="d bad">−0.3%</div></div>
+            <div class="kpi"><div class="k">Avg Reach</div><div class="v">28K</div><div class="d">&nbsp;</div></div>
+            <div class="kpi"><div class="k">Followers</div><div class="v">184K</div><div class="d">+412</div></div>
+          </div>
+          <div class="chart-row">
+            <div class="chart kind-obs">
+              <div class="ct">Reach Trend</div>
+              <svg viewBox="0 0 200 60" width="100%" height="60" preserveAspectRatio="none">
+                <path d="M0 45 L20 40 L40 42 L60 30 L80 35 L100 28 L120 33 L140 22 L160 25 L180 18 L200 22" stroke="#06b6d4" stroke-width="2" fill="none"/>
+                <path d="M0 45 L20 40 L40 42 L60 30 L80 35 L100 28 L120 33 L140 22 L160 25 L180 18 L200 22 L200 60 L0 60 Z" fill="#06b6d4" opacity=".12"/>
+              </svg>
+            </div>
+            <div class="chart kind-ai">
+              <div class="ct">Format Distribution</div>
+              <svg viewBox="0 0 100 60" width="100%" height="60">
+                <circle cx="50" cy="30" r="22" fill="none" stroke="#06b6d4" stroke-width="16" stroke-dasharray="38 200" transform="rotate(-90 50 30)"/>
+                <circle cx="50" cy="30" r="22" fill="none" stroke="#ec4899" stroke-width="16" stroke-dasharray="32 200" stroke-dashoffset="-38" transform="rotate(-90 50 30)"/>
+                <circle cx="50" cy="30" r="22" fill="none" stroke="#f59e0b" stroke-width="16" stroke-dasharray="24 200" stroke-dashoffset="-70" transform="rotate(-90 50 30)"/>
+                <circle cx="50" cy="30" r="22" fill="none" stroke="#8b5cf6" stroke-width="16" stroke-dasharray="44 200" stroke-dashoffset="-94" transform="rotate(-90 50 30)"/>
+              </svg>
+            </div>
+          </div>
+          <div class="chart-row">
+            <div class="chart kind-ai">
+              <div class="ct">Content Pillars</div>
+              <div class="bars"><div class="b cyan" style="height:60%"></div><div class="b cyan" style="height:48%"></div><div class="b cyan" style="height:40%"></div><div class="b cyan" style="height:30%"></div><div class="b cyan" style="height:22%"></div><div class="b cyan" style="height:15%"></div></div>
+            </div>
+            <div class="chart kind-obs">
+              <div class="ct">Engagement Mix</div>
+              <svg viewBox="0 0 100 60" width="100%" height="60">
+                <circle cx="50" cy="30" r="22" fill="none" stroke="#06b6d4" stroke-width="16" stroke-dasharray="92 200" transform="rotate(-90 50 30)"/>
+                <circle cx="50" cy="30" r="22" fill="none" stroke="#ec4899" stroke-width="16" stroke-dasharray="22 200" stroke-dashoffset="-92" transform="rotate(-90 50 30)"/>
+                <circle cx="50" cy="30" r="22" fill="none" stroke="#f59e0b" stroke-width="16" stroke-dasharray="24 200" stroke-dashoffset="-114" transform="rotate(-90 50 30)"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- AFTER -->
+      <div class="frame after">
+        <span class="tag">After</span>
+        <div class="mk mk-after">
+          <div class="topnav">
+            <div class="brand"><span class="logo"></span> Shikho</div>
+            <div class="tabs"><span class="active">Home</span><span>Content</span><span>Strategy</span><span>Explore</span></div>
+          </div>
+          <div class="page-h">
+            <div><h4>This week at a glance</h4><div class="sub">Data as of Tue 15:02 BDT · 14-day window</div></div>
+            <div class="picker">Last 14d ▾</div>
+          </div>
+          <!-- Hero metric -->
+          <div class="hero-metric">
+            <div class="k">Total Reach · 14d</div>
+            <div class="v">1,204,812</div>
+            <div class="d">
+              <span class="up">▲ 8.4%</span> vs prev 14d · <span class="muted">reach-weighted eng rate 2.8%</span>
+              <svg class="sparkline" viewBox="0 0 200 40" preserveAspectRatio="none">
+                <path d="M0 30 L20 26 L40 28 L60 20 L80 24 L100 18 L120 22 L140 12 L160 14 L180 8 L200 12" stroke="url(#grad1)" stroke-width="2" fill="none"/>
+                <defs><linearGradient id="grad1" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#1e2a78"/><stop offset="1" stop-color="#e6247d"/></linearGradient></defs>
+                <path d="M0 30 L20 26 L40 28 L60 20 L80 24 L100 18 L120 22 L140 12 L160 14 L180 8 L200 12 L200 40 L0 40 Z" fill="#e6247d" opacity=".06"/>
+              </svg>
+            </div>
+          </div>
+          <!-- Secondary KPIs, smaller, 5-up -->
+          <div class="kpi-row small">
+            <div class="kpi small"><div class="k">Posts</div><div class="v">42</div><div class="d">+12%</div></div>
+            <div class="kpi small"><div class="k">Interact</div><div class="v">34,102</div></div>
+            <div class="kpi small"><div class="k">Eng Rate</div><div class="v" style="color:var(--red)">2.8%</div><div class="d bad">−0.3%</div></div>
+            <div class="kpi small"><div class="k">Avg Reach</div><div class="v">28,685</div></div>
+            <div class="kpi small"><div class="k">Followers</div><div class="v">184,412</div><div class="d">+412</div></div>
+          </div>
+          <!-- Composite hero chart -->
+          <div class="chart kind-obs" style="margin-bottom:6px">
+            <div class="ct">Reach &amp; Engagement · daily</div>
+            <div class="cs">Dual-axis · Reach area · Eng rate line</div>
+            <svg viewBox="0 0 240 70" width="100%" height="70" preserveAspectRatio="none">
+              <path d="M0 55 L24 48 L48 52 L72 38 L96 45 L120 32 L144 40 L168 22 L192 28 L216 16 L240 22" stroke="#1e2a78" stroke-width="1.8" fill="none"/>
+              <path d="M0 55 L24 48 L48 52 L72 38 L96 45 L120 32 L144 40 L168 22 L192 28 L216 16 L240 22 L240 70 L0 70 Z" fill="#1e2a78" opacity=".1"/>
+              <path d="M0 30 L24 32 L48 25 L72 28 L96 22 L120 26 L144 20 L168 24 L192 18 L216 20 L240 16" stroke="#e6247d" stroke-width="1.8" fill="none" stroke-dasharray="3 2"/>
+            </svg>
+          </div>
+          <div class="chart-row">
+            <div class="chart kind-ai">
+              <div class="ct">Format mix — posts</div>
+              <div class="cs">Ranked horizontal bars · % of total</div>
+              <div style="display:grid;gap:3px;margin-top:4px">
+                <div style="display:flex;align-items:center;gap:6px;font-size:9px"><span style="width:44px;color:#475569">Reel</span><span style="flex:1;height:10px;background:var(--indigo);border-radius:2px;max-width:82%"></span><span style="color:var(--mute);width:22px;text-align:right">38%</span></div>
+                <div style="display:flex;align-items:center;gap:6px;font-size:9px"><span style="width:44px;color:#475569">Photo</span><span style="flex:1;height:10px;background:var(--indigo);opacity:.75;border-radius:2px;max-width:58%"></span><span style="color:var(--mute);width:22px;text-align:right">29%</span></div>
+                <div style="display:flex;align-items:center;gap:6px;font-size:9px"><span style="width:44px;color:#475569">Carousel</span><span style="flex:1;height:10px;background:var(--indigo);opacity:.55;border-radius:2px;max-width:40%"></span><span style="color:var(--mute);width:22px;text-align:right">19%</span></div>
+                <div style="display:flex;align-items:center;gap:6px;font-size:9px"><span style="width:44px;color:#475569">Video</span><span style="flex:1;height:10px;background:var(--indigo);opacity:.35;border-radius:2px;max-width:30%"></span><span style="color:var(--mute);width:22px;text-align:right">14%</span></div>
+              </div>
+            </div>
+            <div class="chart kind-obs">
+              <div class="ct">Engagement mix — volume</div>
+              <div class="cs">Bar, descending (was donut)</div>
+              <div style="display:grid;gap:3px;margin-top:4px">
+                <div style="display:flex;align-items:center;gap:6px;font-size:9px"><span style="width:48px;color:#475569">Likes</span><span style="flex:1;height:10px;background:var(--pink);border-radius:2px;max-width:86%"></span><span style="color:var(--mute);width:24px;text-align:right">72%</span></div>
+                <div style="display:flex;align-items:center;gap:6px;font-size:9px"><span style="width:48px;color:#475569">Love</span><span style="flex:1;height:10px;background:var(--pink);opacity:.7;border-radius:2px;max-width:22%"></span><span style="color:var(--mute);width:24px;text-align:right">14%</span></div>
+                <div style="display:flex;align-items:center;gap:6px;font-size:9px"><span style="width:48px;color:#475569">Comments</span><span style="flex:1;height:10px;background:var(--pink);opacity:.5;border-radius:2px;max-width:14%"></span><span style="color:var(--mute);width:24px;text-align:right">8%</span></div>
+                <div style="display:flex;align-items:center;gap:6px;font-size:9px"><span style="width:48px;color:#475569">Shares</span><span style="flex:1;height:10px;background:var(--pink);opacity:.35;border-radius:2px;max-width:10%"></span><span style="color:var(--mute);width:24px;text-align:right">6%</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Strategy -->
+  <div class="ba">
+    <div class="ba-head">
+      <h3>Strategy · Weekly Verdict</h3>
+      <span class="pill">Most important hero on the site</span>
+      <span class="note">Let the verdict breathe. Pull the metric. Real CTA, not a hidden disclosure.</span>
+    </div>
+    <div class="ba-cols">
+      <!-- BEFORE -->
+      <div class="frame before">
+        <span class="tag">Before</span>
+        <div class="mk">
+          <div class="page-h"><div><h4>Strategy</h4><div class="sub">Claude's diagnosis and recommended actions</div></div><div class="picker">Last 14d ▾</div></div>
+          <div style="background:linear-gradient(135deg,rgba(230,36,125,.06),rgba(247,150,32,.04));border:1px solid var(--line);border-left:4px solid var(--pink);border-radius:10px;padding:12px;margin-bottom:10px">
+            <div style="font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);font-weight:700;background:#0f172a;color:#fff;display:inline-block;padding:2px 6px;border-radius:3px">★ Weekly Verdict</div>
+            <div style="font-size:13px;font-weight:700;margin-top:8px;line-height:1.3">Reel engagement up 23% this week driven by teacher-spotlight content; BOFU volume doubled while reach per post flat.</div>
+            <div style="font-size:10px;color:var(--indigo);margin-top:6px;font-weight:600">Read full verdict ▾</div>
+          </div>
+          <div class="chart-row">
+            <div class="chart kind-ai"><div class="ct">Funnel Distribution</div><div class="bars"><div class="b violet" style="height:40%"></div><div class="b violet" style="height:70%"></div><div class="b violet" style="height:52%"></div></div><div class="bars-lbl"><span>TOFU</span><span>MOFU</span><span>BOFU</span></div></div>
+            <div class="chart kind-ai"><div class="ct">Funnel Engagement</div><div class="bars"><div class="b violet" style="height:50%"></div><div class="b violet" style="height:64%"></div><div class="b violet" style="height:82%"></div></div><div class="bars-lbl"><span>TOFU</span><span>MOFU</span><span>BOFU</span></div></div>
+          </div>
+          <div style="margin-top:8px;font-size:10px;font-weight:700;color:var(--ink);margin-bottom:4px">Key Findings · 5</div>
+          <div class="findings">
+            <div class="f-item"><span class="n">01</span>Teacher-spotlight Reels posted Tue evenings drove <em>23%</em> of total weekly reach</div>
+            <div class="f-item"><span class="n">02</span>BOFU post count doubled but avg reach flat — potential over-saturation</div>
+          </div>
+        </div>
+      </div>
+      <!-- AFTER -->
+      <div class="frame after">
+        <span class="tag">After</span>
+        <div class="mk">
+          <div class="page-h"><div><h4>Strategy</h4><div class="sub">Week ending Apr 15 · BDT</div></div><div class="picker">Weekly ▾</div></div>
+          <div class="mk-verdict">
+            <div class="stripe"></div>
+            <div style="display:flex;align-items:center;gap:6px;margin-left:8px">
+              <span class="pill">★ Weekly Verdict</span>
+              <span style="font-size:9px;color:var(--mute)">Apr 09 → Apr 15 · generated 2h ago</span>
+            </div>
+            <div class="head-line">Teacher-spotlight Reels carried the week — engagement <em>+23%</em>, but <em>BOFU</em> volume doubled for flat reach.</div>
+            <div class="sub-line">Double down on Tue/Thu evening Reel slots. Cut BOFU by 30% next week to restore TOFU/MOFU balance.</div>
+            <div style="display:flex;gap:4px;margin:10px 0 0 8px">
+              <div style="background:#fff;border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:9px"><div style="color:var(--mute);font-weight:600;text-transform:uppercase;letter-spacing:.06em;font-size:8px">Winner</div><div style="font-weight:700;color:var(--green)">Teacher Reels +23%</div></div>
+              <div style="background:#fff;border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:9px"><div style="color:var(--mute);font-weight:600;text-transform:uppercase;letter-spacing:.06em;font-size:8px">Watch</div><div style="font-weight:700;color:var(--amber)">BOFU 2× · reach flat</div></div>
+              <div style="background:#fff;border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:9px"><div style="color:var(--mute);font-weight:600;text-transform:uppercase;letter-spacing:.06em;font-size:8px">Alert</div><div style="font-weight:700;color:var(--indigo)">SSC exam wk starts Thu</div></div>
+            </div>
+            <a class="cta">Open next-week plan →</a>
+          </div>
+          <div class="chart-row">
+            <div class="chart kind-ai">
+              <div class="ct">Funnel mix vs engagement</div>
+              <div class="cs">Stacked · posts (bar) + eng rate (dot)</div>
+              <div class="bars" style="height:50px"><div class="b" style="height:35%"></div><div class="b pink" style="height:62%"></div><div class="b orange" style="height:78%"></div></div>
+              <div class="bars-lbl"><span>TOFU · 36%</span><span>MOFU · 34%</span><span>BOFU · 30%</span></div>
+            </div>
+            <div class="chart kind-ai">
+              <div class="ct">Top performer of the week</div>
+              <div class="cs">Post card · reach, reactions, velocity</div>
+              <div style="display:flex;gap:6px;margin-top:6px">
+                <div style="width:40px;height:52px;background:linear-gradient(135deg,#1e2a78,#e6247d);border-radius:4px"></div>
+                <div style="flex:1">
+                  <div style="font-size:9px;color:var(--mute);font-weight:600;text-transform:uppercase;letter-spacing:.06em">Reel · Teacher spotlight</div>
+                  <div style="font-size:11px;font-weight:700;line-height:1.25;margin-top:2px">"Sir's 2-minute HSC Physics trick"</div>
+                  <div style="display:flex;gap:6px;margin-top:4px;font-size:9px"><span style="color:var(--pink);font-weight:700">84K reach</span><span style="color:var(--green);font-weight:700">6.1% ER</span><span style="color:var(--mute)">Thu 19:30</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Plan -->
+  <div class="ba">
+    <div class="ba-head">
+      <h3>Plan · Content Calendar</h3>
+      <span class="pill">Already strong</span>
+      <span class="note">Today-card is good. Make the day gradients quieter. Peek at slot headlines.</span>
+    </div>
+    <div class="ba-cols">
+      <!-- BEFORE -->
+      <div class="frame before">
+        <span class="tag">Before</span>
+        <div class="mk mk-plan">
+          <div class="page-h"><div><h4>Plan</h4><div class="sub">Next week's calendar</div></div></div>
+          <div class="day wed"><div class="d-head"><div class="l">▸ Wednesday · Apr 16</div><div class="r"><span class="chip">2 Reel</span><span class="chip">1 Photo</span><span style="color:#fff;font-weight:700;font-size:11px;margin-left:6px">3</span></div></div></div>
+          <div class="day thu"><div class="d-head"><div class="l">▸ Thursday · Apr 17</div><div class="r"><span class="chip">2 Reel</span><span class="chip">1 Carousel</span><span style="color:#fff;font-weight:700;font-size:11px;margin-left:6px">3</span></div></div></div>
+          <div class="day fri today-ring"><div class="d-head"><div class="l">▾ Friday · Apr 18 <span class="today">Today</span></div><div class="r"><span class="chip">1 Reel</span><span class="chip">2 Photo</span><span style="color:#fff;font-weight:700;font-size:11px;margin-left:6px">3</span></div></div>
+            <div style="padding:8px;background:#fff">
+              <div style="font-size:9px;color:var(--mute);font-weight:600;margin-bottom:4px">08:00 · REEL · Teacher Spotlight</div>
+              <div style="font-size:11px;font-weight:600;line-height:1.3">Hook: "Only 1 in 10 students get this question right…"</div>
+            </div>
+          </div>
+          <div class="day tue"><div class="d-head"><div class="l">▸ Saturday · Apr 19</div><div class="r"><span class="chip">1 Reel</span><span class="chip">1 Status</span><span style="color:#fff;font-weight:700;font-size:11px;margin-left:6px">2</span></div></div></div>
+        </div>
+      </div>
+      <!-- AFTER -->
+      <div class="frame after">
+        <span class="tag">After</span>
+        <div class="mk mk-plan">
+          <div class="page-h"><div><h4>Plan · next 7 days</h4><div class="sub">Data as of Tue 15:02 BDT · 12 slots planned</div></div></div>
+          <!-- Use paper cards with one accent per day, quieter than gradient -->
+          <div style="border:1px solid var(--line);border-left:3px solid #14b8a6;border-radius:8px;padding:10px 12px;margin-bottom:4px;background:#fff;display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:10px"><span style="color:var(--mute);font-size:14px">▸</span><div><div style="font-size:13px;font-weight:700">Wednesday</div><div style="font-size:9px;color:var(--mute);font-weight:500;letter-spacing:.06em;text-transform:uppercase">Apr 16 · 3 posts</div></div></div>
+            <div style="display:flex;gap:3px;color:var(--mute);font-size:9px;max-width:55%;overflow:hidden;white-space:nowrap">"HSC study sprint" · "Why students fail MCQs" · "Sir Rahman's trick"</div>
+          </div>
+          <div style="border:1px solid var(--line);border-left:3px solid var(--orange);border-radius:8px;padding:10px 12px;margin-bottom:4px;background:#fff;display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:10px"><span style="color:var(--mute);font-size:14px">▸</span><div><div style="font-size:13px;font-weight:700">Thursday</div><div style="font-size:9px;color:var(--mute);font-weight:500;letter-spacing:.06em;text-transform:uppercase">Apr 17 · 3 posts · SSC exam wk</div></div></div>
+            <div style="display:flex;gap:3px;color:var(--mute);font-size:9px;max-width:55%;overflow:hidden;white-space:nowrap">"Last-minute tips" · "Calm your nerves" · "Campus shots"</div>
+          </div>
+          <!-- Today -->
+          <div style="border:2px solid var(--indigo);border-radius:8px;padding:0;margin-bottom:4px;background:#fff;overflow:hidden;box-shadow:0 2px 0 rgba(30,42,120,.04)">
+            <div style="padding:10px 12px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,rgba(30,42,120,.04),transparent)">
+              <div style="display:flex;align-items:center;gap:10px"><span style="color:var(--indigo);font-size:14px">▾</span><div><div style="display:flex;align-items:center;gap:6px"><div style="font-size:13px;font-weight:700">Friday</div><span style="background:var(--indigo);color:#fff;font-size:8px;padding:1.5px 5px;border-radius:3px;font-weight:700;letter-spacing:.06em">TODAY</span></div><div style="font-size:9px;color:var(--mute);font-weight:500;letter-spacing:.06em;text-transform:uppercase">Apr 18 · 3 posts</div></div></div>
+            </div>
+            <div style="padding:8px 12px;border-top:1px solid var(--line-2);display:flex;gap:8px;align-items:flex-start">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--indigo);background:#eef2ff;padding:2px 6px;border-radius:3px;font-weight:700">08:00</div>
+              <span style="font-size:8px;background:#fce7f3;color:#9d174d;padding:2px 5px;border-radius:3px;font-weight:700;letter-spacing:.06em;text-transform:uppercase">Reel</span>
+              <div style="font-size:10.5px;font-weight:600;line-height:1.35;flex:1">"Only 1 in 10 students get this question right…"<div style="color:var(--mute);font-size:9px;margin-top:2px;font-weight:400">Target: 45K reach · Teacher spotlight · TOFU</div></div>
+            </div>
+            <div style="padding:8px 12px;border-top:1px solid var(--line-2);display:flex;gap:8px;align-items:flex-start">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--indigo);background:#eef2ff;padding:2px 6px;border-radius:3px;font-weight:700">14:30</div>
+              <span style="font-size:8px;background:#dbeafe;color:#1e40af;padding:2px 5px;border-radius:3px;font-weight:700;letter-spacing:.06em;text-transform:uppercase">Photo</span>
+              <div style="font-size:10.5px;font-weight:600;line-height:1.35;flex:1">"Campus life: admissions open for fall batch"<div style="color:var(--mute);font-size:9px;margin-top:2px;font-weight:400">Target: 22K reach · Campaign · BOFU</div></div>
+            </div>
+          </div>
+          <div style="border:1px solid var(--line);border-left:3px solid var(--violet);border-radius:8px;padding:10px 12px;margin-bottom:4px;background:#fff;display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:10px"><span style="color:var(--mute);font-size:14px">▸</span><div><div style="font-size:13px;font-weight:700">Saturday</div><div style="font-size:9px;color:var(--mute);font-weight:500;letter-spacing:.06em;text-transform:uppercase">Apr 19 · 2 posts</div></div></div>
+            <div style="display:flex;gap:3px;color:var(--mute);font-size:9px;max-width:55%;overflow:hidden;white-space:nowrap">"Weekend revision" · "Throwback: 2025 toppers"</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timing -->
+  <div class="ba">
+    <div class="ba-head">
+      <h3>Timing · When to post</h3>
+      <span class="pill">Wrong chart type</span>
+      <span class="note">Two bar charts → one heatmap. The canonical viz for this question.</span>
+    </div>
+    <div class="ba-cols">
+      <!-- BEFORE -->
+      <div class="frame before">
+        <span class="tag">Before</span>
+        <div class="mk">
+          <div class="page-h"><div><h4>Timing</h4><div class="sub">When to post for max reach · BDT</div></div><div class="picker">Last 30d ▾</div></div>
+          <div class="kpi-row" style="grid-template-columns:repeat(4,1fr)">
+            <div class="kpi"><div class="k">Best Day (Reach)</div><div class="v" style="color:var(--cyan)">Thursday</div><div class="d" style="color:var(--mute);font-weight:500">32K avg</div></div>
+            <div class="kpi"><div class="k">Best Day (ER)</div><div class="v" style="color:var(--pink)">Friday</div><div class="d" style="color:var(--mute);font-weight:500">3.4%</div></div>
+            <div class="kpi"><div class="k">Best Slot (Reach)</div><div class="v" style="color:var(--green)">Evening</div><div class="d" style="color:var(--mute);font-weight:500">28K avg</div></div>
+            <div class="kpi"><div class="k">Best Slot (ER)</div><div class="v" style="color:var(--violet)">Late Aft</div><div class="d" style="color:var(--mute);font-weight:500">3.1%</div></div>
+          </div>
+          <div class="chart-row">
+            <div class="chart kind-obs"><div class="ct">Avg Reach by Time of Day</div><div class="bars"><div class="b muted" style="height:12%"></div><div class="b cyan" style="height:30%"></div><div class="b cyan" style="height:48%"></div><div class="b cyan" style="height:58%"></div><div class="b cyan" style="height:82%"></div><div class="b cyan" style="height:40%"></div></div><div class="bars-lbl"><span>Early</span><span>Morn</span><span>Aftn</span><span>Late</span><span>Eve</span><span>Night</span></div></div>
+            <div class="chart kind-obs"><div class="ct">Avg Reach by Day of Week</div><div class="bars"><div class="b cyan" style="height:30%"></div><div class="b cyan" style="height:45%"></div><div class="b cyan" style="height:50%"></div><div class="b cyan" style="height:65%"></div><div class="b cyan" style="height:80%"></div><div class="b cyan" style="height:55%"></div><div class="b cyan" style="height:35%"></div></div><div class="bars-lbl"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div></div>
+          </div>
+          <div style="font-size:10px;color:var(--mute);margin-top:6px">+ 2 more bar charts below for engagement rate (same pattern).</div>
+        </div>
+      </div>
+      <!-- AFTER -->
+      <div class="frame after">
+        <span class="tag">After</span>
+        <div class="mk">
+          <div class="page-h"><div><h4>Timing</h4><div class="sub">When the audience shows up · 30-day heatmap · BDT</div></div><div class="picker">Last 30d ▾</div></div>
+          <div class="kpi-row" style="grid-template-columns:repeat(3,1fr)">
+            <div class="kpi"><div class="k">Sweet spot</div><div class="v" style="color:var(--indigo);font-size:14px">Thu · 19–21</div><div class="d" style="color:var(--green);font-weight:600">+142% vs median</div></div>
+            <div class="kpi"><div class="k">Dead zone</div><div class="v" style="color:var(--mute);font-size:14px">Sat · 02–06</div><div class="d" style="color:var(--mute);font-weight:500">−88% vs median</div></div>
+            <div class="kpi"><div class="k">Underexploited</div><div class="v" style="color:var(--pink);font-size:14px">Tue · 13–15</div><div class="d" style="color:var(--amber);font-weight:600">Strong ER · only 2 posts</div></div>
+          </div>
+          <div class="chart kind-obs">
+            <div class="ct">Reach heatmap · day × hour</div>
+            <div class="cs">Colour = avg reach · grey = no posts · only cells with ≥ 3 posts coloured</div>
+            <div class="heatmap">
+              <span></span>
+              <span class="head">00</span><span class="head">02</span><span class="head">04</span><span class="head">06</span><span class="head">08</span><span class="head">10</span><span class="head">12</span><span class="head">14</span><span class="head">16</span><span class="head">18</span><span class="head">20</span><span class="head">22</span>
+              <span class="lbl">Sun</span><span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell h1"></span><span class="cell h2"></span><span class="cell h2"></span><span class="cell h2"></span><span class="cell h3"></span><span class="cell h2"></span><span class="cell h3"></span><span class="cell h2"></span><span class="cell h1"></span>
+              <span class="lbl">Mon</span><span class="cell"></span><span class="cell"></span><span class="cell h1"></span><span class="cell h2"></span><span class="cell h3"></span><span class="cell h2"></span><span class="cell h2"></span><span class="cell h3"></span><span class="cell h3"></span><span class="cell h4"></span><span class="cell h3"></span><span class="cell h2"></span>
+              <span class="lbl">Tue</span><span class="cell"></span><span class="cell"></span><span class="cell h1"></span><span class="cell h2"></span><span class="cell h2"></span><span class="cell h3"></span><span class="cell h3"></span><span class="cell h4"></span><span class="cell h3"></span><span class="cell h4"></span><span class="cell h4"></span><span class="cell h2"></span>
+              <span class="lbl">Wed</span><span class="cell"></span><span class="cell"></span><span class="cell h1"></span><span class="cell h2"></span><span class="cell h3"></span><span class="cell h3"></span><span class="cell h3"></span><span class="cell h3"></span><span class="cell h4"></span><span class="cell h4"></span><span class="cell h4"></span><span class="cell h3"></span>
+              <span class="lbl">Thu</span><span class="cell"></span><span class="cell"></span><span class="cell h1"></span><span class="cell h2"></span><span class="cell h3"></span><span class="cell h3"></span><span class="cell h4"></span><span class="cell h4"></span><span class="cell h4"></span><span class="cell h5"></span><span class="cell h5"></span><span class="cell h3"></span>
+              <span class="lbl">Fri</span><span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell h1"></span><span class="cell h2"></span><span class="cell h3"></span><span class="cell h3"></span><span class="cell h3"></span><span class="cell h4"></span><span class="cell h4"></span><span class="cell h3"></span><span class="cell h2"></span>
+              <span class="lbl">Sat</span><span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell h1"></span><span class="cell h2"></span><span class="cell h2"></span><span class="cell h3"></span><span class="cell h3"></span><span class="cell h3"></span><span class="cell h3"></span><span class="cell h3"></span><span class="cell h2"></span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:9px;color:var(--mute)">
+              <span>Less reach</span>
+              <span class="cell h1" style="width:12px;height:12px;border-radius:2px"></span>
+              <span class="cell h2" style="width:12px;height:12px;border-radius:2px"></span>
+              <span class="cell h3" style="width:12px;height:12px;border-radius:2px"></span>
+              <span class="cell h4" style="width:12px;height:12px;border-radius:2px"></span>
+              <span class="cell h5" style="width:12px;height:12px;border-radius:2px"></span>
+              <span>More</span>
+              <span style="margin-left:auto">▢ no posts in this cell</span>
+            </div>
+          </div>
+          <div class="chart kind-der" style="margin-top:6px">
+            <div class="ct">Toggle: Reach · Engagement rate · Virality (shares)</div>
+            <div class="cs">Same grid, three layers. One answer to "when do I post?"</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 05 Design-system proposals -->
+<section>
+  <div class="sec-head">
+    <span class="sec-num">05 — Visual system recommendations</span>
+  </div>
+  <h2>From "Tailwind default" to "Shikho dashboard."</h2>
+  <p class="sec-sub">The brand palette and logo already exist. This section applies them as a consistent visual system, with tokens you can drop into <code>tailwind.config.ts</code>.</p>
+
+  <div class="ds-grid">
+    <div class="ds">
+      <h4>Palette — actually use it</h4>
+      <div style="font-size:12px;color:var(--ink-2);line-height:1.55">Lead with <code>shikho-indigo</code> as the primary chart colour. Use pink + orange as accent/alert. Reserve cyan/green/violet for multi-series legends only.</div>
+      <div class="sw">
+        <span style="background:#1e2a78" title="indigo"></span>
+        <span style="background:#2e47b8" title="blue"></span>
+        <span style="background:#e6247d" title="pink"></span>
+        <span style="background:#f79620" title="orange"></span>
+        <span style="background:#06b6d4" title="cyan"></span>
+        <span style="background:#10b981" title="green"></span>
+        <span style="background:#8b5cf6" title="violet"></span>
+        <span style="background:#f8fafc;border-color:#e2e8f0" title="paper"></span>
+      </div>
+      <div class="tok" style="margin-top:14px"><span>Chart default</span><code>#1e2a78</code></div>
+      <div class="tok"><span>Positive delta</span><code>#10b981</code></div>
+      <div class="tok"><span>Negative delta</span><code>#e6247d</code></div>
+      <div class="tok"><span>Focus ring</span><code>#2e47b8</code></div>
+    </div>
+    <div class="ds">
+      <h4>Type — one face, three voices</h4>
+      <div class="type-sample" style="font-variant-numeric:tabular-nums">1,204,812</div>
+      <div class="type-sub">Display · Inter 800 · −3% letter-spacing · tabular-nums</div>
+      <div class="type-sample" style="font-size:18px;font-weight:700">This week at a glance</div>
+      <div class="type-sub">Heading · Inter 700 · −1.5% letter-spacing</div>
+      <div class="type-sample" style="font-size:14px;font-weight:400;color:var(--ink-2)">Body sentences sit at 14/1.55 for comfortable reading on phone and desktop.</div>
+      <div class="type-sub">Body · Inter 400</div>
+      <div class="type-sample mono" style="font-size:11px;font-weight:500;color:var(--mute)">19:30 BDT · n = 42 · +8.4%</div>
+      <div class="type-sub">Numeric / label · JetBrains Mono 500</div>
+    </div>
+    <div class="ds">
+      <h4>Chart kinds — document once</h4>
+      <div class="tok"><span><span style="display:inline-block;width:12px;height:12px;background:var(--cyan);border-radius:2px;margin-right:6px;vertical-align:-2px"></span>Observed</span><code>raw Meta data</code></div>
+      <div class="tok"><span><span style="display:inline-block;width:12px;height:12px;background:var(--indigo);border-radius:2px;margin-right:6px;vertical-align:-2px"></span>AI-classified</span><code>weekly pipeline</code></div>
+      <div class="tok"><span><span style="display:inline-block;width:12px;height:12px;background:var(--violet);border-radius:2px;margin-right:6px;vertical-align:-2px"></span>Derived</span><code>computed rate</code></div>
+      <div style="font-size:12px;color:var(--ink-2);line-height:1.55;margin-top:12px">Currently the edge stripe carries this meaning but it's nowhere explained. Put this legend in the <code>DataFooter</code>. Three lines of code, a whole category of confusion gone.</div>
+    </div>
+  </div>
+
+  <div class="ds-grid" style="margin-top:14px">
+    <div class="ds">
+      <h4>Page template</h4>
+      <div style="font-size:12px;color:var(--ink-2);line-height:1.7">
+        <div>① <b>Staleness banner</b> (when warn/crit)</div>
+        <div>② <b>Page header</b> · title · data-as-of · range picker</div>
+        <div>③ <b>Hero metric or verdict</b> (one big thing)</div>
+        <div>④ <b>Secondary KPI strip</b> · max 5 cards</div>
+        <div>⑤ <b>Primary chart</b> · full width</div>
+        <div>⑥ <b>Two-up secondary</b> · related context</div>
+        <div>⑦ <b>Detail / table</b> · for power users</div>
+      </div>
+      <div style="font-size:11px;color:var(--mute);margin-top:12px;line-height:1.5">Every page should answer this template. Reels, Trends, Explore each quietly violate it.</div>
+    </div>
+    <div class="ds">
+      <h4>Loading &amp; empty</h4>
+      <div class="skel" style="width:40%;height:18px"></div>
+      <div class="skel" style="width:100%;height:72px;margin-top:8px"></div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:6px">
+        <div class="skel" style="height:48px"></div><div class="skel" style="height:48px"></div><div class="skel" style="height:48px"></div><div class="skel" style="height:48px"></div><div class="skel" style="height:48px"></div>
+      </div>
+      <div style="font-size:11px;color:var(--mute);margin-top:12px;line-height:1.5">Ship the skeleton as <code>app/loading.tsx</code>. Same shape as the page template. Content appears in place with zero layout shift.</div>
+    </div>
+    <div class="ds">
+      <h4>IA · proposed merge</h4>
+      <div style="font-size:12px;color:var(--ink-2);line-height:1.7">
+        <div><b>Home</b> <span class="muted">(was Overview + Trends)</span></div>
+        <div><b>Content</b> <span class="muted">(Engagement + Timing + Reels as tabs)</span></div>
+        <div><b>Strategy</b> <span class="muted">(Strategy + Plan as "this week / next week")</span></div>
+        <div><b>Explore</b> <span class="muted">(unchanged — power tool)</span></div>
+      </div>
+      <div style="font-size:11px;color:var(--mute);margin-top:12px;line-height:1.5">Eight tabs → four. Every tab now answers one question. Less choice paralysis on landing; less swiping-to-hidden-tabs on mobile.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 06 Prioritized roadmap -->
+<section>
+  <div class="sec-head">
+    <span class="sec-num">06 — Prioritized roadmap</span>
+  </div>
+  <h2>If you only have one day, ship items 1–10.</h2>
+  <p class="sec-sub">Ordered by impact-to-effort. The first ten are all small lifts that together produce a visibly different dashboard.</p>
+  <table class="roadmap">
+    <thead>
+      <tr><th>#</th><th>Eff</th><th>Location</th><th>Change</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="n">01</td><td class="e"><span class="eS">S</span></td><td class="loc">globals.css · components/*</td><td>Global replace <code>text-slate-400</code> → <code>text-slate-500</code> for content. Bump Recharts tick fill <code>#94a3b8</code> → <code>#64748b</code>. Fixes 40+ AA contrast failures.</td></tr>
+      <tr><td class="n">02</td><td class="e"><span class="eS">S</span></td><td class="loc">app/loading.tsx · app/error.tsx</td><td>Add root-level skeleton (KPI strip + chart blocks) and friendly error card. Eliminates the 300–1500ms blank state.</td></tr>
+      <tr><td class="n">03</td><td class="e"><span class="eS">S</span></td><td class="loc">BarChart.tsx · Donut.tsx</td><td>Make <code>#1e2a78</code> (shikho-indigo) the default bar/donut colour. Re-order PALETTE to lead with indigo + pink.</td></tr>
+      <tr><td class="n">04</td><td class="e"><span class="eS">S</span></td><td class="loc">app/page.tsx</td><td>Promote the most-important KPI to a hero card with a sparkline. Drop the other five to a secondary strip. Flip the Overview Engagement Mix donut to a ranked horizontal bar.</td></tr>
+      <tr><td class="n">05</td><td class="e"><span class="eS">S</span></td><td class="loc">components/Card.tsx · DataFooter.tsx</td><td>Remove residual kind text badges (if any remain). Add a one-line legend in DataFooter explaining the three edge-stripe colours.</td></tr>
+      <tr><td class="n">06</td><td class="e"><span class="eS">S</span></td><td class="loc">app/strategy/page.tsx</td><td>Redesign the Weekly Verdict hero: bigger headline, metric pulled out and coloured, three inline chips (winner / watch / alert), explicit "Open next-week plan →" CTA.</td></tr>
+      <tr><td class="n">07</td><td class="e"><span class="eS">S</span></td><td class="loc">app/plan/page.tsx</td><td>Quieten the day gradients (they compete with content). Keep today's indigo ring. Show the three slot <i>hooks</i> (not just format chips) in the collapsed preview.</td></tr>
+      <tr><td class="n">08</td><td class="e"><span class="eS">S</span></td><td class="loc">app/reels/page.tsx:336</td><td>Retention curve: switch from 60-bar chart to <code>TrendChart variant="line"</code>. Retention is continuous.</td></tr>
+      <tr><td class="n">09</td><td class="e"><span class="eS">S</span></td><td class="loc">all chart consumers</td><td>Drop <code>colorByIndex</code> from value-comparison bar charts (Pillar Performance, Hook ER, etc.). Keep it only where colour is cross-referenced (Funnel, Spotlight type).</td></tr>
+      <tr><td class="n">10</td><td class="e"><span class="eS">S</span></td><td class="loc">components/PageHeader.tsx · lib/sheets.ts</td><td>Rename "Rendered &lbrace;ts&rbrace;" → "Data as of &lbrace;ts&rbrace;" using the actual Sheets fetch time from <code>getRunStatus()</code>.</td></tr>
+      <tr><td class="n">11</td><td class="e"><span class="eM">M</span></td><td class="loc">app/timing/page.tsx</td><td>Replace the 4 bar charts with a single day-of-week × hour heatmap, plus a Reach / ER / Shares toggle. This is the canonical "when to post" viz.</td></tr>
+      <tr><td class="n">12</td><td class="e"><span class="eM">M</span></td><td class="loc">app/layout.tsx · per page</td><td>Wrap chart grids in <code>&lt;Suspense&gt;</code> so the KPI strip renders first. Pair with the skeleton from #02 for incremental fill.</td></tr>
+      <tr><td class="n">13</td><td class="e"><span class="eM">M</span></td><td class="loc">ChartCard + chart components</td><td>Introduce <code>&lt;EmptyChart reason="…" /&gt;</code>; wire through ChartCard prop; replace the ad-hoc "Widen the range" divs scattered across pages.</td></tr>
+      <tr><td class="n">14</td><td class="e"><span class="eM">M</span></td><td class="loc">components/Nav.tsx · IA</td><td>Merge Plan into Strategy (as "Next week" section) and collapse Engagement + Timing + Reels under a single Content tab. 8 → 4 tabs.</td></tr>
+      <tr><td class="n">15</td><td class="e"><span class="eM">M</span></td><td class="loc">app/reels/page.tsx</td><td>Convert the desktop reels <code>&lt;table&gt;</code> to a card-list below <code>md:</code> (mirror the Explore Top-10 pattern).</td></tr>
+      <tr><td class="n">16</td><td class="e"><span class="eM">M</span></td><td class="loc">tailwind.config.ts · globals.css</td><td>Define display / heading / body / numeric type styles as Tailwind classes. Apply <code>font-variant-numeric:tabular-nums</code> to all KPI values.</td></tr>
+      <tr><td class="n">17</td><td class="e"><span class="eL">L</span></td><td class="loc">overall</td><td>Rebuild every page to the page template from §05. Biggest overall payoff but also the biggest time sink — do only after 1–16.</td></tr>
+      <tr><td class="n">18</td><td class="e"><span class="eL">L</span></td><td class="loc">layout + per-page</td><td>Full accessibility sweep: <code>aria-describedby</code> on InfoTooltip, keyboard-accessible chart data tables, Escape-to-close on DateRangePicker popover, skip-to-content link.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<footer>
+  Organic Social Dashboard · Design &amp; UX assessment · Apr 2026<br/>
+  Start with roadmap items 1–10. Re-review after that pass — most of §03 and §05 should move to "done."
+</footer>
+
+</div>
+</body>
+</html>

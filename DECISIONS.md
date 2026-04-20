@@ -1,5 +1,55 @@
 # Decisions
 
+## 2026-04-21 — Archival mode via `?archived=<run-id>` URL param, not client-side tab state
+
+Considered two patterns for "view last week's calendar":
+
+1. In-page tab (Live | Archived) with client state — zero URL change.
+2. `?archived=<run-id>` URL param — full re-render on change.
+
+Picked URL param:
+
+- **Bookmarkable + shareable.** "Here's what we planned for the Eid
+  Salami week" is a thing someone sends as a link; client-side tab
+  state can't do that.
+- **Survives refresh + back/forward.** On a phone this matters —
+  accidental refreshes shouldn't bounce you back to live view mid-review.
+- **Next.js App Router handles it.** `searchParams` is a server-prop on
+  the page; reading it triggers a normal server re-render. No extra
+  state management, no hydration mismatch.
+- **Return-to-live is a free `<Link href="/strategy">`** — no state
+  reset ceremony.
+
+Cost: every archival-link click is a server round-trip. For a page
+that's opened rarely and changes weekly, that's fine. If we built a
+high-frequency artifact archive (per-run, daily), we'd revisit.
+
+## 2026-04-21 — Stage registry in `lib/stages.ts`, not inline in components
+
+`StalenessBanner` + `AIDisabledEmptyState` + the Analysis_Log reader
+all need to know the env-var names for each stage (CLASSIFY / DIAGNOSIS
+/ CALENDAR) plus which page each stage backs. Three components with
+drift-prone magic strings would fail the first time we rename a stage.
+
+New `lib/stages.ts` exports `STAGES` (record of stage → metadata) +
+`stageForPage(path)`. Banner reads `stage.envVars`; empty state reads
+`stage.noun`; sheets reader reads `stage.readStatus` / `readLastSuccessful`.
+One place to edit when a new stage or provider lands.
+
+## 2026-04-21 — `ai-disabled` banner is slate + indigo accent, not amber/red
+
+Amber = "something needs your attention" (warn). Red = "something is
+broken" (crit). AI being intentionally off is neither — it's a state
+the operator deliberately chose (ran the no-AI workflow) or a
+degradation the operator CAN fix (top up credits). Using amber/red
+for that state would train the user to ignore them when the signal is
+genuinely urgent.
+
+Slate + indigo accent puts it in the "informational" register, matching
+the Cycle 1 design spec. The chevron expands to show the native
+pipeline is still fresh — so the banner is load-bearing but not
+alarming.
+
 ## 2026-04-20 — Lean plan over full architecture plan for the 6-stage migration
 
 The full spec in `docs/ARCHITECTURE.md` covers every piece that might be

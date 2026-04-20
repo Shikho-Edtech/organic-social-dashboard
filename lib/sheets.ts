@@ -172,36 +172,32 @@ export async function getVideoMetrics(): Promise<VideoMetric[]> {
   }));
 }
 
-// ─── Weekly diagnosis (latest) ───
+// ─── Weekly diagnosis (latest or by week-ending key) ───
 
-export async function getLatestDiagnosis(): Promise<Diagnosis | null> {
-  const rows = await readTab("Weekly_Analysis");
-  const objects = rowsToObjects(rows);
-  if (objects.length === 0) return null;
-  const last = objects[objects.length - 1];
+function diagnosisFromRow(row: Record<string, any>): Diagnosis {
   try {
-    const full = last["Full Diagnosis (JSON)"]
-      ? JSON.parse(last["Full Diagnosis (JSON)"])
+    const full = row["Full Diagnosis (JSON)"]
+      ? JSON.parse(row["Full Diagnosis (JSON)"])
       : {};
     return {
-      week_ending: last["Week Ending"] || "",
-      headline: last["Headline"] || full.headline || "",
-      posts_this_week: toNumber(last["Posts This Week"]),
-      avg_engagement: toNumber(last["Avg Engagement"]),
+      week_ending: row["Week Ending"] || "",
+      headline: row["Headline"] || full.headline || "",
+      posts_this_week: toNumber(row["Posts This Week"]),
+      avg_engagement: toNumber(row["Avg Engagement"]),
       what_happened: full.what_happened || [],
       top_performers: full.top_performers || [],
       underperformers: full.underperformers || [],
-      exam_alert: full.exam_calendar_alert || last["Exam Alert"] || "",
+      exam_alert: full.exam_calendar_alert || row["Exam Alert"] || "",
       watch_outs: full.watch_outs || [],
       reel_intelligence: full.reel_intelligence || {},
       full_diagnosis: full,
     };
   } catch {
     return {
-      week_ending: last["Week Ending"] || "",
-      headline: last["Headline"] || "",
-      posts_this_week: toNumber(last["Posts This Week"]),
-      avg_engagement: toNumber(last["Avg Engagement"]),
+      week_ending: row["Week Ending"] || "",
+      headline: row["Headline"] || "",
+      posts_this_week: toNumber(row["Posts This Week"]),
+      avg_engagement: toNumber(row["Avg Engagement"]),
       what_happened: [],
       top_performers: [],
       underperformers: [],
@@ -211,6 +207,41 @@ export async function getLatestDiagnosis(): Promise<Diagnosis | null> {
       full_diagnosis: {},
     };
   }
+}
+
+export async function getLatestDiagnosis(): Promise<Diagnosis | null> {
+  const rows = await readTab("Weekly_Analysis");
+  const objects = rowsToObjects(rows);
+  if (objects.length === 0) return null;
+  return diagnosisFromRow(objects[objects.length - 1]);
+}
+
+/**
+ * Step 3 archival mode: fetch a specific past diagnosis by its Week Ending
+ * value (used as the `?archived=<week-ending>` URL param on `/strategy`).
+ * Returns null when no row matches — the page falls back to its current
+ * state (usually the empty state) with a small "archive not found" toast.
+ */
+export async function getDiagnosisByWeek(weekEnding: string): Promise<Diagnosis | null> {
+  if (!weekEnding) return null;
+  const rows = await readTab("Weekly_Analysis");
+  const objects = rowsToObjects(rows);
+  const match = objects.find((r) => String(r["Week Ending"] || "").trim() === weekEnding.trim());
+  return match ? diagnosisFromRow(match) : null;
+}
+
+/**
+ * Step 3 archival mode: list all prior successful diagnoses so the archival
+ * picker (future) or deep-linked `?archived=<week-ending>` URLs can validate
+ * the target. Sorted newest-first.
+ */
+export async function listDiagnosisArchive(): Promise<Array<{ week_ending: string; headline: string }>> {
+  const rows = await readTab("Weekly_Analysis");
+  const objects = rowsToObjects(rows);
+  return objects
+    .map((r) => ({ week_ending: String(r["Week Ending"] || "").trim(), headline: String(r["Headline"] || "") }))
+    .filter((r) => r.week_ending)
+    .reverse();
 }
 
 // ─── Run status / staleness ───
@@ -387,9 +418,8 @@ export function computeStaleness(
 
 // ─── Content calendar ───
 
-export async function getCalendar(): Promise<CalendarSlot[]> {
-  const rows = await readTab("Content_Calendar");
-  return rowsToObjects(rows).map((r) => ({
+function calendarFromRows(rows: Record<string, any>[]): CalendarSlot[] {
+  return rows.map((r) => ({
     day: r["Day"],
     date: r["Date"],
     time_bdt: r["Time (BDT)"] || r["Time"],
@@ -409,4 +439,62 @@ export async function getCalendar(): Promise<CalendarSlot[]> {
     expected_reach: r["Expected Reach"] || "",
     success_metric: r["Success Metric"] || "",
   }));
+}
+
+export async function getCalendar(): Promise<CalendarSlot[]> {
+  const rows = await readTab("Content_Calendar");
+  return calendarFromRows(rowsToObjects(rows));
+}
+
+/**
+ * Step 3 archival mode: fetch a specific past calendar by a "run key".
+ *
+ * Content_Calendar is overwritten each week — there's no historical archive
+ * in the sheet today. To give `/plan?archived=<run-id>` an answer at all,
+ * the pipeline will (Step 3 follow-up) start appending a `Run ID` column and
+ * a `Calendar_Archive` tab. For now this reader is wired so the page can
+ * call it, but until the archive tab exists it always returns `[]` — the
+ * page falls back to its "archive not found" message.
+ */
+export async function getCalendarByRunId(runId: string): Promise<CalendarSlot[]> {
+  if (!runId) return [];
+  const rows = await readTab("Calendar_Archive");
+  if (rows.length === 0) return [];
+  const objects = rowsToObjects(rows);
+  const match = objects.filter((r) => String(r["Run ID"] || "").trim() === runId.trim());
+  return calendarFromRows(match);
+}
+
+// ─── AI stage off-switch detection ───
+//
+// "AI-disabled" is a user-facing product state, not a failure. The pipeline
+// writes a `<Stage> Engine` column to Analysis_Log when the operator
+// explicitly ran the stage with --engine=native (or skipped it entirely).
+// When the most recent run carries `native` or `off` for a stage, the
+// dashboard's Strategy/Plan page should render `AIDisabledEmptyState`
+// instead of the red crit banner.
+//
+// Until Step 3's pipeline side ships (classify_native.py + weekly-no-ai.yml),
+// this reader falls back to a conservative heuristic: a stage is considered
+// "off" only when its status is explicitly "skipped" — the pipeline's
+// existing code path for `--no-ai`. Success / fallback / failed all return
+// false (page stays on the staleness banner).
+
+export type StageEngine = "ai" | "native" | "off" | "unknown";
+
+export async function getStageEngine(stage: "diagnosis" | "calendar"): Promise<StageEngine> {
+  const rows = await readTab("Analysis_Log");
+  const objects = rowsToObjects(rows);
+  if (objects.length === 0) return "unknown";
+  const last = objects[objects.length - 1];
+  const colCandidates = stage === "diagnosis"
+    ? ["Diagnosis Engine", "Diagnose Engine"]
+    : ["Calendar Engine"];
+  for (const col of colCandidates) {
+    const raw = String(last[col] || "").toLowerCase().trim();
+    if (raw === "native" || raw === "off" || raw === "ai") return raw as StageEngine;
+  }
+  const status = stage === "diagnosis" ? last["Diagnosis Status"] : last["Calendar Status"];
+  if (String(status || "").toLowerCase().trim() === "skipped") return "off";
+  return "unknown";
 }

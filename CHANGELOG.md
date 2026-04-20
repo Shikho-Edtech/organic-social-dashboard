@@ -1,5 +1,48 @@
 # Changelog
 
+## 2026-04-21 — Step 3 shipped: 4-state banner + AI-disabled empty state + archival URL param
+
+4-state `StalenessBanner`: `ok` (emerald) / `warn` (amber) / `crit` (red)
+/ `ai-disabled` (slate + indigo accent). The new `ai-disabled` mode
+fires when the upstream pipeline ran with `engine=native` (or `off`)
+for the stage backing the current page — so the banner tells the user
+"AI diagnosis is off this run" instead of silently showing last week's
+artifact like fresh data.
+
+New `components/AIDisabledEmptyState.tsx`: replaces the page body on
+`/strategy` + `/plan` when the relevant stage is off, rendering the
+"intentionally off" card (max-w-2xl, indigo pill, env-var chips with
+copy-to-clipboard) per the Cycle 1 design spec. Chips map to the
+stage's contract in new `lib/stages.ts` (single source of truth for
+`DIAGNOSIS_PROVIDER/MODEL/API_KEY` + `CALENDAR_*`).
+
+Archival mode via URL param on both pages: `?archived=<run-id>` reads
+the archived artifact (Week Ending for diagnosis, Run ID for calendar)
+and renders a persistent slate-500 breadcrumb (`ArchivalLine`) with a
+"Return to live view" link. Archived content gets a subtle
+`opacity-[0.97] [filter:saturate(0.9)]` dim so the user always knows
+they're not looking at live data. Bookmarkable + shareable, survives
+refresh.
+
+`lib/sheets.ts` extended: `getDiagnosisByWeek(weekEnding)`,
+`listDiagnosisArchive()`, `getCalendarByRunId(runId)` (reads
+`Calendar_Archive` tab; tolerates absence until pipeline writes it),
+and `getStageEngine(stage)` which reads `Diagnosis Engine` /
+`Calendar Engine` off `Analysis_Log` and falls back to treating
+`"skipped"` status as `"off"` when the columns don't exist yet.
+PageHeader date-freshness label renamed "Rendered" → "Data as of"
+to match the Cycle 1 spec.
+
+Why it matters: pre-Step-3, a Claude outage meant /strategy + /plan
+silently rendered last week's verdict as if fresh — the dashboard lied.
+Now when the operator runs `weekly-no-ai.yml` (or the main workflow
+falls back mid-run), both pages explicitly render "AI is off" with a
+recovery path (env chips to copy, link to the last good archived run).
+
+Verified: `npm run build` green, 13 routes compiled clean; /plan
+208 B, /strategy 1.41 kB; type-check passes including new `lib/stages.ts`
+typing + `StalenessBanner` prop changes.
+
 ## 2026-04-20 — Moved under shikho-organic-social-analytics/ parent folder
 
 Both repos (this one + `facebook-pipeline/`) now live under a single parent

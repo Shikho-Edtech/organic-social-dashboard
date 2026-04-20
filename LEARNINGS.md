@@ -1,5 +1,51 @@
 # Learnings
 
+## 2026-04-21 — `?archived=` changes the ROUTE but not always the DATA
+
+**Context:** wiring `?archived=<run-id>` on `/strategy` and `/plan` to
+read an archived diagnosis / calendar from Sheets.
+
+**What went wrong:** the first cut passed `searchParams.archived` to the
+page component but the `Promise.all` block still called `getDiagnosis()`
+(latest) and used that for the body. The archival URL changed the
+subtitle ("Viewing archived run from Apr 11") but the chart and cards
+rendered live data. Spotted only because the Apr 11 headline contradicted
+the cards' engagement numbers.
+
+**Takeaway:** when a URL param selects a DATA source, every read that
+depends on that data must branch on the param. The cleanest pattern:
+
+```tsx
+const [..., liveDiagnosis, archivedDiagnosis, ...] = await Promise.all([
+  ..., getDiagnosis(), archivedParam ? getDiagnosisByWeek(archivedParam) : null, ...
+]);
+const diagnosis = isArchival ? archivedDiagnosis : liveDiagnosis;
+```
+
+Fetching both in parallel costs nothing (the Sheets read is already
+the dominant latency), and the single `diagnosis` variable prevents the
+rest of the page from re-deciding which source to use.
+
+## 2026-04-21 — AI-off is NOT the same as stale
+
+**Context:** first pass at the 4-state `StalenessBanner` collapsed
+`ai-disabled` into the `warn` state — because the data IS days old, so
+"stale" feels right.
+
+**What went wrong:** conflates two different user actions. Stale data
+means "the pipeline tried and failed / the cron didn't run / something
+is broken". AI-off data means "the operator deliberately ran the no-AI
+workflow OR Anthropic credits ran out and the fallback kicked in" —
+both are recoverable by the operator (re-run with AI on, top up
+credits). A warn banner tells them to investigate the pipeline; an
+ai-disabled banner tells them to investigate their AI spend. Different
+fix, different CTA.
+
+**Takeaway:** when two states share a visual signal (old data), split
+them by what action the user should take. Color (amber vs slate+indigo),
+copy ("diagnosis is N days old" vs "diagnosis is OFF this run"), and
+the expandable detail panel's contents all differ now.
+
 ## 2026-04-18 — "Data as of" is a rendering timestamp lie
 
 `PageHeader` showed `new Date()` formatted into BDT under the label

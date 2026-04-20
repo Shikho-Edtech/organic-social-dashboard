@@ -1,0 +1,800 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Cycle 1 — Consolidated banner + AI-disabled empty states</title>
+<script src="https://cdn.tailwindcss.com?plugins=line-clamp"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "system-ui", "sans-serif"] },
+        colors: {
+          brand: {
+            "shikho-indigo": "#1e2a78",
+            "shikho-blue": "#2e47b8",
+            "shikho-pink": "#e6247d",
+            "shikho-orange": "#f79620",
+          },
+        },
+      },
+    },
+  };
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  html, body { background: #eef2f7; font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+  .canvas-label { font-family: "Inter", sans-serif; }
+  .frame { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 0 rgba(15,23,42,0.02), 0 8px 24px -12px rgba(15,23,42,0.08); }
+  .frame-head { background: #0f172a; color: #e2e8f0; font-size: 11px; letter-spacing: 0.04em; font-weight: 600; padding: 6px 12px; display: flex; align-items: center; justify-content: space-between; }
+  .frame-head .dot { width: 7px; height: 7px; border-radius: 50%; background: #475569; display: inline-block; margin-right: 5px; }
+  .frame-head .dot.g { background: #22c55e; }
+  .frame-head .dot.a { background: #f59e0b; }
+  .frame-head .dot.r { background: #ef4444; }
+  .frame-head .dot.b { background: #1e2a78; }
+  .device-360 { width: 360px; }
+  .device-1280 { width: 1280px; }
+  .annot { font-size: 12px; color: #475569; line-height: 1.5; }
+  .annot b { color: #0f172a; font-weight: 600; }
+  /* A simple visual grid on the canvas so frames float nicely */
+  .section-title { font-family: "Inter", sans-serif; font-weight: 700; font-size: 28px; letter-spacing: -0.01em; color: #0f172a; }
+  .section-sub { font-family: "Inter", sans-serif; color: #475569; font-size: 14px; margin-top: 4px; }
+  .rule { height: 1px; background: #cbd5e1; margin: 28px 0 36px; }
+  .kicker { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #64748b; }
+  .pagehead-mock h1 { font-family: "Inter", sans-serif; font-weight: 700; letter-spacing: -0.01em; color: #0f172a; }
+  /* Replicate the dashboard's focus-visible rule for realism */
+  :focus-visible {
+    outline: 2px solid #1e2a78;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  /* Light grid behind the canvas panes, to mimic a design-canvas feel */
+  .canvas-bg {
+    background-image:
+      linear-gradient(to right, rgba(148,163,184,0.15) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(148,163,184,0.15) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+</style>
+</head>
+<body class="canvas-bg">
+
+<!-- ============================================================
+     HEADER
+     ============================================================ -->
+<header class="max-w-[1360px] mx-auto px-8 pt-12 pb-6">
+  <div class="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Cycle 1 · 2026-04-21 · for Shahriar</div>
+  <h1 class="mt-2 text-4xl font-bold tracking-tight text-slate-900">Consolidated banner &amp; AI-disabled empty states</h1>
+  <p class="mt-3 max-w-3xl text-[15px] leading-relaxed text-slate-600">
+    Two visual surfaces, one shipped pattern. Banner lives above <code class="text-[13px] bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded">PageHeader</code> on any page that depends on an AI-produced artifact. Empty state replaces the page body on <code class="text-[13px] bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded">/strategy</code> and <code class="text-[13px] bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded">/plan</code> when the AI stage is intentionally off or has not produced output.
+  </p>
+  <p class="mt-3 max-w-3xl text-[13px] leading-relaxed text-slate-500">
+    Every frame uses production Tailwind classes and the real brand palette. Copy directly into
+    <code class="text-[12px] bg-slate-100 text-slate-700 px-1 py-0.5 rounded">components/</code>.
+  </p>
+</header>
+
+<!-- ============================================================
+     SECTION 1 — CONSOLIDATED BANNER · FOUR STATES (collapsed)
+     ============================================================ -->
+<section class="max-w-[1360px] mx-auto px-8 pb-16">
+  <div class="flex items-end justify-between mb-6">
+    <div>
+      <div class="kicker">01 · Banner · collapsed</div>
+      <h2 class="section-title mt-1">One component, four states</h2>
+      <p class="section-sub max-w-2xl">Collapsed by default on every page visit. State is ephemeral — no URL param, no localStorage. Tap the row to expand the per-stage detail panel (§5.5). Severity encoded in a thin left accent bar + icon tint, not a flooded background — keeps the page's visual rhythm intact.</p>
+    </div>
+  </div>
+
+  <!-- ------------------ 360 column ------------------ -->
+  <div class="grid grid-cols-[auto_1fr] gap-10 items-start">
+    <!-- 360 frames -->
+    <div class="space-y-10">
+      <div class="canvas-label text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 mb-3">Mobile · 360 px</div>
+
+      <!-- ===== OK state · 360 ===== -->
+      <div class="frame device-360">
+        <div class="frame-head"><span><span class="dot g"></span>ok · fresh</span><span>360</span></div>
+        <div class="bg-slate-50 p-4">
+          <!-- Banner: ok -->
+          <div role="status" aria-live="polite" class="flex items-center gap-2.5 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm">
+            <svg aria-hidden="true" class="flex-shrink-0 text-emerald-600" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span class="text-slate-700 min-w-0 flex-1 truncate">AI diagnosis refreshed <span class="font-semibold text-slate-900">3 hours ago</span></span>
+          </div>
+          <!-- PageHeader mock -->
+          <div class="mt-4 pagehead-mock">
+            <h1 class="text-2xl">Strategy</h1>
+            <p class="text-sm text-slate-500 mt-1">Claude's diagnosis and recommended actions</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== WARN state · 360 ===== -->
+      <div class="frame device-360">
+        <div class="frame-head"><span><span class="dot a"></span>warn · 7–14d or fallback</span><span>360</span></div>
+        <div class="bg-slate-50 p-4">
+          <button type="button" aria-expanded="false" class="w-full text-left flex items-start gap-2.5 rounded-md border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm hover:bg-amber-100/60 transition-colors">
+            <svg aria-hidden="true" class="flex-shrink-0 mt-0.5 text-amber-700" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <span class="min-w-0 flex-1">
+              <span class="block font-semibold text-amber-900 leading-tight">AI diagnosis is 9 days old</span>
+              <span class="block mt-0.5 text-[12px] text-amber-800/90 leading-snug">Last succeeded Apr 11 · last 3 runs fell back. <span class="underline">Tap for detail</span></span>
+            </span>
+            <svg aria-hidden="true" class="flex-shrink-0 mt-1 text-amber-700/70" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="mt-4 pagehead-mock">
+            <h1 class="text-2xl">Strategy</h1>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== CRIT state · 360 ===== -->
+      <div class="frame device-360">
+        <div class="frame-head"><span><span class="dot r"></span>crit · &gt;14d</span><span>360</span></div>
+        <div class="bg-slate-50 p-4">
+          <button type="button" aria-expanded="false" class="w-full text-left flex items-start gap-2.5 rounded-md border border-red-300 bg-red-50 px-3 py-2.5 text-sm hover:bg-red-100/60 transition-colors">
+            <svg aria-hidden="true" class="flex-shrink-0 mt-0.5 text-red-700" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span class="min-w-0 flex-1">
+              <span class="block font-semibold text-red-900 leading-tight">AI diagnosis last succeeded 18 days ago</span>
+              <span class="block mt-0.5 text-[12px] text-red-800/90 leading-snug">The analysis below is archival. <span class="underline">Tap for detail</span></span>
+            </span>
+            <svg aria-hidden="true" class="flex-shrink-0 mt-1 text-red-700/70" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="mt-4 pagehead-mock">
+            <h1 class="text-2xl">Strategy</h1>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== AI-DISABLED state · 360 ===== -->
+      <div class="frame device-360">
+        <div class="frame-head"><span><span class="dot b"></span>ai-disabled · intentional</span><span>360</span></div>
+        <div class="bg-slate-50 p-4">
+          <button type="button" aria-expanded="false" class="w-full text-left flex items-start gap-2.5 rounded-md border border-slate-300 bg-slate-100 px-3 py-2.5 text-sm hover:bg-slate-200/70 transition-colors">
+            <svg aria-hidden="true" class="flex-shrink-0 mt-0.5 text-brand-shikho-indigo" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            <span class="min-w-0 flex-1">
+              <span class="block font-semibold text-slate-900 leading-tight">AI diagnosis is off this run</span>
+              <span class="block mt-0.5 text-[12px] text-slate-600 leading-snug">Native pipeline is still fresh (3h ago). <span class="text-brand-shikho-indigo font-medium underline">Tap for detail</span></span>
+            </span>
+            <svg aria-hidden="true" class="flex-shrink-0 mt-1 text-slate-500" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="mt-4 pagehead-mock">
+            <h1 class="text-2xl">Strategy</h1>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1280 column -->
+    <div class="space-y-10">
+      <div class="canvas-label text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 mb-3">Desktop · 1280 px</div>
+
+      <!-- ===== OK state · 1280 ===== -->
+      <div class="frame device-1280">
+        <div class="frame-head"><span><span class="dot g"></span>ok · fresh</span><span>1280 · content max-w-7xl (1120px) + 64px gutter</span></div>
+        <div class="bg-slate-50 py-6">
+          <div class="max-w-7xl mx-auto px-6">
+            <div role="status" aria-live="polite" class="flex items-center gap-2.5 rounded-md border border-slate-200 bg-white px-3.5 py-2 text-sm">
+              <svg aria-hidden="true" class="flex-shrink-0 text-emerald-600" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span class="text-slate-700">AI diagnosis refreshed <span class="font-semibold text-slate-900">3 hours ago</span> · Apr 21, 03:12 BDT</span>
+              <span class="ml-auto text-[11px] text-slate-500">Native pipeline fresh</span>
+            </div>
+            <div class="mt-5 pagehead-mock flex items-start justify-between gap-4">
+              <div><h1 class="text-2xl">Strategy</h1><p class="text-sm text-slate-500 mt-1">Claude's diagnosis and recommended actions</p></div>
+              <div class="text-xs text-slate-500">Last 14 days · Apr 7 – Apr 21</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== WARN state · 1280 ===== -->
+      <div class="frame device-1280">
+        <div class="frame-head"><span><span class="dot a"></span>warn · 7–14d or fallback</span><span>1280</span></div>
+        <div class="bg-slate-50 py-6">
+          <div class="max-w-7xl mx-auto px-6">
+            <button type="button" aria-expanded="false" class="w-full text-left flex items-center gap-3 rounded-md border border-amber-300 bg-amber-50 px-3.5 py-2.5 text-sm hover:bg-amber-100/60 transition-colors">
+              <svg aria-hidden="true" class="flex-shrink-0 text-amber-700" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <span class="font-semibold text-amber-900">AI diagnosis is 9 days old</span>
+              <span class="text-amber-800/90">·</span>
+              <span class="text-amber-800/90">last succeeded Apr 11, last 3 runs fell back to cached output</span>
+              <span class="ml-auto inline-flex items-center gap-1 text-[12px] font-medium text-amber-900 underline underline-offset-2">Tap for detail
+                <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </button>
+            <div class="mt-5 pagehead-mock flex items-start justify-between gap-4">
+              <div><h1 class="text-2xl">Strategy</h1><p class="text-sm text-slate-500 mt-1">Claude's diagnosis and recommended actions</p></div>
+              <div class="text-xs text-slate-500">Last 14 days</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== CRIT state · 1280 ===== -->
+      <div class="frame device-1280">
+        <div class="frame-head"><span><span class="dot r"></span>crit · &gt;14d</span><span>1280</span></div>
+        <div class="bg-slate-50 py-6">
+          <div class="max-w-7xl mx-auto px-6">
+            <button type="button" aria-expanded="false" class="w-full text-left flex items-center gap-3 rounded-md border border-red-300 bg-red-50 px-3.5 py-2.5 text-sm hover:bg-red-100/60 transition-colors">
+              <svg aria-hidden="true" class="flex-shrink-0 text-red-700" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <span class="font-semibold text-red-900">AI diagnosis last succeeded 18 days ago</span>
+              <span class="text-red-800/90">·</span>
+              <span class="text-red-800/90">the weekly pipeline hasn't produced a fresh verdict in over two weeks — the analysis below is archival</span>
+              <span class="ml-auto inline-flex items-center gap-1 text-[12px] font-medium text-red-900 underline underline-offset-2">Tap for detail
+                <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </button>
+            <div class="mt-5 pagehead-mock flex items-start justify-between gap-4">
+              <div><h1 class="text-2xl">Strategy</h1><p class="text-sm text-slate-500 mt-1">Claude's diagnosis and recommended actions</p></div>
+              <div class="text-xs text-slate-500">Last 14 days</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== AI-DISABLED state · 1280 ===== -->
+      <div class="frame device-1280">
+        <div class="frame-head"><span><span class="dot b"></span>ai-disabled · intentional</span><span>1280</span></div>
+        <div class="bg-slate-50 py-6">
+          <div class="max-w-7xl mx-auto px-6">
+            <button type="button" aria-expanded="false" class="w-full text-left flex items-center gap-3 rounded-md border border-slate-300 bg-slate-100 px-3.5 py-2.5 text-sm hover:bg-slate-200/70 transition-colors">
+              <svg aria-hidden="true" class="flex-shrink-0 text-brand-shikho-indigo" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+              <span class="font-semibold text-slate-900">AI diagnosis is off for this pipeline run</span>
+              <span class="text-slate-500">·</span>
+              <span class="text-slate-600">native classification + analytics are still fresh (3 hours ago)</span>
+              <span class="ml-auto inline-flex items-center gap-1 text-[12px] font-medium text-brand-shikho-indigo underline underline-offset-2">Tap for detail
+                <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </button>
+            <div class="mt-5 pagehead-mock flex items-start justify-between gap-4">
+              <div><h1 class="text-2xl">Strategy</h1><p class="text-sm text-slate-500 mt-1">Claude's diagnosis and recommended actions</p></div>
+              <div class="text-xs text-slate-500">Last 14 days</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Annotations -->
+  <div class="mt-10 grid md:grid-cols-4 gap-6">
+    <div class="annot"><b>Severity encoding.</b> Border + icon tint (not a flooded background) so the banner sits below <code>PageHeader</code> without dominating the page rhythm. Mirrors Linear/Vercel density — quiet in <i>ok</i>, firm in <i>crit</i>.</div>
+    <div class="annot"><b>Copy format.</b> Every headline names the stage by name ("AI diagnosis", "AI calendar"), never "something is stale". <i>ok</i> pairs time-ago + absolute; <i>warn/crit</i> pair days-old + last-success date.</div>
+    <div class="annot"><b>Tap target.</b> Entire row is a <code>&lt;button&gt;</code>, ≥ 44 px tall at all breakpoints. Tap anywhere expands. <code>aria-expanded</code> on the button.</div>
+    <div class="annot"><b>ai-disabled tone.</b> Slate border + slate-100 fill + indigo icon. Not amber, not red. Reinforces "you turned this off on purpose" — a product state, not a failure state.</div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 2 — EXPANDED DETAIL PANEL
+     ============================================================ -->
+<section class="max-w-[1360px] mx-auto px-8 pb-16">
+  <div class="flex items-end justify-between mb-6">
+    <div>
+      <div class="kicker">02 · Banner · expanded detail</div>
+      <h2 class="section-title mt-1">Per-stage inline panel</h2>
+      <p class="section-sub max-w-2xl">Shown when the banner is tapped. Inline expansion below the banner (not a modal, not a slide-over). Same component regardless of severity — only the severity chip on each row changes.</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-[auto_1fr] gap-10 items-start">
+    <!-- 360 expanded -->
+    <div class="space-y-6">
+      <div class="canvas-label text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 mb-3">Mobile · 360 px · warn expanded</div>
+      <div class="frame device-360">
+        <div class="frame-head"><span><span class="dot a"></span>expanded · stage cards</span><span>360</span></div>
+        <div class="bg-slate-50 p-4">
+          <!-- Banner (open state) -->
+          <button type="button" aria-expanded="true" class="w-full text-left flex items-start gap-2.5 rounded-t-md border border-amber-300 border-b-transparent bg-amber-50 px-3 py-2.5 text-sm">
+            <svg aria-hidden="true" class="flex-shrink-0 mt-0.5 text-amber-700" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <span class="min-w-0 flex-1">
+              <span class="block font-semibold text-amber-900 leading-tight">AI diagnosis is 9 days old</span>
+              <span class="block mt-0.5 text-[12px] text-amber-800/90 leading-snug">Last succeeded Apr 11 · last 3 runs fell back</span>
+            </span>
+            <svg aria-hidden="true" class="flex-shrink-0 mt-1 text-amber-700/70 rotate-180" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <!-- Detail panel (inline, stacked cards on mobile) -->
+          <div class="rounded-b-md border border-amber-300 border-t-slate-200 bg-white px-3 pt-3 pb-2.5 max-w-[calc(100vw-2rem)]">
+            <div class="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500 mb-2">Pipeline stages</div>
+            <ul class="divide-y divide-slate-100">
+              <!-- Row: Extract -->
+              <li class="py-2 flex items-center gap-2.5">
+                <span class="inline-flex w-14 justify-center text-[10px] font-semibold uppercase tracking-wider rounded px-1.5 py-0.5 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200">ok</span>
+                <span class="flex-1 min-w-0">
+                  <span class="block text-[13px] font-medium text-slate-900 truncate">Extract</span>
+                  <span class="block text-[11px] text-slate-500">Apr 20, 03:12</span>
+                </span>
+                <span class="text-[11px] text-slate-600 font-medium whitespace-nowrap">3h</span>
+              </li>
+              <li class="py-2 flex items-center gap-2.5">
+                <span class="inline-flex w-14 justify-center text-[10px] font-semibold uppercase tracking-wider rounded px-1.5 py-0.5 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200">ok</span>
+                <span class="flex-1 min-w-0">
+                  <span class="block text-[13px] font-medium text-slate-900 truncate">Native classify</span>
+                  <span class="block text-[11px] text-slate-500">Apr 20, 03:13</span>
+                </span>
+                <span class="text-[11px] text-slate-600 font-medium whitespace-nowrap">3h</span>
+              </li>
+              <li class="py-2 flex items-center gap-2.5">
+                <span class="inline-flex w-14 justify-center text-[10px] font-semibold uppercase tracking-wider rounded px-1.5 py-0.5 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200">ok</span>
+                <span class="flex-1 min-w-0">
+                  <span class="block text-[13px] font-medium text-slate-900 truncate">AI classify</span>
+                  <span class="block text-[11px] text-slate-500">Apr 15, 04:17</span>
+                </span>
+                <span class="text-[11px] text-slate-600 font-medium whitespace-nowrap">5d</span>
+              </li>
+              <li class="py-2 flex items-center gap-2.5">
+                <span class="inline-flex w-14 justify-center text-[10px] font-semibold uppercase tracking-wider rounded px-1.5 py-0.5 bg-amber-50 text-amber-700 ring-1 ring-amber-200">warn</span>
+                <span class="flex-1 min-w-0">
+                  <span class="block text-[13px] font-medium text-slate-900 truncate">Diagnose (AI)</span>
+                  <span class="block text-[11px] text-slate-500">Apr 11, 04:22 · fallback</span>
+                </span>
+                <span class="text-[11px] text-amber-800 font-semibold whitespace-nowrap">9d</span>
+              </li>
+              <li class="py-2 flex items-center gap-2.5">
+                <span class="inline-flex w-14 justify-center text-[10px] font-semibold uppercase tracking-wider rounded px-1.5 py-0.5 bg-amber-50 text-amber-700 ring-1 ring-amber-200">warn</span>
+                <span class="flex-1 min-w-0">
+                  <span class="block text-[13px] font-medium text-slate-900 truncate">Calendar (AI)</span>
+                  <span class="block text-[11px] text-slate-500">Apr 11, 04:25 · fallback</span>
+                </span>
+                <span class="text-[11px] text-amber-800 font-semibold whitespace-nowrap">9d</span>
+              </li>
+            </ul>
+            <div class="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
+              <span class="text-[11px] text-slate-500">Run Apr 20, 03:12 BDT</span>
+              <button type="button" class="text-[11px] font-medium text-slate-600 hover:text-slate-900 inline-flex items-center gap-1">
+                <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                Collapse
+              </button>
+            </div>
+          </div>
+          <div class="mt-4 pagehead-mock">
+            <h1 class="text-2xl">Strategy</h1>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1280 expanded -->
+    <div class="space-y-6">
+      <div class="canvas-label text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 mb-3">Desktop · 1280 px · warn expanded</div>
+      <div class="frame device-1280">
+        <div class="frame-head"><span><span class="dot a"></span>expanded · table</span><span>1280</span></div>
+        <div class="bg-slate-50 py-6">
+          <div class="max-w-7xl mx-auto px-6">
+            <button type="button" aria-expanded="true" class="w-full text-left flex items-center gap-3 rounded-t-md border border-amber-300 border-b-transparent bg-amber-50 px-3.5 py-2.5 text-sm">
+              <svg aria-hidden="true" class="flex-shrink-0 text-amber-700" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <span class="font-semibold text-amber-900">AI diagnosis is 9 days old</span>
+              <span class="text-amber-800/90">·</span>
+              <span class="text-amber-800/90">last succeeded Apr 11, last 3 runs fell back</span>
+              <span class="ml-auto inline-flex items-center gap-1 text-[12px] font-medium text-amber-900">
+                <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="rotate-180"><polyline points="6 9 12 15 18 9"/></svg>
+                Collapse
+              </span>
+            </button>
+            <!-- Detail panel (table on desktop) -->
+            <div class="rounded-b-md border border-amber-300 border-t-slate-200 bg-white px-4 py-3">
+              <div class="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500 mb-1.5">Pipeline stages · run Apr 20, 03:12 BDT</div>
+              <table class="w-full text-[13px]">
+                <thead>
+                  <tr class="text-left text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">
+                    <th class="py-1.5 pr-4 font-semibold w-[30%]">Stage</th>
+                    <th class="py-1.5 pr-4 font-semibold w-[18%]">Status</th>
+                    <th class="py-1.5 pr-4 font-semibold w-[32%]">Last success</th>
+                    <th class="py-1.5 font-semibold w-[20%] text-right">Age</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  <tr><td class="py-2 pr-4 font-medium text-slate-900">Extract</td><td class="py-2 pr-4"><span class="inline-flex text-[10px] font-semibold uppercase tracking-wider rounded px-1.5 py-0.5 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200">ok</span></td><td class="py-2 pr-4 text-slate-600">Apr 20, 03:12</td><td class="py-2 text-right text-slate-700 font-medium tabular-nums">3h</td></tr>
+                  <tr><td class="py-2 pr-4 font-medium text-slate-900">Native classify</td><td class="py-2 pr-4"><span class="inline-flex text-[10px] font-semibold uppercase tracking-wider rounded px-1.5 py-0.5 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200">ok</span></td><td class="py-2 pr-4 text-slate-600">Apr 20, 03:13</td><td class="py-2 text-right text-slate-700 font-medium tabular-nums">3h</td></tr>
+                  <tr><td class="py-2 pr-4 font-medium text-slate-900">AI classify</td><td class="py-2 pr-4"><span class="inline-flex text-[10px] font-semibold uppercase tracking-wider rounded px-1.5 py-0.5 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200">ok</span></td><td class="py-2 pr-4 text-slate-600">Apr 15, 04:17</td><td class="py-2 text-right text-slate-700 font-medium tabular-nums">5d</td></tr>
+                  <tr><td class="py-2 pr-4 font-medium text-slate-900">Diagnose (AI)</td><td class="py-2 pr-4"><span class="inline-flex text-[10px] font-semibold uppercase tracking-wider rounded px-1.5 py-0.5 bg-amber-50 text-amber-700 ring-1 ring-amber-200">warn · fallback</span></td><td class="py-2 pr-4 text-slate-600">Apr 11, 04:22</td><td class="py-2 text-right text-amber-800 font-semibold tabular-nums">9d</td></tr>
+                  <tr><td class="py-2 pr-4 font-medium text-slate-900">Calendar (AI)</td><td class="py-2 pr-4"><span class="inline-flex text-[10px] font-semibold uppercase tracking-wider rounded px-1.5 py-0.5 bg-amber-50 text-amber-700 ring-1 ring-amber-200">warn · fallback</span></td><td class="py-2 pr-4 text-slate-600">Apr 11, 04:25</td><td class="py-2 text-right text-amber-800 font-semibold tabular-nums">9d</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="mt-5 pagehead-mock flex items-start justify-between gap-4">
+              <div><h1 class="text-2xl">Strategy</h1><p class="text-sm text-slate-500 mt-1">Claude's diagnosis and recommended actions</p></div>
+              <div class="text-xs text-slate-500">Last 14 days</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-10 grid md:grid-cols-3 gap-6">
+    <div class="annot"><b>Responsive shape.</b> 360: stacked cards, 14 px left status chip column. 1280: table with tabular-nums age column. Same data shape, same severity chips — ensures the reader learns the vocabulary once.</div>
+    <div class="annot"><b>No modal, no slide-over.</b> Inline expansion below the banner. Max-width clamped to viewport minus 2rem on mobile. Banner seams are suppressed (<code>border-b-transparent</code> on button, <code>border-t-slate-200</code> on panel) so the two elements read as one card when open.</div>
+    <div class="annot"><b>Keyboard.</b> Banner is a <code>&lt;button aria-expanded&gt;</code>. Enter/Space toggles. Escape collapses. Focus-visible ring inherits the global indigo rule.</div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 3 — AI-DISABLED EMPTY STATE
+     ============================================================ -->
+<section class="max-w-[1360px] mx-auto px-8 pb-16">
+  <div class="flex items-end justify-between mb-6">
+    <div>
+      <div class="kicker">03 · Empty state · one component, two instances</div>
+      <h2 class="section-title mt-1">AI-disabled empty state</h2>
+      <p class="section-sub max-w-2xl">Replaces KPI + chart region when the page's AI stage has never run, is explicitly off, or hasn't succeeded in &gt; 30 days. PageHeader stays. Banner at top is the <code>ai-disabled</code> state. The two instances (<code>/strategy</code> and <code>/plan</code>) are visually identical — only the stage-specific nouns change.</p>
+    </div>
+  </div>
+
+  <!-- /strategy side-by-side mobile + desktop -->
+  <div class="kicker mb-3">/strategy · diagnosis stage</div>
+  <div class="grid grid-cols-[auto_1fr] gap-10 items-start mb-12">
+    <!-- 360 -->
+    <div class="frame device-360">
+      <div class="frame-head"><span><span class="dot b"></span>/strategy · disabled</span><span>360</span></div>
+      <div class="bg-slate-50 p-4 pb-6">
+        <!-- banner -->
+        <button type="button" aria-expanded="false" class="w-full text-left flex items-start gap-2.5 rounded-md border border-slate-300 bg-slate-100 px-3 py-2.5 text-sm">
+          <svg aria-hidden="true" class="flex-shrink-0 mt-0.5 text-brand-shikho-indigo" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          <span class="min-w-0 flex-1">
+            <span class="block font-semibold text-slate-900 leading-tight">AI diagnosis is off this run</span>
+            <span class="block mt-0.5 text-[12px] text-slate-600 leading-snug">Native pipeline is still fresh (3h ago). <span class="text-brand-shikho-indigo font-medium underline">Tap for detail</span></span>
+          </span>
+          <svg aria-hidden="true" class="flex-shrink-0 mt-1 text-slate-500" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <!-- PageHeader -->
+        <div class="mt-5 pagehead-mock">
+          <h1 class="text-2xl">Strategy</h1>
+          <p class="text-sm text-slate-500 mt-1">Claude's diagnosis and recommended actions</p>
+        </div>
+        <!-- Empty state card -->
+        <div class="mt-6 rounded-xl border border-slate-200 bg-white ring-1 ring-inset ring-brand-shikho-indigo/5 p-5 shadow-sm">
+          <div class="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-brand-shikho-indigo bg-brand-shikho-indigo/8 rounded-full px-2.5 py-1 ring-1 ring-brand-shikho-indigo/15" style="background-color:rgba(30,42,120,0.06);">
+            <span class="w-1.5 h-1.5 rounded-full bg-brand-shikho-indigo"></span>
+            Intentionally off
+          </div>
+          <h2 class="mt-3 text-xl font-bold text-slate-900 leading-tight">AI strategy is not running this week</h2>
+          <p class="mt-2 text-[14px] text-slate-600 leading-relaxed">
+            This page reads the weekly AI diagnosis. Every other page on the dashboard still works on the native pipeline (extract + classify + analyse).
+          </p>
+          <div class="mt-4 flex items-start gap-2 text-[12px] text-slate-600 leading-relaxed bg-slate-50 rounded-md px-3 py-2.5 border border-slate-200">
+            <svg aria-hidden="true" class="flex-shrink-0 mt-0.5 text-slate-500" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span>Last successful run: <span class="font-medium text-slate-800">Apr 11 (9 days ago)</span></span>
+          </div>
+          <div class="mt-5">
+            <div class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">How to turn it back on</div>
+            <p class="mt-1.5 text-[13px] text-slate-700 leading-relaxed">
+              Set <code class="text-[12px] bg-slate-100 text-brand-shikho-indigo font-semibold rounded px-1 py-0.5">DIAGNOSIS_PROVIDER</code>, <code class="text-[12px] bg-slate-100 text-brand-shikho-indigo font-semibold rounded px-1 py-0.5">DIAGNOSIS_MODEL</code>, <code class="text-[12px] bg-slate-100 text-brand-shikho-indigo font-semibold rounded px-1 py-0.5">DIAGNOSIS_API_KEY</code> in the pipeline's GitHub Actions secrets, then re-run the weekly workflow.
+            </p>
+          </div>
+          <div class="mt-5 pt-4 border-t border-slate-100">
+            <a href="#archived" class="text-[13px] font-medium text-brand-shikho-indigo hover:text-brand-shikho-blue inline-flex items-center gap-1.5">
+              View archived Apr 11 version
+              <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1280 -->
+    <div class="frame device-1280">
+      <div class="frame-head"><span><span class="dot b"></span>/strategy · disabled</span><span>1280</span></div>
+      <div class="bg-slate-50 py-6 pb-12">
+        <div class="max-w-7xl mx-auto px-6">
+          <button type="button" aria-expanded="false" class="w-full text-left flex items-center gap-3 rounded-md border border-slate-300 bg-slate-100 px-3.5 py-2.5 text-sm">
+            <svg aria-hidden="true" class="flex-shrink-0 text-brand-shikho-indigo" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            <span class="font-semibold text-slate-900">AI diagnosis is off for this pipeline run</span>
+            <span class="text-slate-500">·</span>
+            <span class="text-slate-600">native classification + analytics are still fresh (3 hours ago)</span>
+            <span class="ml-auto inline-flex items-center gap-1 text-[12px] font-medium text-brand-shikho-indigo underline underline-offset-2">Tap for detail
+              <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </button>
+          <div class="mt-5 pagehead-mock flex items-start justify-between gap-4">
+            <div><h1 class="text-2xl">Strategy</h1><p class="text-sm text-slate-500 mt-1">Claude's diagnosis and recommended actions</p></div>
+            <div class="text-xs text-slate-500">Last 14 days</div>
+          </div>
+          <!-- Empty card, centered, max-w-2xl -->
+          <div class="mt-8 max-w-2xl mx-auto">
+            <div class="rounded-xl border border-slate-200 bg-white ring-1 ring-inset ring-brand-shikho-indigo/5 p-8 shadow-sm">
+              <div class="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-brand-shikho-indigo rounded-full px-2.5 py-1 ring-1 ring-brand-shikho-indigo/15" style="background-color:rgba(30,42,120,0.06);">
+                <span class="w-1.5 h-1.5 rounded-full bg-brand-shikho-indigo"></span>
+                Intentionally off
+              </div>
+              <h2 class="mt-4 text-2xl font-bold text-slate-900 leading-tight tracking-tight">AI strategy is not running this week</h2>
+              <p class="mt-3 text-[15px] text-slate-600 leading-relaxed">
+                This page reads the weekly AI diagnosis. Every other page on the dashboard still works on the native pipeline (extract + classify + analyse).
+              </p>
+              <div class="mt-5 flex items-center gap-2 text-[13px] text-slate-600 leading-relaxed bg-slate-50 rounded-md px-3.5 py-2.5 border border-slate-200">
+                <svg aria-hidden="true" class="flex-shrink-0 text-slate-500" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span>Last successful run: <span class="font-medium text-slate-800">Apr 11</span> <span class="text-slate-500">(9 days ago)</span></span>
+              </div>
+              <div class="mt-6">
+                <div class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">How to turn it back on</div>
+                <p class="mt-2 text-[14px] text-slate-700 leading-relaxed">
+                  Set <code class="text-[12.5px] bg-slate-100 text-brand-shikho-indigo font-semibold rounded px-1.5 py-0.5">DIAGNOSIS_PROVIDER</code>, <code class="text-[12.5px] bg-slate-100 text-brand-shikho-indigo font-semibold rounded px-1.5 py-0.5">DIAGNOSIS_MODEL</code>, <code class="text-[12.5px] bg-slate-100 text-brand-shikho-indigo font-semibold rounded px-1.5 py-0.5">DIAGNOSIS_API_KEY</code> in the pipeline's GitHub Actions secrets, then re-run the weekly workflow.
+                </p>
+              </div>
+              <div class="mt-6 pt-5 border-t border-slate-100">
+                <a href="#archived" class="text-[14px] font-medium text-brand-shikho-indigo hover:text-brand-shikho-blue inline-flex items-center gap-1.5">
+                  View archived Apr 11 version
+                  <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /plan side-by-side -->
+  <div class="kicker mb-3">/plan · calendar stage · same layout, different nouns</div>
+  <div class="grid grid-cols-[auto_1fr] gap-10 items-start">
+    <!-- 360 -->
+    <div class="frame device-360">
+      <div class="frame-head"><span><span class="dot b"></span>/plan · disabled</span><span>360</span></div>
+      <div class="bg-slate-50 p-4 pb-6">
+        <button type="button" aria-expanded="false" class="w-full text-left flex items-start gap-2.5 rounded-md border border-slate-300 bg-slate-100 px-3 py-2.5 text-sm">
+          <svg aria-hidden="true" class="flex-shrink-0 mt-0.5 text-brand-shikho-indigo" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          <span class="min-w-0 flex-1">
+            <span class="block font-semibold text-slate-900 leading-tight">AI calendar is off this run</span>
+            <span class="block mt-0.5 text-[12px] text-slate-600 leading-snug">Native pipeline is still fresh (3h ago). <span class="text-brand-shikho-indigo font-medium underline">Tap for detail</span></span>
+          </span>
+          <svg aria-hidden="true" class="flex-shrink-0 mt-1 text-slate-500" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="mt-5 pagehead-mock">
+          <h1 class="text-2xl">Plan</h1>
+          <p class="text-sm text-slate-500 mt-1">Next week's content calendar</p>
+        </div>
+        <div class="mt-6 rounded-xl border border-slate-200 bg-white ring-1 ring-inset ring-brand-shikho-indigo/5 p-5 shadow-sm">
+          <div class="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-brand-shikho-indigo rounded-full px-2.5 py-1 ring-1 ring-brand-shikho-indigo/15" style="background-color:rgba(30,42,120,0.06);">
+            <span class="w-1.5 h-1.5 rounded-full bg-brand-shikho-indigo"></span>
+            Intentionally off
+          </div>
+          <h2 class="mt-3 text-xl font-bold text-slate-900 leading-tight">AI calendar is not running this week</h2>
+          <p class="mt-2 text-[14px] text-slate-600 leading-relaxed">
+            This page reads the weekly AI-generated content calendar. Every other page on the dashboard still works on the native pipeline (extract + classify + analyse).
+          </p>
+          <div class="mt-4 flex items-start gap-2 text-[12px] text-slate-600 leading-relaxed bg-slate-50 rounded-md px-3 py-2.5 border border-slate-200">
+            <svg aria-hidden="true" class="flex-shrink-0 mt-0.5 text-slate-500" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span>Last successful run: <span class="font-medium text-slate-800">Apr 11 (9 days ago)</span></span>
+          </div>
+          <div class="mt-5">
+            <div class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">How to turn it back on</div>
+            <p class="mt-1.5 text-[13px] text-slate-700 leading-relaxed">
+              Set <code class="text-[12px] bg-slate-100 text-brand-shikho-indigo font-semibold rounded px-1 py-0.5">CALENDAR_PROVIDER</code>, <code class="text-[12px] bg-slate-100 text-brand-shikho-indigo font-semibold rounded px-1 py-0.5">CALENDAR_MODEL</code>, <code class="text-[12px] bg-slate-100 text-brand-shikho-indigo font-semibold rounded px-1 py-0.5">CALENDAR_API_KEY</code> in the pipeline's GitHub Actions secrets, then re-run the weekly workflow.
+            </p>
+          </div>
+          <div class="mt-5 pt-4 border-t border-slate-100">
+            <a href="#archived" class="text-[13px] font-medium text-brand-shikho-indigo hover:text-brand-shikho-blue inline-flex items-center gap-1.5">
+              View archived Apr 11 version
+              <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1280 -->
+    <div class="frame device-1280">
+      <div class="frame-head"><span><span class="dot b"></span>/plan · disabled</span><span>1280</span></div>
+      <div class="bg-slate-50 py-6 pb-12">
+        <div class="max-w-7xl mx-auto px-6">
+          <button type="button" aria-expanded="false" class="w-full text-left flex items-center gap-3 rounded-md border border-slate-300 bg-slate-100 px-3.5 py-2.5 text-sm">
+            <svg aria-hidden="true" class="flex-shrink-0 text-brand-shikho-indigo" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            <span class="font-semibold text-slate-900">AI calendar is off for this pipeline run</span>
+            <span class="text-slate-500">·</span>
+            <span class="text-slate-600">native classification + analytics are still fresh (3 hours ago)</span>
+            <span class="ml-auto inline-flex items-center gap-1 text-[12px] font-medium text-brand-shikho-indigo underline underline-offset-2">Tap for detail
+              <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </button>
+          <div class="mt-5 pagehead-mock flex items-start justify-between gap-4">
+            <div><h1 class="text-2xl">Plan</h1><p class="text-sm text-slate-500 mt-1">Next week's content calendar</p></div>
+            <div class="text-xs text-slate-500">Generated by latest weekly run</div>
+          </div>
+          <div class="mt-8 max-w-2xl mx-auto">
+            <div class="rounded-xl border border-slate-200 bg-white ring-1 ring-inset ring-brand-shikho-indigo/5 p-8 shadow-sm">
+              <div class="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-brand-shikho-indigo rounded-full px-2.5 py-1 ring-1 ring-brand-shikho-indigo/15" style="background-color:rgba(30,42,120,0.06);">
+                <span class="w-1.5 h-1.5 rounded-full bg-brand-shikho-indigo"></span>
+                Intentionally off
+              </div>
+              <h2 class="mt-4 text-2xl font-bold text-slate-900 leading-tight tracking-tight">AI calendar is not running this week</h2>
+              <p class="mt-3 text-[15px] text-slate-600 leading-relaxed">
+                This page reads the weekly AI-generated content calendar. Every other page on the dashboard still works on the native pipeline (extract + classify + analyse).
+              </p>
+              <div class="mt-5 flex items-center gap-2 text-[13px] text-slate-600 leading-relaxed bg-slate-50 rounded-md px-3.5 py-2.5 border border-slate-200">
+                <svg aria-hidden="true" class="flex-shrink-0 text-slate-500" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span>Last successful run: <span class="font-medium text-slate-800">Apr 11</span> <span class="text-slate-500">(9 days ago)</span></span>
+              </div>
+              <div class="mt-6">
+                <div class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">How to turn it back on</div>
+                <p class="mt-2 text-[14px] text-slate-700 leading-relaxed">
+                  Set <code class="text-[12.5px] bg-slate-100 text-brand-shikho-indigo font-semibold rounded px-1.5 py-0.5">CALENDAR_PROVIDER</code>, <code class="text-[12.5px] bg-slate-100 text-brand-shikho-indigo font-semibold rounded px-1.5 py-0.5">CALENDAR_MODEL</code>, <code class="text-[12.5px] bg-slate-100 text-brand-shikho-indigo font-semibold rounded px-1.5 py-0.5">CALENDAR_API_KEY</code> in the pipeline's GitHub Actions secrets, then re-run the weekly workflow.
+                </p>
+              </div>
+              <div class="mt-6 pt-5 border-t border-slate-100">
+                <a href="#archived" class="text-[14px] font-medium text-brand-shikho-indigo hover:text-brand-shikho-blue inline-flex items-center gap-1.5">
+                  View archived Apr 11 version
+                  <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-10 grid md:grid-cols-4 gap-6">
+    <div class="annot"><b>One component, two instances.</b> The only differences across <code>/strategy</code> and <code>/plan</code> are the stage noun (diagnosis / calendar) and the three env-var names. Same padding, same pill, same button placement. Passing the eyes-closed test.</div>
+    <div class="annot"><b>Tone.</b> Slate "Intentionally off" pill + indigo accent ring. No exclamation mark, no alarm icon, no red. Copy starts with a product statement, not an error.</div>
+    <div class="annot"><b>Layout math.</b> Card is <code>max-w-2xl mx-auto</code> on both widths. Mobile: card edges flush with page gutter. Desktop: card stays narrow — density is not the point here; confidence is.</div>
+    <div class="annot"><b>Escape hatch.</b> Single text link → archival-read mode (next section). No secondary button. The only action is "re-enable via pipeline"; viewing archival is a read affordance, not a goal.</div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 4 — ARCHIVAL-READ MODE
+     ============================================================ -->
+<section class="max-w-[1360px] mx-auto px-8 pb-16">
+  <div class="flex items-end justify-between mb-6">
+    <div>
+      <div class="kicker">04 · Archival mode</div>
+      <h2 class="section-title mt-1">Viewing archived run</h2>
+      <p class="section-sub max-w-2xl">After tapping "View archived Apr 11 version" from the empty state. Banner is replaced by a persistent slate-500 text line. Page body renders the archived artifact beneath the normal <code>PageHeader</code>. One React state flag — no URL change, no browser back-button semantics.</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-[auto_1fr] gap-10 items-start">
+    <!-- 360 -->
+    <div class="frame device-360">
+      <div class="frame-head"><span><span class="dot"></span>archival · persistent text line</span><span>360</span></div>
+      <div class="bg-slate-50 p-4 pb-8">
+        <!-- Plain text line, no box, no icon -->
+        <div role="status" aria-live="polite" class="flex items-start gap-2 text-[12px] text-slate-500 leading-snug px-1 py-1.5 border-b border-slate-200">
+          <svg aria-hidden="true" class="flex-shrink-0 mt-0.5 text-slate-400" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+          <span class="min-w-0 flex-1">
+            Viewing archived run from <span class="font-medium text-slate-700">Apr 11</span> ·
+            <button type="button" class="text-slate-600 hover:text-slate-900 underline underline-offset-2">Return to live view</button>
+          </span>
+        </div>
+        <div class="mt-4 pagehead-mock">
+          <h1 class="text-2xl">Strategy</h1>
+          <p class="text-sm text-slate-500 mt-1">Claude's diagnosis and recommended actions</p>
+        </div>
+        <!-- Mock of archived content -->
+        <div class="mt-5 rounded-xl border border-slate-200 bg-white p-4">
+          <div class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Weekly verdict</div>
+          <div class="mt-2 text-[15px] font-semibold text-slate-900 leading-snug line-clamp-2">Reels drove 62% of reach this week despite only 28% of posts — double down while the format is hot.</div>
+          <div class="mt-2 text-[11px] text-slate-500">week ending Apr 11</div>
+        </div>
+        <div class="mt-3 rounded-xl border border-slate-200 bg-white p-4 opacity-90">
+          <div class="h-2 w-24 bg-slate-200 rounded"></div>
+          <div class="mt-3 h-2 w-40 bg-slate-100 rounded"></div>
+          <div class="mt-2 h-2 w-32 bg-slate-100 rounded"></div>
+          <div class="mt-2 h-2 w-36 bg-slate-100 rounded"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1280 -->
+    <div class="frame device-1280">
+      <div class="frame-head"><span><span class="dot"></span>archival · persistent text line</span><span>1280</span></div>
+      <div class="bg-slate-50 py-6 pb-12">
+        <div class="max-w-7xl mx-auto px-6">
+          <div role="status" aria-live="polite" class="flex items-center gap-2 text-[12px] text-slate-500 leading-snug py-2 border-b border-slate-200">
+            <svg aria-hidden="true" class="flex-shrink-0 text-slate-400" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+            <span>Viewing archived run from <span class="font-medium text-slate-700">Apr 11</span></span>
+            <span class="text-slate-400">·</span>
+            <button type="button" class="text-slate-600 hover:text-slate-900 underline underline-offset-2">Return to live view</button>
+          </div>
+          <div class="mt-5 pagehead-mock flex items-start justify-between gap-4">
+            <div><h1 class="text-2xl">Strategy</h1><p class="text-sm text-slate-500 mt-1">Claude's diagnosis and recommended actions</p></div>
+            <div class="text-xs text-slate-500">week ending Apr 11 · archival</div>
+          </div>
+          <div class="mt-6 rounded-2xl border border-slate-200 bg-gradient-to-br from-brand-shikho-pink/5 via-brand-shikho-orange/5 to-brand-shikho-indigo/5 p-7">
+            <div class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600">Weekly verdict · archived</div>
+            <div class="mt-3 text-3xl font-bold text-slate-900 leading-tight tracking-tight">Reels drove <span class="text-brand-shikho-pink">62%</span> of reach this week despite only <span class="text-brand-shikho-pink">28%</span> of posts — double down while the format is hot.</div>
+            <div class="mt-4 text-sm text-slate-600">Week ending Apr 11 · 9 days ago · generated by last successful run</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-10 grid md:grid-cols-3 gap-6">
+    <div class="annot"><b>No fanfare.</b> Persistent single-line, slate-500, bottom-border-only. It reads as a breadcrumb, not an alert. Per your spec: "nothing fancy."</div>
+    <div class="annot"><b>One state flag.</b> <code>viewingArchive: boolean</code> in the page component. Empty state → true → render archived artifact + archival line. Return → false → empty state. No router push.</div>
+    <div class="annot"><b>Accessibility.</b> Still <code>role="status" aria-live="polite"</code> so a screen reader announces the mode change when it toggles.</div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 5 — DECISION LOG
+     ============================================================ -->
+<section class="max-w-[1360px] mx-auto px-8 pb-24">
+  <div class="flex items-end justify-between mb-6">
+    <div>
+      <div class="kicker">05 · Decision log · for DECISIONS.md</div>
+      <h2 class="section-title mt-1">Calls I made, and why</h2>
+      <p class="section-sub max-w-2xl">One paragraph each. Copy-paste directly.</p>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl border border-slate-200 p-8 max-w-4xl">
+    <dl class="space-y-6 text-[14px] leading-relaxed text-slate-700">
+      <div>
+        <dt class="font-semibold text-slate-900 mb-1">Severity encoding uses border + icon tint, not a flooded background.</dt>
+        <dd>
+          The current <code class="text-[13px] bg-slate-100 text-slate-800 px-1 py-0.5 rounded">StalenessBanner</code> uses <code class="text-[13px] bg-slate-100 text-slate-800 px-1 py-0.5 rounded">bg-amber-50</code> and <code class="text-[13px] bg-slate-100 text-slate-800 px-1 py-0.5 rounded">bg-rose-50</code> as full fills. Kept the soft fill but reduced contrast of the border so the banner sits calmly above <code class="text-[13px] bg-slate-100 text-slate-800 px-1 py-0.5 rounded">PageHeader</code> without competing with the Weekly Verdict hero beneath it. <i>crit</i> uses <code class="text-[13px] bg-slate-100 text-slate-800 px-1 py-0.5 rounded">red-300</code>/<code class="text-[13px] bg-slate-100 text-slate-800 px-1 py-0.5 rounded">red-50</code> (not <code class="text-[13px] bg-slate-100 text-slate-800 px-1 py-0.5 rounded">rose-</code>) to stay within the Tailwind defaults you named in §4.
+        </dd>
+      </div>
+      <div>
+        <dt class="font-semibold text-slate-900 mb-1">Banner is a <code class="text-[13px] bg-slate-100 text-slate-800 px-1 py-0.5 rounded">&lt;button&gt;</code>, not a <code class="text-[13px] bg-slate-100 text-slate-800 px-1 py-0.5 rounded">&lt;details&gt;</code>.</dt>
+        <dd>
+          <code class="text-[13px] bg-slate-100 text-slate-800 px-1 py-0.5 rounded">&lt;details&gt;</code> would be cleaner semantically but gives up the <code class="text-[13px] bg-slate-100 text-slate-800 px-1 py-0.5 rounded">aria-live="polite"</code> announcement on state change (screen readers handle <code>details</code> as disclosure, not status). <code class="text-[13px] bg-slate-100 text-slate-800 px-1 py-0.5 rounded">button + aria-expanded</code> with the expansion rendered conditionally lets the banner keep <code class="text-[13px] bg-slate-100 text-slate-800 px-1 py-0.5 rounded">role="status"</code>, which matters when the severity changes between renders. Entire row is the tap target (&gt;44 px). Enter/Space toggle; Escape collapses.
+        </dd>
+      </div>
+      <div>
+        <dt class="font-semibold text-slate-900 mb-1">ai-disabled is slate-with-indigo-accent, not a third severity color.</dt>
+        <dd>
+          §5.4 calls out "neither red nor amber". Picked slate-300 border + slate-100 fill + indigo icon/link to encode "this is a product state, not a failure state." The indigo also ties visually to the empty-state ring so a reader can see the two surfaces are the same family at a glance. Explicitly avoided a teal/cyan "info" blue because that reads as a system message rather than an intentional off-switch.
+        </dd>
+      </div>
+      <div>
+        <dt class="font-semibold text-slate-900 mb-1">Detail panel: stacked cards at 360, table at 1280.</dt>
+        <dd>
+          At 360 px the table's four columns can't hold their shape even with <code class="text-[13px] bg-slate-100 text-slate-800 px-1 py-0.5 rounded">overflow-x-auto</code> — it either scrolls (per CLAUDE.md, bad for tabular nav) or the age column gets squeezed unreadable. Stacked rows keep stage name + status chip + last-success date + age visible in one glance without ever forcing horizontal scroll. The chip position and severity vocabulary is identical between the two shapes so the reader learns the system once.
+        </dd>
+      </div>
+      <div>
+        <dt class="font-semibold text-slate-900 mb-1">Banner seam suppressed when expanded.</dt>
+        <dd>
+          When the detail panel opens, the button's <code class="text-[13px] bg-slate-100 text-slate-800 px-1 py-0.5 rounded">border-b</code> becomes transparent and the panel's top border is slate-200 (not the severity color) so the two elements read as one continuous card. Prevents the "two boxes bolted together" look when the panel is open.
+        </dd>
+      </div>
+      <div>
+        <dt class="font-semibold text-slate-900 mb-1">Empty state — two instances, one component.</dt>
+        <dd>
+          Every visual affordance (card width, padding, indigo accent ring, pill position, button placement, "how to turn it back on" section) is byte-identical between <code>/strategy</code> and <code>/plan</code>. Only three strings change: the stage noun ("diagnosis" → "calendar"), the page read-source description, and the three env-var names. This is what "a reader should recognize the pattern instantly across both pages" translates to in code.
+        </dd>
+      </div>
+      <div>
+        <dt class="font-semibold text-slate-900 mb-1">Card width capped at <code class="text-[13px] bg-slate-100 text-slate-800 px-1 py-0.5 rounded">max-w-2xl</code> even on 1280.</dt>
+        <dd>
+          Widening a "disabled state" card to fill desktop would telegraph "this is the whole page now" — which feels like a failure state. Keeping it narrow and centered frames the empty state as an intentional inset, with the rest of the page header and nav clearly still working around it. Density isn't the point here; calm is.
+        </dd>
+      </div>
+      <div>
+        <dt class="font-semibold text-slate-900 mb-1">Archival mode is a text line, not a banner.</dt>
+        <dd>
+          You asked for "nothing fancy" and the spec specifically calls it a persistent slate-500 text-link banner. Rendered as a single-row line with only a bottom border — no box, no icon tint, no fill. It reads as a breadcrumb. The "Return to live view" action is a plain text button with underline on hover, matching <code class="text-[13px] bg-slate-100 text-slate-800 px-1 py-0.5 rounded">DataFooter</code>'s treatment of secondary links.
+        </dd>
+      </div>
+      <div>
+        <dt class="font-semibold text-slate-900 mb-1">Copy always leads with the stage by name.</dt>
+        <dd>
+          "AI diagnosis is 9 days old" not "Strategy view may be out of date". The reader is the one person who can fix the pipeline — naming the stage makes the next action (check the stage's secrets in GH Actions) obvious. When two stages are stale simultaneously, the banner leads with the worst-affected by age, and the detail panel shows the full list.
+        </dd>
+      </div>
+      <div>
+        <dt class="font-semibold text-slate-900 mb-1">No emoji, no alarm iconography, no animation.</dt>
+        <dd>
+          Per §3 explicitly. The "empty state" pill uses a 1.5 px solid dot rather than a spinning icon; the archival mode uses a static rotate-counterclockwise glyph at slate-400; the banner chevron is a static rotate transform, not an animation. Everything respects the "data-honest, quiet, confident" mood.
+        </dd>
+      </div>
+    </dl>
+  </div>
+</section>
+
+<!-- ============================================================
+     FOOTER
+     ============================================================ -->
+<footer class="max-w-[1360px] mx-auto px-8 pb-16 text-[13px] text-slate-500 border-t border-slate-200 pt-8">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div>Cycle 1 · 2026-04-21 · HTML spec for direct port into <code class="text-[12px] bg-slate-100 text-slate-700 px-1 py-0.5 rounded">components/StalenessBanner.tsx</code> + <code class="text-[12px] bg-slate-100 text-slate-700 px-1 py-0.5 rounded">components/AiDisabledEmptyState.tsx</code></div>
+    <div>Mark pushbacks inline and send back within 24–48h · Cycle 2 will incorporate.</div>
+  </div>
+</footer>
+
+</body>
+</html>

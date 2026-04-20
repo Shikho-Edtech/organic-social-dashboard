@@ -1,0 +1,1257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Cycle 2c — Hi-Fi redesigns · Login / Overview / Strategy</title>
+<script src="https://cdn.tailwindcss.com?plugins=line-clamp"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "system-ui", "sans-serif"] },
+        colors: {
+          brand: {
+            "shikho-indigo": "#1e2a78",
+            "shikho-blue": "#2e47b8",
+            "shikho-pink": "#e6247d",
+            "shikho-orange": "#f79620",
+            cyan: "#06b6d4", green: "#10b981", amber: "#f59e0b",
+            red: "#ef4444", pink: "#ec4899", purple: "#8b5cf6",
+          },
+        },
+      },
+    },
+  };
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+<style>
+  html, body { background: #eef2f7; font-family: "Inter", sans-serif; color: #0f172a; }
+  .frame { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; overflow: hidden; box-shadow: 0 12px 32px -14px rgba(15,23,42,0.12); }
+  .frame-head { background: #0f172a; color: #e2e8f0; font-size: 11px; letter-spacing: 0.04em; font-weight: 600; padding: 6px 12px; display: flex; align-items: center; justify-content: space-between; }
+  .frame-head .dot { width: 7px; height: 7px; border-radius: 50%; background: #475569; display: inline-block; margin-right: 5px; }
+  .frame-head .dot.r { background: #ef4444; }
+  .frame-head .dot.g { background: #22c55e; }
+  .device-360 { width: 360px; }
+  .device-1280 { width: 1280px; }
+  .annot { font-size: 12px; color: #475569; line-height: 1.5; }
+  .annot b { color: #0f172a; font-weight: 600; }
+  .section-title { font-weight: 800; font-size: 32px; letter-spacing: -0.02em; color: #0f172a; }
+  .section-sub { color: #475569; font-size: 15px; margin-top: 6px; max-width: 720px; line-height: 1.55; }
+  .kicker { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #64748b; }
+  .rule { height: 1px; background: #cbd5e1; margin: 28px 0 40px; }
+  .tabular { font-variant-numeric: tabular-nums; }
+  :focus-visible { outline: 2px solid #1e2a78; outline-offset: 2px; border-radius: 4px; }
+  .canvas-bg {
+    background-image:
+      linear-gradient(to right, rgba(148,163,184,0.15) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(148,163,184,0.15) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  /* Subtle dotted sparkline backgrounds */
+  .spark-grid {
+    background-image:
+      linear-gradient(to top, rgba(148,163,184,0.18) 1px, transparent 1px);
+    background-size: 100% 25%;
+  }
+  /* Heatmap cell */
+  .cell { aspect-ratio: 1.15 / 1; border-radius: 3px; }
+</style>
+</head>
+<body class="canvas-bg">
+
+<header class="max-w-[1440px] mx-auto px-8 pt-12 pb-6">
+  <div class="kicker">Cycle 2c · Hi-fi redesigns · 2026-04-21</div>
+  <h1 class="mt-2 text-[40px] font-extrabold tracking-tight text-slate-900 leading-[1.05]">Three pages, rebuilt end-to-end.</h1>
+  <p class="mt-4 max-w-3xl text-[15px] leading-relaxed text-slate-600">
+    Taking the fixes validated in Cycle 2b and composing them into full pages at real density.
+    Login, Overview, and Strategy — each shown at <b class="text-slate-900">1280 desktop</b> and <b class="text-slate-900">360 mobile</b>
+    so the template can be pressure-tested before porting.
+  </p>
+  <div class="mt-6 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-wider">
+    <a href="#login" class="px-3 py-1.5 rounded-full bg-white border border-slate-300 text-slate-800 hover:border-brand-shikho-indigo hover:text-brand-shikho-indigo transition-colors">Login →</a>
+    <a href="#overview" class="px-3 py-1.5 rounded-full bg-white border border-slate-300 text-slate-800 hover:border-brand-shikho-indigo hover:text-brand-shikho-indigo transition-colors">Overview →</a>
+    <a href="#strategy" class="px-3 py-1.5 rounded-full bg-white border border-slate-300 text-slate-800 hover:border-brand-shikho-indigo hover:text-brand-shikho-indigo transition-colors">Strategy →</a>
+  </div>
+</header>
+
+<!-- ========================================================================
+     SYSTEM NOTE
+     ======================================================================== -->
+<section class="max-w-[1440px] mx-auto px-8 pb-8">
+  <div class="bg-white border border-slate-200 rounded-xl p-6 grid lg:grid-cols-4 gap-6">
+    <div>
+      <div class="kicker text-brand-shikho-pink">System · type</div>
+      <div class="mt-2 text-sm text-slate-700 leading-relaxed">
+        <div class="text-[32px] font-extrabold tracking-tight leading-none text-slate-900">Display 32</div>
+        <div class="text-[22px] font-bold tracking-tight text-slate-900 mt-2">Title 22</div>
+        <div class="text-[15px] font-semibold text-slate-800 mt-2">Body Strong 15</div>
+        <div class="text-[14px] text-slate-600 mt-1">Body 14</div>
+        <div class="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 mt-2">Kicker 11 / 0.12em</div>
+      </div>
+    </div>
+    <div>
+      <div class="kicker text-brand-shikho-pink">System · palette</div>
+      <div class="mt-2 flex flex-wrap gap-1.5">
+        <div class="flex-1 min-w-[64px]"><div class="h-10 rounded bg-brand-shikho-indigo"></div><div class="text-[10px] text-slate-500 mt-1 font-mono">#1e2a78</div></div>
+        <div class="flex-1 min-w-[64px]"><div class="h-10 rounded bg-brand-shikho-blue"></div><div class="text-[10px] text-slate-500 mt-1 font-mono">#2e47b8</div></div>
+        <div class="flex-1 min-w-[64px]"><div class="h-10 rounded bg-brand-shikho-pink"></div><div class="text-[10px] text-slate-500 mt-1 font-mono">#e6247d</div></div>
+        <div class="flex-1 min-w-[64px]"><div class="h-10 rounded bg-brand-shikho-orange"></div><div class="text-[10px] text-slate-500 mt-1 font-mono">#f79620</div></div>
+      </div>
+      <div class="mt-3 grid grid-cols-6 gap-1">
+        <div class="h-6 rounded-sm bg-slate-50 border border-slate-200" title="slate-50"></div>
+        <div class="h-6 rounded-sm bg-slate-100" title="slate-100"></div>
+        <div class="h-6 rounded-sm bg-slate-200" title="slate-200"></div>
+        <div class="h-6 rounded-sm bg-slate-400" title="slate-400"></div>
+        <div class="h-6 rounded-sm bg-slate-600" title="slate-600"></div>
+        <div class="h-6 rounded-sm bg-slate-900" title="slate-900"></div>
+      </div>
+    </div>
+    <div>
+      <div class="kicker text-brand-shikho-pink">System · kind accent</div>
+      <div class="mt-2 space-y-2">
+        <div class="border-l-4 border-cyan-500 pl-3 py-1 bg-slate-50 rounded-r"><div class="text-xs font-semibold text-slate-900">Observed</div><div class="text-[11px] text-slate-500">Raw from Meta Graph</div></div>
+        <div class="border-l-4 border-indigo-500 pl-3 py-1 bg-slate-50 rounded-r"><div class="text-xs font-semibold text-slate-900">AI-classified</div><div class="text-[11px] text-slate-500">Weekly classifier</div></div>
+        <div class="border-l-4 border-violet-500 pl-3 py-1 bg-slate-50 rounded-r"><div class="text-xs font-semibold text-slate-900">Derived</div><div class="text-[11px] text-slate-500">Computed on the fly</div></div>
+      </div>
+    </div>
+    <div>
+      <div class="kicker text-brand-shikho-pink">System · template</div>
+      <div class="mt-2 text-[13px] text-slate-700 leading-relaxed">
+        Every page: <b>Staleness strip (if any)</b> → <b>PageHeader (title · date · picker)</b> → <b>KPI strip (4–6 cards)</b> → <b>Primary chart (full-width)</b> → <b>Secondary 2-up grid</b> → <b>Detail</b>.
+        Shikho indigo = active nav, KPI lead accent, focus ring. Pink reserved for headline metric + "hero" emphasis.
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="rule max-w-[1440px] mx-auto"></div>
+
+<!-- ========================================================================
+     LOGIN
+     ======================================================================== -->
+<section id="login" class="max-w-[1440px] mx-auto px-8 pb-14">
+  <div class="kicker">01 · Login</div>
+  <h2 class="section-title mt-1">Login — brand moment, not a gate.</h2>
+  <p class="section-sub">
+    The login page is the only full-bleed brand surface in the product. Current version already does this well; the redesign
+    sharpens hierarchy (one headline, one CTA), leads with a data-flow diagram instead of a bullet list, and fixes the mobile
+    stacking so the brand panel doesn't eat the fold.
+  </p>
+
+  <!-- Desktop 1280 -->
+  <div class="mt-8">
+    <div class="kicker text-brand-shikho-pink">Desktop · 1280 × 720</div>
+    <div class="frame device-1280 mt-2">
+      <div class="frame-head"><span><span class="dot r"></span><span class="dot" style="background:#f59e0b"></span><span class="dot g"></span></span><span>app.shikho-social.internal / login</span><span class="text-slate-500">1280 × 720</span></div>
+      <div class="flex h-[720px] bg-white">
+        <!-- Left brand panel -->
+        <div class="relative flex-1 overflow-hidden bg-brand-shikho-indigo flex flex-col justify-between p-12">
+          <div class="absolute -top-24 -left-24 w-96 h-96 rounded-full" style="background:radial-gradient(closest-side, rgba(230,36,125,0.35), transparent);"></div>
+          <div class="absolute top-1/3 -right-20 w-80 h-80 rounded-full" style="background:radial-gradient(closest-side, rgba(247,150,32,0.28), transparent);"></div>
+          <div class="absolute -bottom-20 left-1/4 w-80 h-80 rounded-full" style="background:radial-gradient(closest-side, rgba(46,71,184,0.55), transparent);"></div>
+
+          <div class="relative z-10 flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-white shadow-md flex items-center justify-center overflow-hidden">
+              <img src="assets/shikho-bird.png" alt="" class="w-10 h-10 object-contain" />
+            </div>
+            <div>
+              <div class="text-white font-bold text-[17px] leading-tight">Shikho</div>
+              <div class="text-white/70 text-[11px] leading-tight tracking-wide">Organic Social Intelligence</div>
+            </div>
+          </div>
+
+          <div class="relative z-10 max-w-[480px]">
+            <div class="text-[10px] font-semibold uppercase tracking-[0.26em] text-brand-shikho-pink mb-3">
+              Facebook performance · diagnosed weekly
+            </div>
+            <h1 class="text-white text-[44px] font-extrabold leading-[1.02] tracking-tight">
+              Every post,<br />
+              <span class="text-brand-shikho-pink">measured.</span><br />
+              Every pattern,<br />
+              <span class="text-brand-shikho-orange">surfaced.</span>
+            </h1>
+            <p class="text-white/75 text-[14px] mt-6 leading-relaxed max-w-[400px]">
+              A living diagnosis of Shikho's organic Facebook presence.
+              Reach, engagement, timing, formats, and reel retention — refreshed on a predictable cadence.
+            </p>
+
+            <!-- Pipeline strip -->
+            <div class="mt-8">
+              <div class="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/55 mb-3">How the data gets here</div>
+              <div class="flex items-stretch">
+                <div class="flex-1 bg-white/5 border border-white/10 rounded-l-lg px-3 py-3 backdrop-blur-sm">
+                  <div class="flex items-center gap-1.5 text-brand-shikho-pink text-[10px] font-semibold uppercase tracking-wider">
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 12h18M3 6h18M3 18h18" stroke-linecap="round"/></svg>
+                    Source
+                  </div>
+                  <div class="text-white text-[13px] font-semibold mt-1">Meta Graph v21</div>
+                  <div class="text-white/60 text-[11px] mt-0.5">Posts · page · reels</div>
+                </div>
+                <div class="flex flex-col items-center justify-center px-2 text-white/60">
+                  <div class="text-[9px] font-bold tracking-[0.12em] uppercase text-brand-shikho-pink">Daily 09:00</div>
+                  <svg class="w-6 h-4 mt-0.5" viewBox="0 0 24 8"><path d="M0 4h22M18 1l4 3-4 3" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+                </div>
+                <div class="flex-1 bg-white/5 border border-white/10 px-3 py-3 backdrop-blur-sm">
+                  <div class="flex items-center gap-1.5 text-brand-shikho-orange text-[10px] font-semibold uppercase tracking-wider">
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
+                    Store
+                  </div>
+                  <div class="text-white text-[13px] font-semibold mt-1">Google Sheets</div>
+                  <div class="text-white/60 text-[11px] mt-0.5">Raw + AI verdicts</div>
+                </div>
+                <div class="flex flex-col items-center justify-center px-2 text-white/60">
+                  <div class="text-[9px] font-bold tracking-[0.12em] uppercase text-brand-shikho-orange">Mon 10:00</div>
+                  <svg class="w-6 h-4 mt-0.5" viewBox="0 0 24 8"><path d="M0 4h22M18 1l4 3-4 3" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+                </div>
+                <div class="flex-1 bg-white/5 border border-white/10 rounded-r-lg px-3 py-3 backdrop-blur-sm">
+                  <div class="flex items-center gap-1.5 text-brand-shikho-blue text-[10px] font-semibold uppercase tracking-wider" style="color:#8cb4ff">
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="14" rx="2"/><path d="M3 21h18M8 13V9M12 13V6M16 13v-3" stroke-linecap="round"/></svg>
+                    Surface
+                  </div>
+                  <div class="text-white text-[13px] font-semibold mt-1">This dashboard</div>
+                  <div class="text-white/60 text-[11px] mt-0.5">5-min cache</div>
+                </div>
+              </div>
+              <p class="text-white/50 text-[11px] mt-3 leading-snug">
+                Daily raw refresh keeps KPIs current · Monday diagnosis regenerates Strategy &amp; Plan.
+              </p>
+            </div>
+          </div>
+
+          <div class="relative z-10 flex items-end justify-between text-white/60 text-[11px] leading-snug">
+            <div>
+              <div class="font-semibold text-white/85">Prepared by Shahriar</div>
+              <div>Performance &amp; Growth Marketing</div>
+            </div>
+            <div class="text-right text-white/40">v2.4 · Apr 21, 2026</div>
+          </div>
+        </div>
+
+        <!-- Right form -->
+        <div class="w-[480px] flex items-center justify-center px-14 bg-white">
+          <div class="w-full">
+            <div class="mb-8">
+              <div class="text-[10px] font-semibold uppercase tracking-[0.22em] text-brand-shikho-indigo mb-3">Team access</div>
+              <div class="text-slate-900 text-[26px] font-bold leading-tight tracking-tight">Sign in to the<br/>dashboard</div>
+              <p class="text-slate-500 text-[13px] mt-3 leading-relaxed">
+                Internal tool for the Shikho social team. Enter the shared team password to continue.
+              </p>
+            </div>
+
+            <label class="block text-slate-700 text-[11px] font-semibold uppercase tracking-wider mb-2">Password</label>
+            <div class="relative">
+              <input type="password" value="••••••••••" class="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg text-slate-900 text-[15px] tabular focus:border-brand-shikho-indigo focus:ring-2 focus:ring-brand-shikho-indigo/15" />
+              <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-semibold">SHOW</button>
+            </div>
+            <button class="mt-5 w-full bg-brand-shikho-indigo hover:bg-brand-shikho-blue text-white font-semibold py-3 rounded-lg shadow-sm flex items-center justify-center gap-2">
+              Sign in
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+
+            <div class="mt-8 pt-6 border-t border-slate-200 space-y-2.5 text-[12px] text-slate-500 leading-relaxed">
+              <div class="flex items-baseline gap-2">
+                <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-700 w-14 flex-shrink-0">Inside</span>
+                <span>Overview · Engagement · Timing · Reels · Strategy · Plan</span>
+              </div>
+              <div class="flex items-baseline gap-2">
+                <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-700 w-14 flex-shrink-0">Times</span>
+                <span>Bangladesh Time (UTC+6) throughout</span>
+              </div>
+              <div class="flex items-baseline gap-2">
+                <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-700 w-14 flex-shrink-0">Issues</span>
+                <span>Ping <span class="font-semibold text-slate-700">#growth-marketing</span> on Slack</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- annotations -->
+    <div class="mt-4 grid grid-cols-4 gap-4">
+      <div class="annot"><b>1 · Single hero sentence.</b> Two-colour emphasis on "measured" and "surfaced" locks brand vocabulary in without gradient text.</div>
+      <div class="annot"><b>2 · Data-flow replaces bullets.</b> Source → Store → Surface is literal — reader sees <i>how</i> data gets here in one scan.</div>
+      <div class="annot"><b>3 · Form side = calm.</b> One input, one button, one colour. Everything else is support copy the user reads once.</div>
+      <div class="annot"><b>4 · Support rail at the bottom.</b> "Inside / Times / Issues" labelled columns replace a loose paragraph — inherits from the page template.</div>
+    </div>
+  </div>
+
+  <!-- Mobile 360 -->
+  <div class="mt-10">
+    <div class="kicker text-brand-shikho-pink">Mobile · 360 × 800</div>
+    <div class="flex gap-8 items-start mt-2">
+      <div class="frame device-360">
+        <div class="frame-head"><span><span class="dot r"></span><span class="dot" style="background:#f59e0b"></span><span class="dot g"></span></span><span>login</span><span class="text-slate-500">360</span></div>
+        <div class="h-[800px] overflow-hidden bg-white flex flex-col">
+          <div class="relative bg-brand-shikho-indigo p-6 pt-7 pb-7 overflow-hidden">
+            <div class="absolute -top-16 -right-10 w-56 h-56 rounded-full" style="background:radial-gradient(closest-side, rgba(230,36,125,0.45), transparent);"></div>
+            <div class="absolute -bottom-10 -left-10 w-56 h-56 rounded-full" style="background:radial-gradient(closest-side, rgba(247,150,32,0.25), transparent);"></div>
+            <div class="relative flex items-center gap-2.5 mb-4">
+              <div class="w-10 h-10 rounded-lg bg-white shadow flex items-center justify-center overflow-hidden">
+                <img src="assets/shikho-bird.png" class="w-8 h-8 object-contain" alt="" />
+              </div>
+              <div>
+                <div class="text-white font-bold text-sm leading-tight">Shikho</div>
+                <div class="text-white/70 text-[10px] leading-tight">Organic Social Intelligence</div>
+              </div>
+            </div>
+            <div class="relative">
+              <div class="text-[9px] font-semibold uppercase tracking-[0.24em] text-brand-shikho-pink mb-2">Diagnosed weekly</div>
+              <div class="text-white text-[26px] font-extrabold leading-[1.05] tracking-tight">
+                Every post, <span class="text-brand-shikho-pink">measured.</span><br/>Every pattern, <span class="text-brand-shikho-orange">surfaced.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="px-6 pt-7 pb-5 flex-1">
+            <div class="text-[10px] font-semibold uppercase tracking-[0.22em] text-brand-shikho-indigo mb-2">Team access</div>
+            <div class="text-slate-900 text-xl font-bold leading-tight">Sign in to the dashboard</div>
+            <p class="text-slate-500 text-[13px] mt-2 leading-relaxed">Internal tool for the Shikho social team.</p>
+
+            <label class="block text-slate-700 text-[10px] font-semibold uppercase tracking-wider mt-5 mb-2">Password</label>
+            <input type="password" value="••••••••" class="w-full px-3.5 py-3 bg-white border border-slate-300 rounded-lg text-slate-900 tabular" />
+            <button class="mt-4 w-full bg-brand-shikho-indigo text-white font-semibold py-3 rounded-lg shadow-sm flex items-center justify-center gap-2">
+              Sign in
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+
+            <div class="mt-6 pt-4 border-t border-slate-200 text-[11px] text-slate-500 space-y-1.5">
+              <div><span class="font-semibold text-slate-700">Inside:</span> Overview · Engagement · Timing · Reels · Strategy · Plan</div>
+              <div><span class="font-semibold text-slate-700">Times:</span> Bangladesh Time (UTC+6)</div>
+              <div><span class="font-semibold text-slate-700">Issues:</span> #growth-marketing on Slack</div>
+            </div>
+          </div>
+
+          <div class="px-6 py-3 border-t border-slate-100 text-[10px] text-slate-400">
+            Prepared by Shahriar · Performance &amp; Growth Marketing
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-1 max-w-[500px] pt-2 space-y-4">
+        <div class="annot"><b>Stacked order matters.</b> Brand block shrinks to ~30% of the fold so the form lands on first-load without scroll. Pipeline strip drops — it's desktop-only context, redundant on a small screen.</div>
+        <div class="annot"><b>Headline holds.</b> "Every post, measured / Every pattern, surfaced" reformats to two lines each but keeps the two-colour emphasis intact.</div>
+        <div class="annot"><b>Support rail becomes 3 short lines.</b> The labelled columns collapse to inline labels + text — same info, zero empty space.</div>
+        <div class="annot"><b>Attribution moves to the floor.</b> Detaches from the form so the CTA is never competing with prose.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="rule max-w-[1440px] mx-auto"></div>
+
+<!-- ========================================================================
+     OVERVIEW
+     ======================================================================== -->
+<section id="overview" class="max-w-[1440px] mx-auto px-8 pb-14">
+  <div class="kicker">02 · Overview</div>
+  <h2 class="section-title mt-1">Overview — the template that every other page inherits.</h2>
+  <p class="section-sub">
+    Overview is the canary for the page template. If the KPI strip, primary chart, and 2-up secondary grid work here, every
+    other page gets them for free. Biggest change vs. today: one <b>headline KPI</b> instead of six equal ones, a <b>combined
+    reach + followers</b> primary chart instead of two small siblings, and explicit <b>"data as of"</b> timestamp vs. "rendered at".
+  </p>
+
+  <!-- Desktop 1280 -->
+  <div class="mt-8">
+    <div class="kicker text-brand-shikho-pink">Desktop · 1280</div>
+    <div class="frame device-1280 mt-2">
+      <div class="frame-head"><span><span class="dot r"></span><span class="dot" style="background:#f59e0b"></span><span class="dot g"></span></span><span>app.shikho-social.internal · Overview</span><span class="text-slate-500">1280</span></div>
+
+      <!-- Nav -->
+      <div class="bg-white border-b border-slate-200">
+        <div class="max-w-[1200px] mx-auto px-8 flex items-center justify-between h-14">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center overflow-hidden">
+              <img src="assets/shikho-bird.png" class="w-7 h-7 object-contain" alt="" />
+            </div>
+            <div class="leading-tight">
+              <div class="text-sm font-semibold text-brand-shikho-indigo">Shikho</div>
+              <div class="text-[10px] text-slate-500 -mt-0.5">Organic Social</div>
+            </div>
+            <span class="ml-2 px-2 py-0.5 rounded-md bg-brand-shikho-indigo/10 text-brand-shikho-indigo text-[11px] font-semibold">Facebook Page</span>
+          </div>
+          <div class="text-[11px] text-slate-500">Sign out</div>
+        </div>
+        <nav class="max-w-[1200px] mx-auto px-8 flex items-center gap-1 -mb-px">
+          <a class="px-3 py-2.5 text-sm font-semibold border-b-2 border-brand-shikho-indigo text-brand-shikho-indigo">Overview</a>
+          <a class="px-3 py-2.5 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-800">Engagement</a>
+          <a class="px-3 py-2.5 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-800">Timing</a>
+          <a class="px-3 py-2.5 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-800">Reels</a>
+          <a class="px-3 py-2.5 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-800">Strategy</a>
+          <a class="px-3 py-2.5 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-800">Explore</a>
+        </nav>
+      </div>
+
+      <div class="bg-slate-50 px-8 py-7 max-w-[1200px] mx-auto">
+        <!-- Page header -->
+        <div class="flex items-start justify-between mb-6">
+          <div>
+            <div class="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-shikho-pink">Weekly snapshot</div>
+            <h1 class="text-[30px] font-extrabold text-slate-900 tracking-tight leading-tight mt-1">Overview</h1>
+            <p class="text-sm text-slate-500 mt-1">Key performance at a glance — trailing 30 days.</p>
+          </div>
+          <div class="flex flex-col items-end gap-2">
+            <div class="flex items-center gap-2">
+              <button class="inline-flex items-center gap-2 text-[12px] font-semibold text-slate-600 bg-white border border-slate-300 rounded-lg px-3 py-2 hover:border-brand-shikho-indigo hover:text-brand-shikho-indigo">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18" stroke-linecap="round"/></svg>
+                Mar 22 – Apr 20, 2026 (30d)
+                <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+            </div>
+            <div class="text-[11px] text-slate-500 flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>Data as of <b class="text-slate-700 font-semibold">Apr 20, 18:42 BDT</b></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- KPI strip — one headline + five supporting -->
+        <div class="grid grid-cols-12 gap-3 mb-6">
+          <!-- Headline KPI: spans 4 cols, brand indigo + pink accent, sparkline -->
+          <div class="col-span-4 bg-gradient-to-br from-brand-shikho-indigo via-brand-shikho-indigo to-brand-shikho-blue text-white rounded-xl p-5 relative overflow-hidden">
+            <div class="absolute -top-12 -right-12 w-48 h-48 rounded-full" style="background:radial-gradient(closest-side, rgba(230,36,125,0.35), transparent);"></div>
+            <div class="relative">
+              <div class="flex items-center justify-between">
+                <div class="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/70">Total Reach · 30d</div>
+                <span class="text-[10px] font-bold bg-emerald-400/20 text-emerald-300 px-1.5 py-0.5 rounded">+12.4% vs prev</span>
+              </div>
+              <div class="text-[44px] font-extrabold tabular mt-2 leading-none">2,147,829</div>
+              <div class="text-[12px] text-white/70 mt-1">unique users · <span class="text-brand-shikho-pink font-semibold">71,594 / day</span></div>
+              <!-- sparkline -->
+              <svg class="mt-4 w-full h-12" viewBox="0 0 300 48" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="sparkg" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stop-color="#e6247d" stop-opacity="0.6"/>
+                    <stop offset="100%" stop-color="#e6247d" stop-opacity="0"/>
+                  </linearGradient>
+                </defs>
+                <path d="M0 36 L15 32 L30 34 L45 28 L60 30 L75 24 L90 26 L105 20 L120 22 L135 16 L150 18 L165 14 L180 20 L195 12 L210 16 L225 8 L240 14 L255 6 L270 12 L285 4 L300 10 L300 48 L0 48 Z" fill="url(#sparkg)"/>
+                <path d="M0 36 L15 32 L30 34 L45 28 L60 30 L75 24 L90 26 L105 20 L120 22 L135 16 L150 18 L165 14 L180 20 L195 12 L210 16 L225 8 L240 14 L255 6 L270 12 L285 4 L300 10" fill="none" stroke="#e6247d" stroke-width="2" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- 5 small KPIs, col-span-2 each but last is 2 wide -->
+          <div class="col-span-2 bg-white border border-slate-200 rounded-xl p-4">
+            <div class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Posts</div>
+            <div class="text-[26px] font-extrabold text-slate-900 tabular mt-2 leading-none">48</div>
+            <div class="mt-2 text-[11px]"><span class="text-emerald-600 font-semibold">+4.3%</span> <span class="text-slate-500">vs prev</span></div>
+          </div>
+          <div class="col-span-2 bg-white border border-slate-200 rounded-xl p-4">
+            <div class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Interactions</div>
+            <div class="text-[26px] font-extrabold text-slate-900 tabular mt-2 leading-none">184,207</div>
+            <div class="mt-2 text-[11px] text-slate-500">3,838 / post</div>
+          </div>
+          <div class="col-span-2 bg-white border border-slate-200 rounded-xl p-4">
+            <div class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Eng. rate</div>
+            <div class="text-[26px] font-extrabold text-slate-900 tabular mt-2 leading-none">8.57<span class="text-lg text-slate-400">%</span></div>
+            <div class="mt-2 text-[11px]"><span class="text-rose-600 font-semibold">−0.4%</span> <span class="text-slate-500">vs prev</span></div>
+          </div>
+          <div class="col-span-2 bg-white border border-slate-200 rounded-xl p-4">
+            <div class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Followers</div>
+            <div class="text-[26px] font-extrabold text-slate-900 tabular mt-2 leading-none">312,448</div>
+            <div class="mt-2 text-[11px]"><span class="text-emerald-600 font-semibold">+1,832</span> <span class="text-slate-500">in range</span></div>
+          </div>
+        </div>
+
+        <!-- Primary chart: reach trend with followers overlay -->
+        <div class="bg-white border border-slate-200 rounded-xl border-l-4 border-l-cyan-500 p-5 mb-6">
+          <div class="flex items-start justify-between mb-4">
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-[15px] font-semibold text-slate-900">Reach trend</h3>
+                <span class="w-4 h-4 inline-flex items-center justify-center rounded-full border border-slate-300 text-[10px] text-slate-500 font-semibold">i</span>
+                <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">n=48 posts</span>
+              </div>
+              <p class="text-[12px] text-slate-500 mt-0.5">Daily unique reach · net follower change overlaid</p>
+            </div>
+            <div class="flex items-center gap-2 text-[11px]">
+              <div class="inline-flex items-center gap-1.5 text-slate-600"><span class="w-2.5 h-0.5 bg-cyan-500"></span> Reach</div>
+              <div class="inline-flex items-center gap-1.5 text-slate-600"><span class="w-2.5 h-0.5 border-t border-dashed border-brand-shikho-pink"></span> Net follows</div>
+            </div>
+          </div>
+
+          <!-- Chart canvas -->
+          <div class="relative h-[220px] spark-grid rounded-md overflow-hidden">
+            <!-- Y labels -->
+            <div class="absolute left-0 top-0 bottom-0 w-12 flex flex-col justify-between py-1 text-[10px] text-slate-500 tabular pr-1 text-right">
+              <span>120k</span><span>90k</span><span>60k</span><span>30k</span><span>0</span>
+            </div>
+            <!-- Area chart -->
+            <svg class="absolute inset-0 ml-12" viewBox="0 0 800 220" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="ov-area" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.32"/>
+                  <stop offset="100%" stop-color="#06b6d4" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <!-- Reach area (30 points, trending up with wobble) -->
+              <path d="M0 160 L27 148 L54 156 L81 138 L108 142 L135 122 L162 130 L189 112 L216 120 L243 96 L270 102 L297 84 L324 96 L351 70 L378 82 L405 60 L432 76 L459 52 L486 64 L513 42 L540 54 L567 36 L594 46 L621 30 L648 40 L675 22 L702 32 L729 16 L756 22 L783 10 L800 18 L800 220 L0 220 Z" fill="url(#ov-area)"/>
+              <path d="M0 160 L27 148 L54 156 L81 138 L108 142 L135 122 L162 130 L189 112 L216 120 L243 96 L270 102 L297 84 L324 96 L351 70 L378 82 L405 60 L432 76 L459 52 L486 64 L513 42 L540 54 L567 36 L594 46 L621 30 L648 40 L675 22 L702 32 L729 16 L756 22 L783 10 L800 18" fill="none" stroke="#06b6d4" stroke-width="2"/>
+              <!-- Followers overlay dashed -->
+              <path d="M0 190 L50 188 L100 183 L150 180 L200 177 L250 172 L300 170 L350 165 L400 163 L450 158 L500 155 L550 148 L600 145 L650 140 L700 136 L750 130 L800 126" fill="none" stroke="#e6247d" stroke-width="1.8" stroke-dasharray="4 4"/>
+              <!-- Highlight marker on recent peak -->
+              <circle cx="513" cy="42" r="4" fill="#fff" stroke="#06b6d4" stroke-width="2"/>
+              <circle cx="783" cy="10" r="4" fill="#fff" stroke="#06b6d4" stroke-width="2"/>
+            </svg>
+            <!-- Peak callout -->
+            <div class="absolute right-[7%] top-[6%] text-[11px] bg-slate-900 text-white px-2 py-1 rounded-md font-semibold tabular shadow">
+              118,420 · Apr 19
+            </div>
+          </div>
+
+          <!-- X axis -->
+          <div class="mt-2 ml-12 flex justify-between text-[10px] text-slate-500 tabular">
+            <span>Mar 22</span><span>Mar 29</span><span>Apr 5</span><span>Apr 12</span><span>Apr 20</span>
+          </div>
+
+          <p class="text-[12px] text-slate-500 mt-4 leading-relaxed">
+            Peak 118.4k on Apr 19 driven by the HSC 2026 countdown Reel. Baseline is rising week-over-week; follower net change is lagging reach — audience is consuming but not yet converting to follow.
+          </p>
+        </div>
+
+        <!-- 2-up secondary: Format dist + Engagement mix -->
+        <div class="grid grid-cols-2 gap-4 mb-6">
+          <div class="bg-white border border-slate-200 rounded-xl border-l-4 border-l-indigo-500 p-5">
+            <div class="flex items-start justify-between mb-4">
+              <div>
+                <div class="flex items-center gap-2">
+                  <h3 class="text-[15px] font-semibold text-slate-900">Format distribution</h3>
+                  <span class="w-4 h-4 inline-flex items-center justify-center rounded-full border border-slate-300 text-[10px] text-slate-500 font-semibold">i</span>
+                </div>
+                <p class="text-[12px] text-slate-500 mt-0.5">Post count by format</p>
+              </div>
+              <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">n=48</span>
+            </div>
+            <!-- Horizontal stacked bar (single row, cleaner than donut) -->
+            <div class="mb-4">
+              <div class="flex h-10 rounded-md overflow-hidden text-[11px] font-semibold text-white">
+                <div class="flex items-center justify-center tabular" style="background:#e6247d; width:46%">Reel · 22</div>
+                <div class="flex items-center justify-center tabular" style="background:#1e2a78; width:27%">Photo · 13</div>
+                <div class="flex items-center justify-center tabular" style="background:#f79620; width:17%">Carousel · 8</div>
+                <div class="flex items-center justify-center tabular text-[10px]" style="background:#06b6d4; width:10%">Video · 5</div>
+              </div>
+            </div>
+            <!-- Mini legend with pct -->
+            <div class="grid grid-cols-2 gap-2 text-[12px]">
+              <div class="flex items-center justify-between border-b border-slate-100 py-1">
+                <span class="inline-flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm" style="background:#e6247d"></span> Reel</span>
+                <span class="tabular text-slate-600"><b class="text-slate-900">46%</b> · 22</span>
+              </div>
+              <div class="flex items-center justify-between border-b border-slate-100 py-1">
+                <span class="inline-flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm" style="background:#1e2a78"></span> Photo</span>
+                <span class="tabular text-slate-600"><b class="text-slate-900">27%</b> · 13</span>
+              </div>
+              <div class="flex items-center justify-between border-b border-slate-100 py-1">
+                <span class="inline-flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm" style="background:#f79620"></span> Carousel</span>
+                <span class="tabular text-slate-600"><b class="text-slate-900">17%</b> · 8</span>
+              </div>
+              <div class="flex items-center justify-between border-b border-slate-100 py-1">
+                <span class="inline-flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm" style="background:#06b6d4"></span> Video</span>
+                <span class="tabular text-slate-600"><b class="text-slate-900">10%</b> · 5</span>
+              </div>
+            </div>
+            <p class="text-[12px] text-slate-500 mt-4 leading-relaxed">Healthy Reel-heavy mix. Sub-10% Video share is a gap — consider shifting 2–3 Photos into short-form Video.</p>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-xl border-l-4 border-l-cyan-500 p-5">
+            <div class="flex items-start justify-between mb-4">
+              <div>
+                <div class="flex items-center gap-2">
+                  <h3 class="text-[15px] font-semibold text-slate-900">Engagement mix</h3>
+                  <span class="w-4 h-4 inline-flex items-center justify-center rounded-full border border-slate-300 text-[10px] text-slate-500 font-semibold">i</span>
+                </div>
+                <p class="text-[12px] text-slate-500 mt-0.5">Reactions · comments · shares</p>
+              </div>
+              <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">184,207 total</span>
+            </div>
+            <!-- horizontal bars, sorted -->
+            <div class="space-y-3">
+              <div>
+                <div class="flex justify-between text-[12px] mb-1"><span class="font-semibold text-slate-800">Reactions</span><span class="tabular text-slate-600"><b class="text-slate-900">142,840</b> · 77.5%</span></div>
+                <div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-brand-shikho-indigo" style="width:77.5%"></div></div>
+              </div>
+              <div>
+                <div class="flex justify-between text-[12px] mb-1"><span class="font-semibold text-slate-800">Comments</span><span class="tabular text-slate-600"><b class="text-slate-900">28,460</b> · 15.4%</span></div>
+                <div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-brand-shikho-pink" style="width:15.4%"></div></div>
+              </div>
+              <div>
+                <div class="flex justify-between text-[12px] mb-1"><span class="font-semibold text-slate-800">Shares</span><span class="tabular text-slate-600"><b class="text-slate-900">12,907</b> · 7.0%</span></div>
+                <div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-brand-shikho-orange" style="width:7.0%"></div></div>
+              </div>
+            </div>
+            <p class="text-[12px] text-slate-500 mt-5 leading-relaxed">Comments-to-shares ratio 2.2:1 suggests active discussion, moderate virality. Lift shares by leaning into Reel formats that outperformed historical shares-per-post.</p>
+          </div>
+        </div>
+
+        <!-- Content pillars: full-width horizontal bars -->
+        <div class="bg-white border border-slate-200 rounded-xl border-l-4 border-l-indigo-500 p-5">
+          <div class="flex items-start justify-between mb-4">
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-[15px] font-semibold text-slate-900">Content pillars · reach</h3>
+                <span class="w-4 h-4 inline-flex items-center justify-center rounded-full border border-slate-300 text-[10px] text-slate-500 font-semibold">i</span>
+              </div>
+              <p class="text-[12px] text-slate-500 mt-0.5">Total unique reach by pillar · top 6 of 11</p>
+            </div>
+            <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">top 6 · 11 total</span>
+          </div>
+          <div class="space-y-2">
+            <!-- Pillar rows -->
+            <div class="flex items-center gap-3 text-[12px]">
+              <div class="w-36 text-slate-700 font-medium truncate">Study Tips &amp; Exam Prep</div>
+              <div class="flex-1 h-6 bg-slate-100 rounded relative"><div class="h-full rounded bg-brand-shikho-indigo" style="width:100%"></div><div class="absolute inset-y-0 right-2 flex items-center text-[11px] font-semibold text-white tabular">612,480 · 28.5%</div></div>
+            </div>
+            <div class="flex items-center gap-3 text-[12px]">
+              <div class="w-36 text-slate-700 font-medium truncate">Teacher Spotlight</div>
+              <div class="flex-1 h-6 bg-slate-100 rounded relative"><div class="h-full rounded bg-brand-shikho-pink" style="width:82%"></div><div class="absolute inset-y-0 left-2 flex items-center text-[11px] font-semibold text-white tabular">502,614 · 23.4%</div></div>
+            </div>
+            <div class="flex items-center gap-3 text-[12px]">
+              <div class="w-36 text-slate-700 font-medium truncate">HSC 2026 Countdown</div>
+              <div class="flex-1 h-6 bg-slate-100 rounded relative"><div class="h-full rounded bg-brand-shikho-orange" style="width:61%"></div><div class="absolute inset-y-0 left-2 flex items-center text-[11px] font-semibold text-white tabular">373,640 · 17.4%</div></div>
+            </div>
+            <div class="flex items-center gap-3 text-[12px]">
+              <div class="w-36 text-slate-700 font-medium truncate">Parent Reassurance</div>
+              <div class="flex-1 h-6 bg-slate-100 rounded relative"><div class="h-full rounded bg-cyan-500" style="width:42%"></div><div class="absolute inset-y-0 left-2 flex items-center text-[11px] font-semibold text-white tabular">258,091 · 12.0%</div></div>
+            </div>
+            <div class="flex items-center gap-3 text-[12px]">
+              <div class="w-36 text-slate-700 font-medium truncate">Course Demo</div>
+              <div class="flex-1 h-6 bg-slate-100 rounded relative"><div class="h-full rounded bg-emerald-500" style="width:28%"></div><div class="absolute inset-y-0 left-2 flex items-center text-[11px] font-semibold text-slate-800 tabular" style="left:calc(28% + 8px)">172,410 · 8.0%</div></div>
+            </div>
+            <div class="flex items-center gap-3 text-[12px]">
+              <div class="w-36 text-slate-700 font-medium truncate">Student Story</div>
+              <div class="flex-1 h-6 bg-slate-100 rounded relative"><div class="h-full rounded bg-violet-500" style="width:18%"></div><div class="absolute inset-y-0 left-2 flex items-center text-[11px] font-semibold text-slate-800 tabular" style="left:calc(18% + 8px)">107,620 · 5.0%</div></div>
+            </div>
+          </div>
+          <p class="text-[12px] text-slate-500 mt-4 leading-relaxed">
+            Study Tips &amp; Teacher Spotlight together drive 52% of reach — the flywheel is working. Bottom 5 pillars (not shown) collectively drive ~6% and should consolidate or retire.
+          </p>
+        </div>
+
+        <!-- Footer strip -->
+        <div class="flex items-center justify-between text-[11px] text-slate-500 mt-6 pt-4 border-t border-slate-200">
+          <div class="flex items-center gap-6">
+            <div class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Meta Graph → Sheets</div>
+            <div>Cache: <b class="text-slate-700">5 min</b></div>
+            <div>Pipeline: <b class="text-slate-700">weekly Mon 10:00</b></div>
+          </div>
+          <div>All numbers unique-per-post. ER = (reactions + comments + shares) ÷ reach.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-4 grid grid-cols-4 gap-4">
+      <div class="annot"><b>1 · Headline KPI.</b> One oversized brand-gradient card for the metric that matters (Reach). Tiny sparkline embedded. Five supporting KPIs hold equal weight, not competing.</div>
+      <div class="annot"><b>2 · Primary chart overlays followers.</b> Current version splits reach + followers across two charts; here a dashed secondary line tells the story — reach is climbing, follows are lagging.</div>
+      <div class="annot"><b>3 · Stacked bar replaces donut.</b> Format distribution reads left-to-right like a progress bar. Quicker to rank than angles.</div>
+      <div class="annot"><b>4 · Pillar chart promoted.</b> Full-width so in-bar value labels fit. "Data as of" replaces "Rendered at" — reflects sheets fetch, not render time.</div>
+    </div>
+  </div>
+
+  <!-- Mobile 360 -->
+  <div class="mt-12">
+    <div class="kicker text-brand-shikho-pink">Mobile · 360</div>
+    <div class="flex gap-8 items-start mt-2">
+      <div class="frame device-360">
+        <div class="frame-head"><span><span class="dot r"></span><span class="dot" style="background:#f59e0b"></span><span class="dot g"></span></span><span>Overview</span><span class="text-slate-500">360</span></div>
+        <div class="h-[1200px] overflow-y-auto bg-slate-50">
+          <!-- nav -->
+          <div class="bg-white border-b border-slate-200 px-4 pt-3 pb-2">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-md bg-white border border-slate-200 flex items-center justify-center overflow-hidden"><img src="assets/shikho-bird.png" class="w-6 h-6 object-contain" /></div>
+                <div class="leading-tight">
+                  <div class="text-[13px] font-semibold text-brand-shikho-indigo">Shikho</div>
+                  <div class="text-[9px] text-slate-500 -mt-0.5">Organic Social</div>
+                </div>
+              </div>
+              <div class="text-[10px] text-slate-500">Sign out</div>
+            </div>
+            <button class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-[13px] font-medium text-slate-900">
+              <span class="flex items-center gap-2"><span class="text-slate-500 text-[10px] uppercase tracking-wide">Page</span><span>Overview</span></span>
+              <svg class="w-3.5 h-3.5 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+          </div>
+
+          <div class="p-4">
+            <!-- Page header mobile -->
+            <div class="text-[9px] font-semibold uppercase tracking-[0.18em] text-brand-shikho-pink">Weekly snapshot</div>
+            <h1 class="text-[22px] font-extrabold text-slate-900 tracking-tight leading-tight mt-1">Overview</h1>
+            <div class="mt-2.5 flex items-center gap-2">
+              <button class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 bg-white border border-slate-300 rounded-md px-2 py-1.5">
+                <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18" stroke-linecap="round"/></svg>
+                Last 30 days
+              </button>
+            </div>
+            <div class="text-[10px] text-slate-500 flex items-center gap-1.5 mt-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              Data as of <b class="text-slate-700 ml-0.5">Apr 20, 18:42 BDT</b>
+            </div>
+
+            <!-- Headline KPI full width -->
+            <div class="mt-4 bg-gradient-to-br from-brand-shikho-indigo via-brand-shikho-indigo to-brand-shikho-blue text-white rounded-xl p-4 relative overflow-hidden">
+              <div class="absolute -top-10 -right-10 w-40 h-40 rounded-full" style="background:radial-gradient(closest-side, rgba(230,36,125,0.35), transparent);"></div>
+              <div class="relative">
+                <div class="flex items-center justify-between">
+                  <div class="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/70">Total Reach · 30d</div>
+                  <span class="text-[9px] font-bold bg-emerald-400/20 text-emerald-300 px-1.5 py-0.5 rounded">+12.4%</span>
+                </div>
+                <div class="text-[34px] font-extrabold tabular mt-1 leading-none">2,147,829</div>
+                <div class="text-[11px] text-white/70 mt-1"><span class="text-brand-shikho-pink font-semibold">71,594</span> / day</div>
+                <svg class="mt-3 w-full h-10" viewBox="0 0 300 48" preserveAspectRatio="none">
+                  <path d="M0 36 L30 34 L60 30 L90 26 L120 22 L150 18 L180 20 L210 16 L240 14 L270 12 L300 10 L300 48 L0 48 Z" fill="rgba(230,36,125,0.25)"/>
+                  <path d="M0 36 L30 34 L60 30 L90 26 L120 22 L150 18 L180 20 L210 16 L240 14 L270 12 L300 10" fill="none" stroke="#e6247d" stroke-width="2"/>
+                </svg>
+              </div>
+            </div>
+
+            <!-- 2x2 KPIs -->
+            <div class="grid grid-cols-2 gap-2 mt-3">
+              <div class="bg-white border border-slate-200 rounded-xl p-3">
+                <div class="text-[9px] font-semibold uppercase tracking-wider text-slate-500">Posts</div>
+                <div class="text-[22px] font-extrabold tabular text-slate-900 mt-1 leading-none">48</div>
+                <div class="text-[10px] text-emerald-600 font-semibold mt-1">+4.3%</div>
+              </div>
+              <div class="bg-white border border-slate-200 rounded-xl p-3">
+                <div class="text-[9px] font-semibold uppercase tracking-wider text-slate-500">Interactions</div>
+                <div class="text-[22px] font-extrabold tabular text-slate-900 mt-1 leading-none">184k</div>
+                <div class="text-[10px] text-slate-500 mt-1">3.8k / post</div>
+              </div>
+              <div class="bg-white border border-slate-200 rounded-xl p-3">
+                <div class="text-[9px] font-semibold uppercase tracking-wider text-slate-500">Eng. rate</div>
+                <div class="text-[22px] font-extrabold tabular text-slate-900 mt-1 leading-none">8.57<span class="text-base text-slate-400">%</span></div>
+                <div class="text-[10px] text-rose-600 font-semibold mt-1">−0.4%</div>
+              </div>
+              <div class="bg-white border border-slate-200 rounded-xl p-3">
+                <div class="text-[9px] font-semibold uppercase tracking-wider text-slate-500">Followers</div>
+                <div class="text-[22px] font-extrabold tabular text-slate-900 mt-1 leading-none">312k</div>
+                <div class="text-[10px] text-emerald-600 font-semibold mt-1">+1,832</div>
+              </div>
+            </div>
+
+            <!-- Reach chart -->
+            <div class="mt-4 bg-white border border-slate-200 border-l-4 border-l-cyan-500 rounded-xl p-4">
+              <div class="flex items-center gap-2">
+                <h3 class="text-[14px] font-semibold text-slate-900">Reach trend</h3>
+                <span class="w-3.5 h-3.5 inline-flex items-center justify-center rounded-full border border-slate-300 text-[9px] text-slate-500 font-semibold">i</span>
+              </div>
+              <p class="text-[11px] text-slate-500 mt-0.5 mb-3">Daily unique reach · follows overlay</p>
+              <div class="relative h-[130px] spark-grid rounded">
+                <svg class="absolute inset-0" viewBox="0 0 300 130" preserveAspectRatio="none">
+                  <path d="M0 90 L20 82 L40 86 L60 70 L80 78 L100 56 L120 64 L140 42 L160 54 L180 30 L200 40 L220 22 L240 32 L260 18 L280 22 L300 10 L300 130 L0 130 Z" fill="rgba(6,182,212,0.28)"/>
+                  <path d="M0 90 L20 82 L40 86 L60 70 L80 78 L100 56 L120 64 L140 42 L160 54 L180 30 L200 40 L220 22 L240 32 L260 18 L280 22 L300 10" fill="none" stroke="#06b6d4" stroke-width="2"/>
+                  <path d="M0 110 L50 105 L100 98 L150 92 L200 85 L250 78 L300 72" fill="none" stroke="#e6247d" stroke-width="1.5" stroke-dasharray="4 4"/>
+                </svg>
+              </div>
+              <div class="flex justify-between text-[9px] text-slate-500 tabular mt-1"><span>Mar 22</span><span>Apr 5</span><span>Apr 20</span></div>
+              <div class="mt-3 flex gap-3 text-[10px]">
+                <span class="inline-flex items-center gap-1.5 text-slate-600"><span class="w-2 h-0.5 bg-cyan-500"></span> Reach</span>
+                <span class="inline-flex items-center gap-1.5 text-slate-600"><span class="w-2 h-0.5 border-t border-dashed border-brand-shikho-pink"></span> Follows</span>
+              </div>
+            </div>
+
+            <!-- Engagement mix mobile -->
+            <div class="mt-4 bg-white border border-slate-200 border-l-4 border-l-cyan-500 rounded-xl p-4">
+              <div class="flex items-center justify-between">
+                <h3 class="text-[14px] font-semibold text-slate-900">Engagement mix</h3>
+                <span class="text-[9px] font-semibold uppercase tracking-wider text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">184k</span>
+              </div>
+              <div class="mt-3 space-y-2.5">
+                <div>
+                  <div class="flex justify-between text-[11px] mb-0.5"><span class="font-semibold text-slate-800">Reactions</span><span class="tabular text-slate-600">77.5%</span></div>
+                  <div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-brand-shikho-indigo" style="width:77.5%"></div></div>
+                </div>
+                <div>
+                  <div class="flex justify-between text-[11px] mb-0.5"><span class="font-semibold text-slate-800">Comments</span><span class="tabular text-slate-600">15.4%</span></div>
+                  <div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-brand-shikho-pink" style="width:15.4%"></div></div>
+                </div>
+                <div>
+                  <div class="flex justify-between text-[11px] mb-0.5"><span class="font-semibold text-slate-800">Shares</span><span class="tabular text-slate-600">7.0%</span></div>
+                  <div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-brand-shikho-orange" style="width:7.0%"></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-1 max-w-[520px] pt-2 space-y-4">
+        <div class="annot"><b>Header compresses cleanly.</b> Date picker becomes a single pill; "data as of" moves below it — both still visible without pushing the KPI off-screen.</div>
+        <div class="annot"><b>Headline KPI stays oversized.</b> On mobile it IS the above-the-fold content. No 2x3 KPI grid crushing the first paint.</div>
+        <div class="annot"><b>Supporting KPIs at 2x2.</b> Values abbreviated (184k vs 184,207) with <code class="text-[11px]">tabular-nums</code> so they align cleanly.</div>
+        <div class="annot"><b>Horizontal bars scroll cleanly.</b> No Recharts YAxis eating 44% of the viewport like today. Pillar chart (not shown here) would follow the same pattern — labels left of bar, percentages on bar.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="rule max-w-[1440px] mx-auto"></div>
+
+<!-- ========================================================================
+     STRATEGY
+     ======================================================================== -->
+<section id="strategy" class="max-w-[1440px] mx-auto px-8 pb-14">
+  <div class="kicker">03 · Strategy</div>
+  <h2 class="section-title mt-1">Strategy — the verdict earns the page.</h2>
+  <p class="section-sub">
+    Strategy's Weekly Verdict is the most valuable single artefact in the product. Today it hides in a gradient card that
+    collapses its own body. Here it takes the whole first screen: one enormous sentence, extracted metric chips, and the
+    "do next" action rail that today's collapsed state leaves buried.
+  </p>
+
+  <!-- Desktop 1280 -->
+  <div class="mt-8">
+    <div class="kicker text-brand-shikho-pink">Desktop · 1280</div>
+    <div class="frame device-1280 mt-2">
+      <div class="frame-head"><span><span class="dot r"></span><span class="dot" style="background:#f59e0b"></span><span class="dot g"></span></span><span>app.shikho-social.internal · Strategy</span><span class="text-slate-500">1280</span></div>
+
+      <!-- Nav -->
+      <div class="bg-white border-b border-slate-200">
+        <div class="max-w-[1200px] mx-auto px-8 flex items-center justify-between h-14">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center overflow-hidden"><img src="assets/shikho-bird.png" class="w-7 h-7 object-contain" alt="" /></div>
+            <div class="leading-tight">
+              <div class="text-sm font-semibold text-brand-shikho-indigo">Shikho</div>
+              <div class="text-[10px] text-slate-500 -mt-0.5">Organic Social</div>
+            </div>
+            <span class="ml-2 px-2 py-0.5 rounded-md bg-brand-shikho-indigo/10 text-brand-shikho-indigo text-[11px] font-semibold">Facebook Page</span>
+          </div>
+          <div class="text-[11px] text-slate-500">Sign out</div>
+        </div>
+        <nav class="max-w-[1200px] mx-auto px-8 flex items-center gap-1 -mb-px">
+          <a class="px-3 py-2.5 text-sm font-medium border-b-2 border-transparent text-slate-500">Overview</a>
+          <a class="px-3 py-2.5 text-sm font-medium border-b-2 border-transparent text-slate-500">Engagement</a>
+          <a class="px-3 py-2.5 text-sm font-medium border-b-2 border-transparent text-slate-500">Timing</a>
+          <a class="px-3 py-2.5 text-sm font-medium border-b-2 border-transparent text-slate-500">Reels</a>
+          <a class="px-3 py-2.5 text-sm font-semibold border-b-2 border-brand-shikho-indigo text-brand-shikho-indigo">Strategy</a>
+          <a class="px-3 py-2.5 text-sm font-medium border-b-2 border-transparent text-slate-500">Explore</a>
+        </nav>
+      </div>
+
+      <div class="bg-slate-50 px-8 py-7 max-w-[1200px] mx-auto">
+        <!-- Page header -->
+        <div class="flex items-start justify-between mb-6">
+          <div>
+            <div class="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-shikho-pink">Claude's weekly diagnosis</div>
+            <h1 class="text-[30px] font-extrabold text-slate-900 tracking-tight leading-tight mt-1">Strategy</h1>
+            <p class="text-sm text-slate-500 mt-1">What happened · what worked · what to watch · what to do next.</p>
+          </div>
+          <div class="flex flex-col items-end gap-2">
+            <div class="inline-flex items-center gap-2 text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-3 py-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              Diagnosis fresh · updated Mon Apr 14
+            </div>
+            <div class="text-[11px] text-slate-500">Next run: Mon Apr 21, 10:00 BDT</div>
+          </div>
+        </div>
+
+        <!-- WEEKLY VERDICT HERO — reworked -->
+        <div class="relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-white via-white to-slate-50 mb-6 shadow-sm">
+          <div class="absolute -top-16 -right-16 w-72 h-72 rounded-full" style="background:radial-gradient(closest-side, rgba(230,36,125,0.18), transparent);"></div>
+          <div class="absolute -bottom-16 -left-16 w-72 h-72 rounded-full" style="background:radial-gradient(closest-side, rgba(30,42,120,0.15), transparent);"></div>
+
+          <div class="relative grid grid-cols-12 gap-8 p-8">
+            <!-- left: verdict -->
+            <div class="col-span-8">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full bg-slate-900 text-white">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26"/></svg>
+                  Weekly verdict
+                </span>
+                <span class="text-[11px] text-slate-500">Week ending Apr 13 · generated by Claude Mon 10:04 BDT</span>
+              </div>
+
+              <!-- The verdict sentence — one giant readable block -->
+              <h2 class="mt-5 text-[34px] font-extrabold text-slate-900 leading-[1.1] tracking-tight">
+                Reach climbed <span class="text-brand-shikho-pink">+24%</span> on the back of three HSC-countdown Reels,
+                but your share-to-reach ratio <span class="text-rose-600">fell to 0.6%</span> —
+                the audience is watching, not spreading.
+              </h2>
+
+              <p class="mt-5 text-[14px] text-slate-600 leading-relaxed max-w-[620px]">
+                The countdown format is pulling in new viewers (57% of reach came from non-followers, highest in 6 weeks),
+                but none of the week's top 5 Reels included a share prompt. Two Teacher Spotlight posts that
+                <i>did</i> include "tag a friend who needs this" outperformed share-baseline by 3.1×.
+              </p>
+
+              <!-- Do-next action rail -->
+              <div class="mt-6 flex flex-wrap gap-2">
+                <a class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-brand-shikho-indigo text-white text-[13px] font-semibold hover:bg-brand-shikho-blue">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18" stroke-linecap="round"/></svg>
+                  Open next week's plan
+                </a>
+                <a class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white border border-slate-300 text-slate-800 text-[13px] font-semibold hover:border-slate-500">
+                  Read full verdict
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </a>
+                <a class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white border border-slate-300 text-slate-800 text-[13px] font-semibold hover:border-slate-500">
+                  Copy verdict
+                </a>
+              </div>
+            </div>
+
+            <!-- right: verdict-at-a-glance scorecard -->
+            <div class="col-span-4">
+              <div class="bg-white/70 backdrop-blur border border-slate-200 rounded-xl p-5">
+                <div class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 mb-3">This week's signal</div>
+                <div class="space-y-3.5">
+                  <div class="flex items-baseline justify-between">
+                    <span class="text-[12px] text-slate-600">Reach vs prev</span>
+                    <span class="text-[18px] font-extrabold tabular text-emerald-600">+24%</span>
+                  </div>
+                  <div class="flex items-baseline justify-between">
+                    <span class="text-[12px] text-slate-600">Share ratio</span>
+                    <span class="text-[18px] font-extrabold tabular text-rose-600">0.6%</span>
+                  </div>
+                  <div class="flex items-baseline justify-between">
+                    <span class="text-[12px] text-slate-600">Non-follower reach</span>
+                    <span class="text-[18px] font-extrabold tabular text-slate-900">57%</span>
+                  </div>
+                  <div class="flex items-baseline justify-between">
+                    <span class="text-[12px] text-slate-600">Verdict mood</span>
+                    <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200 px-2 py-1 rounded">
+                      <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Mixed
+                    </span>
+                  </div>
+                </div>
+
+                <div class="mt-4 pt-4 border-t border-slate-200 flex items-start gap-2">
+                  <svg class="w-4 h-4 text-brand-shikho-orange flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18" stroke-linecap="round"/></svg>
+                  <div class="text-[11px] text-slate-600 leading-relaxed"><b class="text-slate-800">Calendar alert:</b> HSC Bangla Mock on Apr 23 — plan supporting content by Apr 21.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Funnel: 2-up -->
+        <div class="grid grid-cols-2 gap-4 mb-6">
+          <div class="bg-white border border-slate-200 rounded-xl border-l-4 border-l-indigo-500 p-5">
+            <div class="flex items-start justify-between mb-3">
+              <div>
+                <h3 class="text-[14px] font-semibold text-slate-900">Funnel distribution</h3>
+                <p class="text-[11px] text-slate-500 mt-0.5">Posts by marketing stage · n=48</p>
+              </div>
+            </div>
+            <div class="space-y-2.5 text-[12px]">
+              <div class="flex items-center gap-3">
+                <div class="w-12 text-slate-700 font-semibold">TOFU</div>
+                <div class="flex-1 h-7 bg-slate-100 rounded relative"><div class="h-full rounded bg-brand-shikho-indigo" style="width:54%"></div><div class="absolute inset-y-0 left-2 flex items-center text-[11px] font-semibold text-white">26 · 54%</div></div>
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="w-12 text-slate-700 font-semibold">MOFU</div>
+                <div class="flex-1 h-7 bg-slate-100 rounded relative"><div class="h-full rounded bg-brand-shikho-pink" style="width:29%"></div><div class="absolute inset-y-0 left-2 flex items-center text-[11px] font-semibold text-white">14 · 29%</div></div>
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="w-12 text-slate-700 font-semibold">BOFU</div>
+                <div class="flex-1 h-7 bg-slate-100 rounded relative"><div class="h-full rounded bg-brand-shikho-orange" style="width:17%"></div><div class="absolute inset-y-0 left-2 flex items-center text-[11px] font-semibold text-white">8 · 17%</div></div>
+              </div>
+            </div>
+            <p class="text-[11px] text-slate-500 mt-4 leading-relaxed">Healthy mix — close to the 50/30/20 target.</p>
+          </div>
+          <div class="bg-white border border-slate-200 rounded-xl border-l-4 border-l-indigo-500 p-5">
+            <div class="flex items-start justify-between mb-3">
+              <div>
+                <h3 class="text-[14px] font-semibold text-slate-900">Funnel engagement</h3>
+                <p class="text-[11px] text-slate-500 mt-0.5">Reach-weighted eng rate · min 5 posts</p>
+              </div>
+            </div>
+            <div class="space-y-2.5 text-[12px]">
+              <div class="flex items-center gap-3">
+                <div class="w-12 text-slate-700 font-semibold">TOFU</div>
+                <div class="flex-1 h-7 bg-slate-100 rounded relative"><div class="h-full rounded bg-brand-shikho-indigo" style="width:82%"></div><div class="absolute inset-y-0 left-2 flex items-center text-[11px] font-semibold text-white">9.82%</div></div>
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="w-12 text-slate-700 font-semibold">MOFU</div>
+                <div class="flex-1 h-7 bg-slate-100 rounded relative"><div class="h-full rounded bg-brand-shikho-pink" style="width:58%"></div><div class="absolute inset-y-0 left-2 flex items-center text-[11px] font-semibold text-white">6.94%</div></div>
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="w-12 text-slate-700 font-semibold">BOFU</div>
+                <div class="flex-1 h-7 bg-slate-100 rounded relative"><div class="h-full rounded bg-brand-shikho-orange" style="width:38%"></div><div class="absolute inset-y-0 left-2 flex items-center text-[11px] font-semibold text-white">4.51%</div></div>
+              </div>
+            </div>
+            <p class="text-[11px] text-slate-500 mt-4 leading-relaxed">TOFU leading ER is expected — easy shares, low friction.</p>
+          </div>
+        </div>
+
+        <!-- Top/Under performers + key findings in a 3-column grid -->
+        <div class="grid grid-cols-3 gap-4 mb-6">
+          <!-- Top -->
+          <div>
+            <div class="flex items-center gap-2 mb-3">
+              <div class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg></div>
+              <h3 class="text-[14px] font-semibold text-slate-900">Top performers</h3>
+            </div>
+            <div class="space-y-2.5">
+              <div class="bg-white border border-slate-200 border-l-4 border-l-emerald-500 rounded-xl p-4">
+                <div class="flex items-start gap-2.5">
+                  <div class="w-6 h-6 rounded bg-emerald-50 text-emerald-600 font-bold text-[11px] flex items-center justify-center flex-shrink-0">1</div>
+                  <div class="min-w-0 flex-1">
+                    <div class="text-[13px] text-slate-800 font-semibold leading-snug">HSC Bangla countdown Reel hit <span class="text-emerald-600">118k reach</span>, 3.2× format median</div>
+                    <div class="text-[11px] text-slate-500 mt-1.5"><b class="uppercase tracking-wider text-[9px] text-slate-400">Why</b> · Countdown tension + teacher audio</div>
+                  </div>
+                </div>
+              </div>
+              <div class="bg-white border border-slate-200 border-l-4 border-l-emerald-500 rounded-xl p-4">
+                <div class="flex items-start gap-2.5">
+                  <div class="w-6 h-6 rounded bg-emerald-50 text-emerald-600 font-bold text-[11px] flex items-center justify-center flex-shrink-0">2</div>
+                  <div class="min-w-0 flex-1">
+                    <div class="text-[13px] text-slate-800 font-semibold leading-snug">Asma Apa "tag a friend" post drove <span class="text-emerald-600">4,200 shares</span></div>
+                    <div class="text-[11px] text-slate-500 mt-1.5"><b class="uppercase tracking-wider text-[9px] text-slate-400">Why</b> · Explicit share prompt + beloved teacher</div>
+                  </div>
+                </div>
+              </div>
+              <div class="bg-white border border-slate-200 border-l-4 border-l-emerald-500 rounded-xl p-4">
+                <div class="flex items-start gap-2.5">
+                  <div class="w-6 h-6 rounded bg-emerald-50 text-emerald-600 font-bold text-[11px] flex items-center justify-center flex-shrink-0">3</div>
+                  <div class="min-w-0 flex-1">
+                    <div class="text-[13px] text-slate-800 font-semibold leading-snug">Carousel "5 physics tricks" <span class="text-emerald-600">12.4% ER</span>, +2× baseline</div>
+                    <div class="text-[11px] text-slate-500 mt-1.5"><b class="uppercase tracking-wider text-[9px] text-slate-400">Why</b> · Swipe depth averaged 4.1/5</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Under -->
+          <div>
+            <div class="flex items-center gap-2 mb-3">
+              <div class="w-5 h-5 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+              <h3 class="text-[14px] font-semibold text-slate-900">Underperformers</h3>
+            </div>
+            <div class="space-y-2.5">
+              <div class="bg-white border border-slate-200 border-l-4 border-l-rose-500 rounded-xl p-4">
+                <div class="flex items-start gap-2.5">
+                  <div class="w-6 h-6 rounded bg-rose-50 text-rose-600 font-bold text-[11px] flex items-center justify-center flex-shrink-0">1</div>
+                  <div class="min-w-0 flex-1">
+                    <div class="text-[13px] text-slate-800 font-semibold leading-snug">Generic "Download the app" Photo got <span class="text-rose-600">2.1k reach</span>, 0.3× median</div>
+                    <div class="text-[11px] text-slate-500 mt-1.5"><b class="uppercase tracking-wider text-[9px] text-slate-400">Lesson</b> · Non-native CTA, no hook</div>
+                  </div>
+                </div>
+              </div>
+              <div class="bg-white border border-slate-200 border-l-4 border-l-rose-500 rounded-xl p-4">
+                <div class="flex items-start gap-2.5">
+                  <div class="w-6 h-6 rounded bg-rose-50 text-rose-600 font-bold text-[11px] flex items-center justify-center flex-shrink-0">2</div>
+                  <div class="min-w-0 flex-1">
+                    <div class="text-[13px] text-slate-800 font-semibold leading-snug">SSC "study tips" Reel <span class="text-rose-600">stalled at 32% retention</span></div>
+                    <div class="text-[11px] text-slate-500 mt-1.5"><b class="uppercase tracking-wider text-[9px] text-slate-400">Lesson</b> · Slow open, no hook in 0-3s</div>
+                  </div>
+                </div>
+              </div>
+              <div class="bg-white border border-slate-200 border-l-4 border-l-rose-500 rounded-xl p-4">
+                <div class="flex items-start gap-2.5">
+                  <div class="w-6 h-6 rounded bg-rose-50 text-rose-600 font-bold text-[11px] flex items-center justify-center flex-shrink-0">3</div>
+                  <div class="min-w-0 flex-1">
+                    <div class="text-[13px] text-slate-800 font-semibold leading-snug">Price-cut announcement <span class="text-rose-600">28 shares</span>, well below BOFU median</div>
+                    <div class="text-[11px] text-slate-500 mt-1.5"><b class="uppercase tracking-wider text-[9px] text-slate-400">Lesson</b> · Discount text-only, no face</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Key findings + watch-outs stacked -->
+          <div class="flex flex-col gap-4">
+            <div>
+              <div class="flex items-center gap-2 mb-3">
+                <div class="w-5 h-5 rounded-full bg-cyan-100 text-cyan-600 flex items-center justify-center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div>
+                <h3 class="text-[14px] font-semibold text-slate-900">Key findings</h3>
+              </div>
+              <div class="space-y-2">
+                <div class="bg-white border border-slate-200 rounded-lg p-3 text-[12px] text-slate-700 leading-snug">
+                  <b class="text-cyan-600">57%</b> of reach came from non-followers — highest in 6 weeks.
+                </div>
+                <div class="bg-white border border-slate-200 rounded-lg p-3 text-[12px] text-slate-700 leading-snug">
+                  Reels with countdown framing averaged <b class="text-cyan-600">2.4×</b> reach vs baseline Reels.
+                </div>
+                <div class="bg-white border border-slate-200 rounded-lg p-3 text-[12px] text-slate-700 leading-snug">
+                  Teacher-fronted posts got <b class="text-cyan-600">1.8×</b> comments of faceless posts.
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="flex items-center gap-2 mb-3">
+                <div class="w-5 h-5 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+                <h3 class="text-[14px] font-semibold text-slate-900">Watch-outs</h3>
+              </div>
+              <div class="space-y-2">
+                <div class="bg-amber-50/50 border border-amber-200 rounded-lg p-3 text-[12px] text-slate-700 leading-snug">
+                  Share ratio <b class="text-amber-700">0.6%</b> is the lowest in 8 weeks — add explicit share prompts.
+                </div>
+                <div class="bg-amber-50/50 border border-amber-200 rounded-lg p-3 text-[12px] text-slate-700 leading-snug">
+                  BOFU posts down to <b class="text-amber-700">17%</b> of mix, drifting from 20% target.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer strip -->
+        <div class="flex items-center justify-between text-[11px] text-slate-500 pt-4 border-t border-slate-200">
+          <div class="flex items-center gap-6">
+            <div class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Analysis by <b class="text-slate-700">claude-sonnet-4-5</b></div>
+            <div>Pipeline: <b class="text-slate-700">Mon 10:04</b></div>
+          </div>
+          <div>Verdict is Claude's read of 48 posts × 7 days. Treat as hypothesis, verify against your gut.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-4 grid grid-cols-4 gap-4">
+      <div class="annot"><b>1 · Verdict fills the screen.</b> 34px extrabold sentence, coloured metric chips, explicit CTAs. The "collapse to one line" pattern goes away — on this page the verdict IS the page.</div>
+      <div class="annot"><b>2 · Scorecard on the right.</b> Four numbers + mood tag give an at-a-glance checklist — you can gut-check the sentence against the stats without reading the body.</div>
+      <div class="annot"><b>3 · Three-column detail.</b> Top / Under / Findings+Watch stacked into one scan-friendly grid. Today's <code class="text-[11px]">&lt;details&gt;</code> disclosures go away — on desktop there's room for all of it.</div>
+      <div class="annot"><b>4 · Mood + freshness live on the page header.</b> "Diagnosis fresh · updated Mon Apr 14" tells the user <i>immediately</i> whether they're reading stale output.</div>
+    </div>
+  </div>
+
+  <!-- Mobile 360 -->
+  <div class="mt-12">
+    <div class="kicker text-brand-shikho-pink">Mobile · 360</div>
+    <div class="flex gap-8 items-start mt-2">
+      <div class="frame device-360">
+        <div class="frame-head"><span><span class="dot r"></span><span class="dot" style="background:#f59e0b"></span><span class="dot g"></span></span><span>Strategy</span><span class="text-slate-500">360</span></div>
+        <div class="h-[1200px] overflow-y-auto bg-slate-50">
+          <div class="bg-white border-b border-slate-200 px-4 pt-3 pb-2">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-md bg-white border border-slate-200 flex items-center justify-center overflow-hidden"><img src="assets/shikho-bird.png" class="w-6 h-6 object-contain" /></div>
+                <div class="leading-tight">
+                  <div class="text-[13px] font-semibold text-brand-shikho-indigo">Shikho</div>
+                  <div class="text-[9px] text-slate-500 -mt-0.5">Organic Social</div>
+                </div>
+              </div>
+              <div class="text-[10px] text-slate-500">Sign out</div>
+            </div>
+            <button class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-[13px] font-medium text-slate-900">
+              <span class="flex items-center gap-2"><span class="text-slate-500 text-[10px] uppercase tracking-wide">Page</span><span>Strategy</span></span>
+              <svg class="w-3.5 h-3.5 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+          </div>
+
+          <div class="p-4">
+            <div class="text-[9px] font-semibold uppercase tracking-[0.18em] text-brand-shikho-pink">Claude's weekly diagnosis</div>
+            <h1 class="text-[22px] font-extrabold text-slate-900 tracking-tight leading-tight mt-1">Strategy</h1>
+            <div class="mt-2.5 inline-flex items-center gap-2 text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-2.5 py-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              Fresh · Apr 14
+            </div>
+
+            <!-- Verdict hero mobile -->
+            <div class="relative mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-white via-white to-slate-50 shadow-sm">
+              <div class="absolute -top-10 -right-10 w-48 h-48 rounded-full" style="background:radial-gradient(closest-side, rgba(230,36,125,0.22), transparent);"></div>
+              <div class="absolute -bottom-12 -left-12 w-52 h-52 rounded-full" style="background:radial-gradient(closest-side, rgba(30,42,120,0.18), transparent);"></div>
+              <div class="relative p-5">
+                <span class="inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.18em] px-2 py-0.5 rounded-full bg-slate-900 text-white">
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26"/></svg>
+                  Weekly verdict
+                </span>
+                <h2 class="mt-3 text-[20px] font-extrabold text-slate-900 leading-[1.15] tracking-tight">
+                  Reach <span class="text-brand-shikho-pink">+24%</span> on countdown Reels, but share ratio <span class="text-rose-600">fell to 0.6%</span> — audience is watching, not spreading.
+                </h2>
+
+                <!-- mini scorecard 2x2 -->
+                <div class="mt-4 grid grid-cols-2 gap-2">
+                  <div class="bg-white/80 border border-slate-200 rounded-lg p-2.5">
+                    <div class="text-[9px] font-semibold uppercase tracking-wider text-slate-500">Reach vs prev</div>
+                    <div class="text-[18px] font-extrabold tabular text-emerald-600 mt-0.5 leading-none">+24%</div>
+                  </div>
+                  <div class="bg-white/80 border border-slate-200 rounded-lg p-2.5">
+                    <div class="text-[9px] font-semibold uppercase tracking-wider text-slate-500">Share ratio</div>
+                    <div class="text-[18px] font-extrabold tabular text-rose-600 mt-0.5 leading-none">0.6%</div>
+                  </div>
+                  <div class="bg-white/80 border border-slate-200 rounded-lg p-2.5">
+                    <div class="text-[9px] font-semibold uppercase tracking-wider text-slate-500">Non-follower</div>
+                    <div class="text-[18px] font-extrabold tabular text-slate-900 mt-0.5 leading-none">57%</div>
+                  </div>
+                  <div class="bg-white/80 border border-slate-200 rounded-lg p-2.5">
+                    <div class="text-[9px] font-semibold uppercase tracking-wider text-slate-500">Mood</div>
+                    <div class="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded">
+                      <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Mixed
+                    </div>
+                  </div>
+                </div>
+
+                <a class="mt-4 inline-flex w-full items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-brand-shikho-indigo text-white text-[13px] font-semibold">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18" stroke-linecap="round"/></svg>
+                  Open next week's plan
+                </a>
+                <button class="mt-2 inline-flex w-full items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-white border border-slate-300 text-slate-800 text-[13px] font-semibold">
+                  Read full verdict
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Funnel mobile -->
+            <div class="mt-4 bg-white border border-slate-200 border-l-4 border-l-indigo-500 rounded-xl p-4">
+              <h3 class="text-[14px] font-semibold text-slate-900">Funnel distribution</h3>
+              <p class="text-[11px] text-slate-500 mt-0.5">48 posts</p>
+              <div class="mt-3 space-y-2 text-[12px]">
+                <div class="flex items-center gap-2"><div class="w-10 font-semibold text-slate-700">TOFU</div><div class="flex-1 h-6 bg-slate-100 rounded relative"><div class="h-full bg-brand-shikho-indigo rounded" style="width:54%"></div><div class="absolute inset-y-0 left-2 flex items-center text-[10px] font-semibold text-white">26 · 54%</div></div></div>
+                <div class="flex items-center gap-2"><div class="w-10 font-semibold text-slate-700">MOFU</div><div class="flex-1 h-6 bg-slate-100 rounded relative"><div class="h-full bg-brand-shikho-pink rounded" style="width:29%"></div><div class="absolute inset-y-0 left-2 flex items-center text-[10px] font-semibold text-white">14 · 29%</div></div></div>
+                <div class="flex items-center gap-2"><div class="w-10 font-semibold text-slate-700">BOFU</div><div class="flex-1 h-6 bg-slate-100 rounded relative"><div class="h-full bg-brand-shikho-orange rounded" style="width:17%"></div><div class="absolute inset-y-0 left-2 flex items-center text-[10px] font-semibold text-white">8 · 17%</div></div></div>
+              </div>
+            </div>
+
+            <!-- Top performers collapsed -->
+            <div class="mt-4">
+              <div class="flex items-center gap-2 mb-2">
+                <div class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg></div>
+                <h3 class="text-[14px] font-semibold text-slate-900">Top performers</h3>
+              </div>
+              <div class="space-y-2">
+                <div class="bg-white border border-slate-200 border-l-4 border-l-emerald-500 rounded-xl p-3 flex items-start gap-2.5">
+                  <div class="w-5 h-5 rounded bg-emerald-50 text-emerald-600 font-bold text-[10px] flex items-center justify-center flex-shrink-0">1</div>
+                  <div class="text-[12px] text-slate-800 font-semibold leading-snug">HSC countdown Reel hit <span class="text-emerald-600">118k reach</span>, 3.2× median</div>
+                </div>
+                <div class="bg-white border border-slate-200 border-l-4 border-l-emerald-500 rounded-xl p-3 flex items-start gap-2.5">
+                  <div class="w-5 h-5 rounded bg-emerald-50 text-emerald-600 font-bold text-[10px] flex items-center justify-center flex-shrink-0">2</div>
+                  <div class="text-[12px] text-slate-800 font-semibold leading-snug">Asma Apa "tag a friend" drove <span class="text-emerald-600">4.2k shares</span></div>
+                </div>
+                <div class="bg-white border border-slate-200 border-l-4 border-l-emerald-500 rounded-xl p-3 flex items-start gap-2.5">
+                  <div class="w-5 h-5 rounded bg-emerald-50 text-emerald-600 font-bold text-[10px] flex items-center justify-center flex-shrink-0">3</div>
+                  <div class="text-[12px] text-slate-800 font-semibold leading-snug">Physics tricks carousel <span class="text-emerald-600">12.4% ER</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-4">
+              <div class="flex items-center gap-2 mb-2">
+                <div class="w-5 h-5 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r="0.5" fill="currentColor"/></svg></div>
+                <h3 class="text-[14px] font-semibold text-slate-900">Watch-outs</h3>
+              </div>
+              <div class="space-y-2">
+                <div class="bg-amber-50/60 border border-amber-200 rounded-xl p-3 text-[12px] text-slate-700 leading-snug">Share ratio <b class="text-amber-700">0.6%</b> — 8-week low. Add explicit share prompts.</div>
+                <div class="bg-amber-50/60 border border-amber-200 rounded-xl p-3 text-[12px] text-slate-700 leading-snug">BOFU mix <b class="text-amber-700">17%</b>, drifting from 20% target.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-1 max-w-[520px] pt-2 space-y-4">
+        <div class="annot"><b>Verdict sentence shrinks to 20px</b> but keeps the two coloured metric chips. Above the fold on any phone.</div>
+        <div class="annot"><b>Scorecard becomes 2×2.</b> All four signals still visible without scroll; mood chip drops into the fourth cell as a tag rather than a number.</div>
+        <div class="annot"><b>Primary CTA is a full-width button.</b> "Open next week's plan" — the single highest-value action on this page.</div>
+        <div class="annot"><b>Top / Under / Watch-outs stack vertically.</b> No 3-col grid to crush. Each item is a 1-line summary tap-to-expand for detail (pattern already in today's build).</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="max-w-[1440px] mx-auto px-8 pb-16 pt-8 border-t border-slate-200 mt-4">
+  <div class="kicker">Where this goes next</div>
+  <p class="annot mt-3 max-w-3xl">
+    If these three pages read right, the remaining pages (<b>Engagement · Timing · Reels · Plan · Explore</b>) inherit
+    the template for free — KPI strip, primary chart, 2-up secondary, detail — with only the middle swapped.
+    Recommended port order: <b>Login → layout + PageHeader + Card tokens → Overview → Strategy → rest</b>.
+  </p>
+</footer>
+
+</body>
+</html>

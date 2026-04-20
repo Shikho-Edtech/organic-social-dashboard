@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Cycle 1.5 — Deeper recs + Login + global pattern</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: { extend: { fontFamily: { sans: ["Inter","system-ui","sans-serif"] },
+      colors: { brand: {
+        "shikho-indigo":"#1e2a78","shikho-blue":"#2e47b8",
+        "shikho-pink":"#e6247d","shikho-orange":"#f79620" } } } }
+  };
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  body { background: #eef2f7; font-family: "Inter", system-ui, sans-serif; }
+  .frame { background:#f8fafc; border:1px solid #cbd5e1; border-radius:10px; overflow:hidden; box-shadow:0 8px 24px -12px rgba(15,23,42,.08); }
+  .frame-head { background:#0f172a; color:#e2e8f0; font-size:11px; letter-spacing:.04em; font-weight:600; padding:6px 12px; display:flex; justify-content:space-between; }
+  .dot { width:7px; height:7px; border-radius:50%; display:inline-block; margin-right:5px; background:#475569; }
+  .dot.g{background:#22c55e} .dot.b{background:#1e2a78} .dot.p{background:#e6247d}
+  .kicker { font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:#64748b; }
+  .section-title { font-weight:700; font-size:28px; letter-spacing:-.01em; color:#0f172a; }
+  .annot { font-size:13px; color:#475569; line-height:1.55; } .annot b { color:#0f172a; font-weight:600; }
+  .canvas-bg { background-image: linear-gradient(to right, rgba(148,163,184,.15) 1px, transparent 1px), linear-gradient(to bottom, rgba(148,163,184,.15) 1px, transparent 1px); background-size: 40px 40px; }
+  .device-360 { width:360px; } .device-1280 { width:1280px; }
+  code.ik { font-size:12px; background:#f1f5f9; color:#1e2a78; font-weight:600; padding:1px 6px; border-radius:4px; }
+</style>
+</head>
+<body class="canvas-bg">
+
+<header class="max-w-[1360px] mx-auto px-8 pt-12 pb-6">
+  <div class="kicker">Cycle 1.5 · additions to Cycle 1 · 2026-04-21</div>
+  <h1 class="mt-2 text-4xl font-bold tracking-tight text-slate-900">Improvements on Cycle 1 + Login + a global page template</h1>
+  <p class="mt-3 max-w-3xl text-[15px] leading-relaxed text-slate-600">
+    Three parts: <b>(A)</b> things I'd tighten on the Cycle 1 banner/empty-state before you port it, <b>(B)</b> a full redesign of the login page consistent with the Shikho brand and the banner vocabulary, <b>(C)</b> a unified page template + global patterns so every future page inherits the Cycle 1 decisions for free.
+  </p>
+</header>
+
+<!-- ============================================================
+     PART A — CYCLE 1 IMPROVEMENTS
+     ============================================================ -->
+<section class="max-w-[1360px] mx-auto px-8 pb-16">
+  <div class="kicker">A · refinements on Cycle 1</div>
+  <h2 class="section-title mt-1">Seven things I'd change before porting</h2>
+  <p class="annot mt-2 max-w-3xl">These are all small. None invalidate Cycle 1 — they're the polish layer that comes from reading it back a day later.</p>
+
+  <div class="mt-8 grid md:grid-cols-2 gap-5">
+    <div class="bg-white border border-slate-200 rounded-xl p-6">
+      <div class="kicker text-brand-shikho-pink">A1 · stage registry</div>
+      <h3 class="mt-1 text-[17px] font-semibold text-slate-900">Pull stage metadata into one file</h3>
+      <p class="mt-2 annot">Banner, empty state, and detail panel all hardcode the stage name + env-var names. One <code class="ik">lib/stages.ts</code> with <code class="ik">{ id, label, noun, envVars, artifact }</code> means the pattern scales to a 6th stage without copy-paste drift.</p>
+      <pre class="mt-3 bg-slate-900 text-slate-100 rounded-md p-3 text-[11px] leading-relaxed overflow-x-auto">export const STAGES = {
+  diagnosis: { label: "AI diagnosis",
+    envVars: ["DIAGNOSIS_PROVIDER", ...],
+    pages: ["/strategy"] },
+  calendar:  { label: "AI calendar", ... },
+} as const;</pre>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-6">
+      <div class="kicker text-brand-shikho-pink">A2 · collapsed banner · crit</div>
+      <h3 class="mt-1 text-[17px] font-semibold text-slate-900">Ship a "what to do" affordance inline</h3>
+      <p class="mt-2 annot">At <i>crit</i>, the collapsed banner currently just says "tap for detail". One extra inline action — "Re-run pipeline" (link to GH Actions) — would convert the banner from a status indicator into a fix surface. Same pattern at <i>warn</i>.</p>
+      <div class="mt-3 flex items-center gap-3 rounded-md border border-red-300 bg-red-50 px-3.5 py-2.5 text-[13px]">
+        <span class="font-semibold text-red-900">AI diagnosis is 18 days old</span>
+        <span class="text-red-800/80">·</span>
+        <span class="text-red-800/80">3 runs failed</span>
+        <span class="ml-auto flex items-center gap-2">
+          <a href="#" class="text-[12px] font-semibold text-red-900 underline underline-offset-2">Re-run pipeline ↗</a>
+          <span class="text-red-300">|</span>
+          <button class="text-[12px] font-semibold text-red-900">Detail</button>
+        </span>
+      </div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-6">
+      <div class="kicker text-brand-shikho-pink">A3 · detail panel · age sorting</div>
+      <h3 class="mt-1 text-[17px] font-semibold text-slate-900">Sort stages by severity, not pipeline order</h3>
+      <p class="mt-2 annot">On desktop the table currently mirrors pipeline execution order. When two stages are stale, the reader has to scan for the amber chips. Sort <i>crit → warn → ok</i> (stable within each bucket) so failures float to the top. Mobile stack already has this by virtue of being short.</p>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-6">
+      <div class="kicker text-brand-shikho-pink">A4 · empty state · env-var UX</div>
+      <h3 class="mt-1 text-[17px] font-semibold text-slate-900">Copy-to-clipboard on each env-var chip</h3>
+      <p class="mt-2 annot">The three env-var names are the actual action. Render each as a clickable chip that copies on tap with a 1.5s "Copied" toast inline. Saves a round-trip to the repo when setting secrets.</p>
+      <div class="mt-3 flex flex-wrap gap-2">
+        <button class="inline-flex items-center gap-1.5 text-[12px] bg-slate-100 text-brand-shikho-indigo font-semibold rounded px-2 py-1 hover:bg-slate-200">DIAGNOSIS_PROVIDER <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+        <button class="inline-flex items-center gap-1.5 text-[12px] bg-slate-100 text-brand-shikho-indigo font-semibold rounded px-2 py-1 hover:bg-slate-200">DIAGNOSIS_MODEL <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+        <button class="inline-flex items-center gap-1.5 text-[12px] bg-emerald-50 text-emerald-700 font-semibold rounded px-2 py-1">DIAGNOSIS_API_KEY ✓ copied</button>
+      </div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-6">
+      <div class="kicker text-brand-shikho-pink">A5 · archival mode</div>
+      <h3 class="mt-1 text-[17px] font-semibold text-slate-900">Dim archived content 4%</h3>
+      <p class="mt-2 annot">Archival text line is right — but the content below looks identical to a live render. Drop the whole archived region to <code class="ik">opacity-96</code> + <code class="ik">filter saturate-75</code>. A reader glancing back at the tab after a context-switch gets a peripheral cue the view is frozen, without reading copy.</p>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-6">
+      <div class="kicker text-brand-shikho-pink">A6 · animation</div>
+      <h3 class="mt-1 text-[17px] font-semibold text-slate-900">180ms ease-out on expand, nothing else</h3>
+      <p class="mt-2 annot">Current design has zero animation. One concession: <code class="ik">transition: grid-template-rows 180ms</code> on the detail panel (via the grid-rows 0fr/1fr trick). Makes the expand feel intentional instead of jumpy. Chevron rotation already in Cycle 1.</p>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-6 md:col-span-2">
+      <div class="kicker text-brand-shikho-pink">A7 · edge cases Cycle 1 didn't cover</div>
+      <h3 class="mt-1 text-[17px] font-semibold text-slate-900">Three states you'll hit in production</h3>
+      <ul class="mt-3 space-y-2.5 annot">
+        <li><b>Never run.</b> First deploy, stage has zero history. Empty state applies, but the copy "last successful run: Apr 11" needs a null-path: "No runs yet — the next weekly pipeline will populate this."</li>
+        <li><b>Partial success.</b> Diagnose succeeded but Calendar errored on the same run. Banner should lead with Calendar (worse stage), and the detail panel's header should say "1 of 5 stages stale" not "pipeline healthy".</li>
+        <li><b>Graceful-degradation fallback.</b> Your pipeline already has this (Day 2M/2N per CLAUDE.md). When a stage <i>used</i> fallback but succeeded, chip should say "ok · fallback" in amber, not solid ok — the view isn't stale but the reader should know Claude didn't run this week.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     PART B — LOGIN PAGE
+     ============================================================ -->
+<section class="max-w-[1360px] mx-auto px-8 pb-16">
+  <div class="kicker">B · login redesign</div>
+  <h2 class="section-title mt-1">Login page — two directions</h2>
+  <p class="annot mt-2 max-w-3xl">You have brand assets that never leave the header (shikho-indigo, pink, orange + the bird logo). Login is the one surface where you can use them without fighting chart density. Two directions: <b>quiet</b> (matches dashboard tone) and <b>brand-forward</b> (confidence play for a tool you open 5× a week).</p>
+
+  <!-- B1: Quiet -->
+  <div class="mt-10">
+    <div class="kicker mb-3">B1 · quiet · matches Cycle 1 tone</div>
+    <div class="grid grid-cols-[auto_1fr] gap-10 items-start">
+      <div class="frame device-360">
+        <div class="frame-head"><span><span class="dot b"></span>quiet · 360</span><span>360</span></div>
+        <div class="bg-slate-50 min-h-[560px] p-6 flex flex-col justify-center">
+          <div class="flex flex-col items-center mb-8">
+            <div class="w-12 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center mb-3">
+              <div class="w-8 h-8 rounded bg-gradient-to-br from-brand-shikho-indigo to-brand-shikho-pink"></div>
+            </div>
+            <div class="text-[18px] font-bold text-brand-shikho-indigo">Shikho</div>
+            <div class="text-[11px] text-slate-500 mt-0.5">Organic Social · internal</div>
+          </div>
+          <div class="space-y-3">
+            <div>
+              <label class="text-[11px] font-semibold uppercase tracking-wider text-slate-600">Access code</label>
+              <input type="password" class="mt-1.5 w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-[14px] focus:outline-none focus:border-brand-shikho-indigo focus:ring-2 focus:ring-brand-shikho-indigo/20" placeholder="••••••••" />
+            </div>
+            <button class="w-full bg-brand-shikho-indigo hover:bg-brand-shikho-blue text-white font-semibold text-[14px] py-2.5 rounded-md">Continue</button>
+          </div>
+          <div class="mt-6 text-[11px] text-slate-500 text-center leading-relaxed">
+            Accessed by the Shikho organic social team.<br/>Source: Facebook Graph API → Sheets.
+          </div>
+        </div>
+      </div>
+
+      <div class="frame device-1280">
+        <div class="frame-head"><span><span class="dot b"></span>quiet · 1280</span><span>1280 · centered</span></div>
+        <div class="bg-slate-50 min-h-[620px] p-10 flex items-center justify-center">
+          <div class="w-[400px]">
+            <div class="flex flex-col items-center mb-8">
+              <div class="w-14 h-14 rounded-xl bg-white border border-slate-200 flex items-center justify-center mb-3 shadow-sm">
+                <div class="w-10 h-10 rounded bg-gradient-to-br from-brand-shikho-indigo to-brand-shikho-pink"></div>
+              </div>
+              <div class="text-[22px] font-bold text-brand-shikho-indigo">Shikho</div>
+              <div class="text-[12px] text-slate-500 mt-0.5">Organic Social · internal dashboard</div>
+            </div>
+            <div class="bg-white rounded-xl border border-slate-200 p-6">
+              <div class="space-y-4">
+                <div>
+                  <label class="text-[11px] font-semibold uppercase tracking-wider text-slate-600">Access code</label>
+                  <input type="password" class="mt-1.5 w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-[14px] focus:outline-none focus:border-brand-shikho-indigo focus:ring-2 focus:ring-brand-shikho-indigo/20" placeholder="Enter the shared access code" />
+                </div>
+                <button class="w-full bg-brand-shikho-indigo hover:bg-brand-shikho-blue text-white font-semibold text-[14px] py-2.5 rounded-md">Continue</button>
+              </div>
+            </div>
+            <div class="mt-5 text-[11px] text-slate-500 text-center leading-relaxed">
+              Accessed by the Shikho organic social team. Data refreshes every 5 min from Facebook Graph API.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B2: Brand forward -->
+  <div class="mt-14">
+    <div class="kicker mb-3">B2 · brand-forward · recommended</div>
+    <div class="grid grid-cols-[auto_1fr] gap-10 items-start">
+      <div class="frame device-360">
+        <div class="frame-head"><span><span class="dot p"></span>brand · 360</span><span>360</span></div>
+        <div class="relative min-h-[620px] overflow-hidden" style="background: linear-gradient(155deg, #1e2a78 0%, #2e47b8 45%, #e6247d 100%);">
+          <div class="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-brand-shikho-orange/20 blur-3xl"></div>
+          <div class="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-brand-shikho-pink/30 blur-3xl"></div>
+          <div class="relative p-6 pt-12 flex flex-col h-full min-h-[620px]">
+            <div class="mb-auto">
+              <div class="w-10 h-10 rounded-lg bg-white/95 flex items-center justify-center mb-4">
+                <div class="w-7 h-7 rounded bg-gradient-to-br from-brand-shikho-indigo to-brand-shikho-pink"></div>
+              </div>
+              <div class="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/70">Shikho · organic social</div>
+              <h2 class="mt-3 text-[28px] font-bold text-white leading-[1.1] tracking-tight">Every post, honestly measured.</h2>
+              <p class="mt-2 text-[13px] text-white/80 leading-relaxed">Facebook reach, engagement, and weekly AI diagnosis for the Shikho page.</p>
+            </div>
+            <div class="bg-white/98 backdrop-blur rounded-2xl p-5 mt-8" style="background:rgba(255,255,255,.98)">
+              <label class="text-[11px] font-semibold uppercase tracking-wider text-slate-600">Access code</label>
+              <input type="password" class="mt-1.5 w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-[14px] focus:outline-none focus:border-brand-shikho-indigo focus:ring-2 focus:ring-brand-shikho-indigo/20" placeholder="••••••••" />
+              <button class="mt-3 w-full bg-brand-shikho-indigo hover:bg-brand-shikho-blue text-white font-semibold text-[14px] py-2.5 rounded-md">Continue</button>
+              <div class="mt-3 text-[10px] text-slate-500 text-center">Shared code · issued by the team lead</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="frame device-1280">
+        <div class="frame-head"><span><span class="dot p"></span>brand · 1280 · split</span><span>1280</span></div>
+        <div class="grid grid-cols-[1.2fr_1fr] min-h-[640px]">
+          <div class="relative overflow-hidden p-14 flex flex-col justify-between" style="background: linear-gradient(155deg, #1e2a78 0%, #2e47b8 45%, #e6247d 100%);">
+            <div class="absolute -top-32 -right-32 w-[32rem] h-[32rem] rounded-full bg-brand-shikho-orange/20 blur-3xl"></div>
+            <div class="absolute -bottom-32 -left-32 w-[32rem] h-[32rem] rounded-full bg-brand-shikho-pink/30 blur-3xl"></div>
+            <div class="relative">
+              <div class="w-12 h-12 rounded-xl bg-white/95 flex items-center justify-center">
+                <div class="w-9 h-9 rounded bg-gradient-to-br from-brand-shikho-indigo to-brand-shikho-pink"></div>
+              </div>
+              <div class="mt-4 text-[12px] font-semibold uppercase tracking-[0.14em] text-white/70">Shikho · organic social</div>
+            </div>
+            <div class="relative">
+              <h2 class="text-[44px] font-bold text-white leading-[1.05] tracking-tight max-w-md">Every post,<br/>honestly<br/>measured.</h2>
+              <p class="mt-4 text-[15px] text-white/85 leading-relaxed max-w-sm">Facebook reach, engagement mix, weekly AI diagnosis, and next-week calendar — in one tool the team actually opens.</p>
+              <div class="mt-10 flex items-center gap-6 text-[11px] text-white/65">
+                <div class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> 5-min cache</div>
+                <div class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-white/60"></span> Mobile-first</div>
+                <div class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-white/60"></span> Weekly pipeline</div>
+              </div>
+            </div>
+          </div>
+          <div class="bg-white flex items-center justify-center p-12">
+            <div class="w-full max-w-sm">
+              <h3 class="text-[22px] font-bold text-slate-900 tracking-tight">Sign in</h3>
+              <p class="mt-1 text-[13px] text-slate-500">Enter the shared team access code.</p>
+              <div class="mt-6 space-y-4">
+                <div>
+                  <label class="text-[11px] font-semibold uppercase tracking-wider text-slate-600">Access code</label>
+                  <input type="password" class="mt-1.5 w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-[14px] focus:outline-none focus:border-brand-shikho-indigo focus:ring-2 focus:ring-brand-shikho-indigo/20" />
+                </div>
+                <button class="w-full bg-brand-shikho-indigo hover:bg-brand-shikho-blue text-white font-semibold text-[14px] py-2.5 rounded-md">Continue</button>
+              </div>
+              <div class="mt-8 pt-6 border-t border-slate-100 text-[11px] text-slate-500 leading-relaxed">
+                Issue: contact the team lead. Data source: Facebook Graph API → Google Sheets, refreshed every 5 min. Pipeline runs weekly.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-8 grid md:grid-cols-3 gap-6">
+    <div class="annot"><b>Why brand-forward.</b> The dashboard proper is intentionally restrained. Login is where the brand gets to breathe — 3 sec a week, no data density tax.</div>
+    <div class="annot"><b>Split layout.</b> 1.2fr / 1fr on desktop, stacked with gradient on top on mobile. Form always lives on white for legibility regardless of breakpoint.</div>
+    <div class="annot"><b>Single field.</b> Your auth is a shared access code, not per-user. Don't invent a user+password form that implies something the backend doesn't do.</div>
+  </div>
+</section>
+
+<!-- ============================================================
+     PART C — GLOBAL PAGE TEMPLATE
+     ============================================================ -->
+<section class="max-w-[1360px] mx-auto px-8 pb-24">
+  <div class="kicker">C · global template</div>
+  <h2 class="section-title mt-1">One template every page inherits</h2>
+  <p class="annot mt-2 max-w-3xl">The design audit flagged "no consistent page template" as a large-effort item. Cycle 1 gives you the banner/empty vocabulary — this part defines the <i>shape</i> every page above hangs on, so Trends / Engagement / Timing / Reels / Explore all feel like one product.</p>
+
+  <!-- Template diagram -->
+  <div class="mt-8 bg-white border border-slate-200 rounded-xl p-8">
+    <div class="kicker">C1 · the five-row template</div>
+    <div class="mt-4 space-y-2 text-[13.5px]">
+      <div class="flex items-center gap-3 p-3 rounded-md bg-slate-50 border border-slate-200"><span class="w-6 text-center font-semibold text-brand-shikho-indigo">1</span><span class="font-semibold text-slate-900 w-40">StalenessBanner</span><span class="text-slate-600">Consolidated, Cycle 1. Always above PageHeader. Absent on <code class="ik">ok</code> silently.</span></div>
+      <div class="flex items-center gap-3 p-3 rounded-md bg-slate-50 border border-slate-200"><span class="w-6 text-center font-semibold text-brand-shikho-indigo">2</span><span class="font-semibold text-slate-900 w-40">PageHeader</span><span class="text-slate-600">Title + subtitle left, DateRangePicker + dateLabel right. Never deviates.</span></div>
+      <div class="flex items-center gap-3 p-3 rounded-md bg-slate-50 border border-slate-200"><span class="w-6 text-center font-semibold text-brand-shikho-indigo">3</span><span class="font-semibold text-slate-900 w-40">KPI strip</span><span class="text-slate-600">2-up mobile, 4-6 up desktop. Each is a <code class="ik">KpiCard</code>. Max 6.</span></div>
+      <div class="flex items-center gap-3 p-3 rounded-md bg-slate-50 border border-slate-200"><span class="w-6 text-center font-semibold text-brand-shikho-indigo">4</span><span class="font-semibold text-slate-900 w-40">Primary chart(s)</span><span class="text-slate-600">Single full-width, or 2-up grid. Always <code class="ik">ChartCard</code>. Biggest visual anchor.</span></div>
+      <div class="flex items-center gap-3 p-3 rounded-md bg-slate-50 border border-slate-200"><span class="w-6 text-center font-semibold text-brand-shikho-indigo">5</span><span class="font-semibold text-slate-900 w-40">Detail / breakdown</span><span class="text-slate-600">Tables, horizontal bars, or progressive-disclosure lists. Lower visual weight.</span></div>
+    </div>
+    <p class="mt-5 annot"><b>Rule:</b> if a section on a new page doesn't fit one of these five slots, it belongs on a different page. This is how you shrink 8 pages to 5 without losing content — force the question at authoring time.</p>
+  </div>
+
+  <!-- Global patterns grid -->
+  <h3 class="mt-12 text-[18px] font-semibold text-slate-900">C2 · global patterns that apply everywhere</h3>
+  <div class="mt-4 grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+    <div class="bg-white border border-slate-200 rounded-xl p-5">
+      <div class="kicker text-brand-shikho-indigo">Color</div>
+      <h4 class="mt-1 font-semibold text-slate-900">Indigo-first, not cyan-first</h4>
+      <p class="mt-2 annot">Default bar + line color → <code class="ik">#1e2a78</code>. Cyan drops to secondary. Lets every chart lead with brand without override.</p>
+      <div class="mt-3 flex gap-1.5">
+        <span class="w-8 h-8 rounded bg-brand-shikho-indigo"></span>
+        <span class="w-8 h-8 rounded bg-brand-shikho-pink"></span>
+        <span class="w-8 h-8 rounded bg-brand-shikho-orange"></span>
+        <span class="w-8 h-8 rounded bg-cyan-500"></span>
+        <span class="w-8 h-8 rounded bg-emerald-500"></span>
+      </div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-5">
+      <div class="kicker text-brand-shikho-indigo">Loading</div>
+      <h4 class="mt-1 font-semibold text-slate-900">Skeleton per template slot</h4>
+      <p class="mt-2 annot">One <code class="ik">loading.tsx</code> at app root: banner placeholder + header skeleton + 6 KPI blocks + 2 chart blocks. Every page gets it free via Next.js.</p>
+      <div class="mt-3 space-y-1.5">
+        <div class="h-3 w-full bg-slate-100 rounded animate-pulse"></div>
+        <div class="grid grid-cols-3 gap-1.5"><div class="h-10 bg-slate-100 rounded animate-pulse"></div><div class="h-10 bg-slate-100 rounded animate-pulse"></div><div class="h-10 bg-slate-100 rounded animate-pulse"></div></div>
+      </div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-5">
+      <div class="kicker text-brand-shikho-indigo">Contrast</div>
+      <h4 class="mt-1 font-semibold text-slate-900">Kill every <code class="ik">text-slate-400</code></h4>
+      <p class="mt-2 annot">Global find/replace → <code class="ik">text-slate-500</code> for content. <code class="ik">text-slate-600</code> for body paragraph weights. AA compliance in one commit.</p>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-5">
+      <div class="kicker text-brand-shikho-indigo">Empty</div>
+      <h4 class="mt-1 font-semibold text-slate-900">One <code class="ik">&lt;EmptyChart&gt;</code> component</h4>
+      <p class="mt-2 annot">Currently ad-hoc divs in 5+ places. One component with icon + message + optional action — used by ChartCard automatically when data is empty.</p>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-5">
+      <div class="kicker text-brand-shikho-indigo">Density</div>
+      <h4 class="mt-1 font-semibold text-slate-900">16 px gap between cards, universally</h4>
+      <p class="mt-2 annot">Grid gap-4 on every page. <code class="ik">!p-5</code> on KPIs, <code class="ik">p-6</code> on ChartCards. Never deviate — inconsistency is 80% of why dashboards feel "off".</p>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-5">
+      <div class="kicker text-brand-shikho-indigo">Nav</div>
+      <h4 class="mt-1 font-semibold text-slate-900">Reduce 8 tabs to 5</h4>
+      <p class="mt-2 annot">Overview · Content · Timing · Strategy · Explore. Merge Trends into Overview, Reels into Content, Plan into Strategy as a "Next week" section. Mobile dropdown becomes readable.</p>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-5">
+      <div class="kicker text-brand-shikho-indigo">Focus</div>
+      <h4 class="mt-1 font-semibold text-slate-900">Already shipped</h4>
+      <p class="mt-2 annot">Your globals.css focus-visible rule is right. Extend to the nav tabs (currently just border-bottom, no ring) and the DateRangePicker trigger.</p>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-5">
+      <div class="kicker text-brand-shikho-indigo">Data line</div>
+      <h4 class="mt-1 font-semibold text-slate-900">Rename "Rendered" → "Data as of"</h4>
+      <p class="mt-2 annot">Render time is irrelevant to the reader. Use the last-successful-pipeline time from <code class="ik">Analysis_Log</code>. Matches the banner's vocabulary.</p>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-5">
+      <div class="kicker text-brand-shikho-indigo">Motion</div>
+      <h4 class="mt-1 font-semibold text-slate-900">150-180ms ease-out, nowhere else</h4>
+      <p class="mt-2 annot">Banner expand (A6), mobile nav dropdown, DateRangePicker popup, tooltip fade. No chart animation, no page transitions, no scroll effects.</p>
+    </div>
+  </div>
+
+  <!-- Applied -->
+  <h3 class="mt-14 text-[18px] font-semibold text-slate-900">C3 · template applied · Overview at 1280</h3>
+  <p class="annot mt-2">What every page looks like once this lands. Banner slot empty (ok state). Everything else is the five rows.</p>
+  <div class="mt-5 frame device-1280 mx-auto">
+    <div class="frame-head"><span><span class="dot g"></span>Overview · template</span><span>1280</span></div>
+    <div class="bg-slate-50 py-6">
+      <div class="max-w-7xl mx-auto px-6">
+        <!-- row 2: header -->
+        <div class="flex items-start justify-between gap-4">
+          <div><h1 class="text-2xl font-bold text-slate-900">Overview</h1><p class="text-sm text-slate-500 mt-1">Key performance at a glance</p></div>
+          <div class="text-right">
+            <div class="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-[13px] text-slate-700">Last 14 days ▾</div>
+            <div class="text-[11px] text-slate-500 mt-1.5">Data as of Apr 21, 03:12 BDT</div>
+          </div>
+        </div>
+        <!-- row 3: KPIs -->
+        <div class="mt-6 grid grid-cols-6 gap-3">
+          <div class="bg-white border border-slate-200 rounded-xl p-4">
+            <div class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Posts</div>
+            <div class="mt-1.5 text-[22px] font-bold text-slate-900 tabular-nums">42</div>
+            <div class="text-[11px] text-emerald-600">+12.4%</div>
+          </div>
+          <div class="bg-white border border-slate-200 rounded-xl p-4">
+            <div class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Total reach</div>
+            <div class="mt-1.5 text-[22px] font-bold text-slate-900 tabular-nums">1.2M</div>
+            <div class="text-[11px] text-emerald-600">+8.1%</div>
+          </div>
+          <div class="bg-white border border-slate-200 rounded-xl p-4">
+            <div class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Interactions</div>
+            <div class="mt-1.5 text-[22px] font-bold text-slate-900 tabular-nums">94K</div>
+            <div class="text-[11px] text-slate-500">&nbsp;</div>
+          </div>
+          <div class="bg-white border border-slate-200 rounded-xl p-4">
+            <div class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Eng rate</div>
+            <div class="mt-1.5 text-[22px] font-bold text-slate-900 tabular-nums">7.8%</div>
+            <div class="text-[11px] text-red-600">−0.4%</div>
+          </div>
+          <div class="bg-white border border-slate-200 rounded-xl p-4">
+            <div class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Avg reach</div>
+            <div class="mt-1.5 text-[22px] font-bold text-slate-900 tabular-nums">28.6K</div>
+            <div class="text-[11px] text-slate-500">&nbsp;</div>
+          </div>
+          <div class="bg-white border border-slate-200 rounded-xl p-4">
+            <div class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Followers</div>
+            <div class="mt-1.5 text-[22px] font-bold text-slate-900 tabular-nums">312K</div>
+            <div class="text-[11px] text-slate-500">+2.1K</div>
+          </div>
+        </div>
+        <!-- row 4: primary -->
+        <div class="mt-5 grid grid-cols-2 gap-4">
+          <div class="bg-white border border-slate-200 border-l-4 border-l-brand-shikho-indigo rounded-xl p-5">
+            <div class="text-[15px] font-semibold text-slate-900">Reach Trend</div>
+            <div class="text-[12px] text-slate-500">Daily unique reach</div>
+            <div class="mt-4 h-40 bg-gradient-to-t from-brand-shikho-indigo/10 to-transparent rounded relative overflow-hidden">
+              <svg viewBox="0 0 300 120" preserveAspectRatio="none" class="absolute inset-0 w-full h-full"><path d="M0,90 L40,70 L80,85 L120,55 L160,65 L200,40 L240,50 L280,30 L300,35" stroke="#1e2a78" stroke-width="2" fill="none"/></svg>
+            </div>
+          </div>
+          <div class="bg-white border border-slate-200 border-l-4 border-l-indigo-500 rounded-xl p-5">
+            <div class="text-[15px] font-semibold text-slate-900">Format Distribution</div>
+            <div class="text-[12px] text-slate-500">Post count by format</div>
+            <div class="mt-4 flex items-center gap-5">
+              <div class="w-32 h-32 rounded-full" style="background: conic-gradient(#1e2a78 0 40%, #e6247d 40% 65%, #f79620 65% 85%, #06b6d4 85% 100%);"></div>
+              <div class="text-[12px] space-y-1.5">
+                <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm bg-brand-shikho-indigo"></span><span class="text-slate-700">Reel · 40%</span></div>
+                <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm bg-brand-shikho-pink"></span><span class="text-slate-700">Photo · 25%</span></div>
+                <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm bg-brand-shikho-orange"></span><span class="text-slate-700">Carousel · 20%</span></div>
+                <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm bg-cyan-500"></span><span class="text-slate-700">Video · 15%</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Roadmap delta -->
+  <h3 class="mt-14 text-[18px] font-semibold text-slate-900">C4 · priority order for landing this</h3>
+  <div class="mt-4 bg-white border border-slate-200 rounded-xl overflow-hidden">
+    <table class="w-full text-[13px]">
+      <thead class="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500"><tr><th class="text-left px-4 py-2.5 w-8">#</th><th class="text-left px-4 py-2.5 w-24">Effort</th><th class="text-left px-4 py-2.5">Change</th></tr></thead>
+      <tbody class="divide-y divide-slate-100">
+        <tr><td class="px-4 py-2.5 font-semibold text-brand-shikho-indigo">1</td><td class="px-4 py-2.5"><span class="text-[10px] font-bold tracking-wider bg-emerald-50 text-emerald-700 rounded px-1.5 py-0.5">S</span></td><td class="px-4 py-2.5 text-slate-700">Ship Cycle 1 banner + empty-state components. Delete old <code class="ik">StalenessBanner</code>.</td></tr>
+        <tr><td class="px-4 py-2.5 font-semibold text-brand-shikho-indigo">2</td><td class="px-4 py-2.5"><span class="text-[10px] font-bold tracking-wider bg-emerald-50 text-emerald-700 rounded px-1.5 py-0.5">S</span></td><td class="px-4 py-2.5 text-slate-700">Global contrast fix (slate-400 → slate-500) + focus ring on nav/picker.</td></tr>
+        <tr><td class="px-4 py-2.5 font-semibold text-brand-shikho-indigo">3</td><td class="px-4 py-2.5"><span class="text-[10px] font-bold tracking-wider bg-emerald-50 text-emerald-700 rounded px-1.5 py-0.5">S</span></td><td class="px-4 py-2.5 text-slate-700">Add <code class="ik">loading.tsx</code> + <code class="ik">error.tsx</code> at app root.</td></tr>
+        <tr><td class="px-4 py-2.5 font-semibold text-brand-shikho-indigo">4</td><td class="px-4 py-2.5"><span class="text-[10px] font-bold tracking-wider bg-emerald-50 text-emerald-700 rounded px-1.5 py-0.5">S</span></td><td class="px-4 py-2.5 text-slate-700">Reorder chart palettes: shikho-indigo first, pink second.</td></tr>
+        <tr><td class="px-4 py-2.5 font-semibold text-brand-shikho-indigo">5</td><td class="px-4 py-2.5"><span class="text-[10px] font-bold tracking-wider bg-amber-50 text-amber-700 rounded px-1.5 py-0.5">M</span></td><td class="px-4 py-2.5 text-slate-700">Login page B2 (brand-forward split).</td></tr>
+        <tr><td class="px-4 py-2.5 font-semibold text-brand-shikho-indigo">6</td><td class="px-4 py-2.5"><span class="text-[10px] font-bold tracking-wider bg-amber-50 text-amber-700 rounded px-1.5 py-0.5">M</span></td><td class="px-4 py-2.5 text-slate-700">Create <code class="ik">lib/stages.ts</code> registry (A1). Refactor banner + empty state to consume it.</td></tr>
+        <tr><td class="px-4 py-2.5 font-semibold text-brand-shikho-indigo">7</td><td class="px-4 py-2.5"><span class="text-[10px] font-bold tracking-wider bg-amber-50 text-amber-700 rounded px-1.5 py-0.5">M</span></td><td class="px-4 py-2.5 text-slate-700">"Data as of" instead of "Rendered" in PageHeader.</td></tr>
+        <tr><td class="px-4 py-2.5 font-semibold text-brand-shikho-indigo">8</td><td class="px-4 py-2.5"><span class="text-[10px] font-bold tracking-wider bg-red-50 text-red-700 rounded px-1.5 py-0.5">L</span></td><td class="px-4 py-2.5 text-slate-700">Nav IA: 8 → 5 tabs. Merge Trends/Reels/Plan.</td></tr>
+        <tr><td class="px-4 py-2.5 font-semibold text-brand-shikho-indigo">9</td><td class="px-4 py-2.5"><span class="text-[10px] font-bold tracking-wider bg-red-50 text-red-700 rounded px-1.5 py-0.5">L</span></td><td class="px-4 py-2.5 text-slate-700">Rebuild every page against the five-row template.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</section>
+
+<footer class="max-w-[1360px] mx-auto px-8 pb-16 text-[13px] text-slate-500 border-t border-slate-200 pt-8">
+  Cycle 1.5 · improvements + login + global template. Mark pushbacks inline.
+</footer>
+
+</body>
+</html>
