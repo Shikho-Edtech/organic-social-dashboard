@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-04-20 — Moved under shikho-organic-social-analytics/ parent folder
+
+Both repos (this one + `facebook-pipeline/`) now live under a single parent
+folder `shikho-organic-social-analytics/` alongside `START_HERE.html` — a
+polished navigational overview covering system flow, folder tree, common
+tasks with copy-to-clipboard commands, URLs + external services,
+per-repo env vars, and a doc map. No code changes; git remotes untouched;
+all relative cross-repo links (`../../facebook-pipeline/docs/...`) still
+resolve correctly from the new depth.
+
+Why it matters: before the move, someone opening
+`D:\Shahriar\Claude\Shikho\` couldn't tell which folders were part of
+this project vs other unrelated work. `START_HERE.html` now serves as a
+single entry point that answers "where does X live" and "how do I run Y"
+without digging through either repo's docs.
+
+## 2026-04-20 — Docs reorganized into docs/; lean roadmap added
+
+Moved ARCHITECTURE, PROJECT_ATLAS, DESIGN_BRIEF, BACKLOG, WORKFLOW into
+`docs/`; archived MASTER_PLAN and the two legacy design HTMLs under
+`docs/archive/`. Added ROADMAP.md (lean 3-step execution plan),
+PROVIDER_SWITCHING.md (per-stage AI env contract), DESIGN_HANDOFF.md
+(when/what to send Claude Design), and a docs/README.md index with the
+prescribed read order. Root README now points into docs/. Why it
+matters: the root had ~10 markdown files with no clear entry point and
+no signal on which was current vs aspirational vs history — new
+structure makes ROADMAP.md the single source of truth for what ships
+next. See DECISIONS.md for the rationale behind the lean-plan choice.
+
 ## 2026-04-18 — UX + data-integrity Phase 1: off-by-one, freshness, heatmap density, visual polish
 
 User-surfaced review from a real user session flagged eight regressions

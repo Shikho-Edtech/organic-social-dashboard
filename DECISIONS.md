@@ -1,5 +1,63 @@
 # Decisions
 
+## 2026-04-20 — Lean plan over full architecture plan for the 6-stage migration
+
+The full spec in `docs/ARCHITECTURE.md` covers every piece that might be
+needed at scale (`Run_Ledger` mutex, `source_hash` + `engine_version`
+columns on 8 `Summary_*` tabs, 4 provider adapters with per-provider
+prompt templates, `Run_Ledger_Archive`, CLI rollback tooling, RunPicker
+UI). Shipping it would take 4-6 weeks before any of the current pain
+points (hardcoded timing baseline, credit-outage fallback quality, thin
+weekly prompt) get fixed.
+
+Picked the lean plan in `docs/ROADMAP.md` instead — 3 ordered steps over
+2-3 weeks:
+
+1. Prompt overhaul + timing fix (pipeline-only commit, ships value
+   immediately)
+2. LLM abstraction seam with Anthropic adapter only (byte-identical
+   output, installs the port for future provider work)
+3. Native classifier + AI-disabled workflow + consolidated
+   `StalenessBanner` (unlocks zero-AI operation)
+
+Deferred indefinitely: Run_Ledger mutex (GitHub Actions `concurrency:`
+covers it for a single-writer setup), provenance columns, Gemini /
+Mistral adapters, 5 of 8 Summary_* tabs, RunPicker UI, per-provider
+prompt templates.
+
+Why this is the right call for an N=1 project: the architectural
+features in the full plan are insurance against problems that don't
+exist yet (multi-writer races, unknown auditor requesting provenance,
+provider outage we haven't hit). The pain points that *do* exist are
+all addressed by steps 1-3. Architecture gets earned when something
+forces it, not pre-built.
+
+Re-evaluate the deferred list quarterly. Trigger conditions documented
+in `docs/ROADMAP.md`.
+
+## 2026-04-20 — Documentation reorganized under docs/
+
+Moved all spec and planning docs into a new `docs/` folder so the repo
+root isn't a dumping ground: ARCHITECTURE, PROJECT_ATLAS, DESIGN_BRIEF,
+BACKLOG, WORKFLOW. Archived superseded artifacts (MASTER_PLAN.md,
+DESIGN-AUDIT.html, DESIGN-ROADMAP.html) under `docs/archive/`.
+
+Added three new docs to capture the lean-plan decision and its
+consequences:
+- `docs/ROADMAP.md` — current execution plan (lean, 3 steps)
+- `docs/PROVIDER_SWITCHING.md` — per-stage AI env-var contract
+- `docs/DESIGN_HANDOFF.md` — when and what to send Claude Design
+
+Kept at root by convention: `CLAUDE.md` (Claude Code auto-picks this
+up), `README.md` (deploy guide), `CHANGELOG.md`, `DECISIONS.md`,
+`LEARNINGS.md`. Root README now points into `docs/` for everything
+else.
+
+Rationale: the prior root had ~10 markdown files competing for
+attention and no entry point. A reader couldn't tell which was
+"current" vs "historical" vs "aspirational." The new structure has
+one index (`docs/README.md`) with a prescribed read order.
+
 ## 2026-04-18 — PageHeader.lastScrapedAt prefers pipeline timestamp over render time
 
 `PageHeader` previously displayed `new Date()` labeled "Data as of"

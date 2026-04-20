@@ -84,3 +84,27 @@ Visit http://localhost:3000
 This is the read-only UI. The Claude-powered weekly pipeline that writes to
 the Google Sheet lives at
 [Shikho-Edtech/organic-social-analytics](https://github.com/Shikho-Edtech/organic-social-analytics).
+
+## Documentation
+
+Engineering docs live in [`docs/`](docs/). Start with
+[docs/README.md](docs/README.md) for the index.
+
+Short version:
+- **[docs/ROADMAP.md](docs/ROADMAP.md)** — what we're shipping next (the
+  lean 3-step plan)
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — full 6-stage spec
+  (aspirational)
+- **[docs/PROJECT_ATLAS.md](docs/PROJECT_ATLAS.md)** — target repo layout
+  + sheets message bus
+- **[docs/DESIGN_BRIEF.md](docs/DESIGN_BRIEF.md)** — UI + UX spec
+- **[docs/PROVIDER_SWITCHING.md](docs/PROVIDER_SWITCHING.md)** — per-stage
+  AI provider env contract
+- **[docs/DESIGN_HANDOFF.md](docs/DESIGN_HANDOFF.md)** — when + what to
+  send to Claude Design
+- **[docs/BACKLOG.md](docs/BACKLOG.md)** — Phase 2/3 approved + rejected
+  items
+- **[docs/WORKFLOW.md](docs/WORKFLOW.md)** — current runtime graph
+
+Root-level history docs: `CLAUDE.md` (rules), `CHANGELOG.md`,
+`DECISIONS.md`, `LEARNINGS.md`.
