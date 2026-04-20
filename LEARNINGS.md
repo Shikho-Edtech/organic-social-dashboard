@@ -1,5 +1,32 @@
 # Learnings
 
+## 2026-04-21 — Raw URL params leak into UI copy when the fallback path isn't thought through
+
+**Context:** live-check on `/strategy?archived=true` and `/plan?archived=true`
+revealed both pages rendering the literal string "true" into visible copy
+("Archived diagnosis for week ending **true**" / "Viewing archived run from
+**true**"). "true" is a valid test-case for an archival mode — user typing
+`?archived=true` to see what the empty archival state looks like is
+reasonable — and the correct response is graceful degradation, not exposure
+of the raw param as if it were data.
+
+**What went wrong:** both pages had a shape like
+`archivedParam ? resolveToDate(archivedParam) : ""` but the resolver (e.g.
+`getDiagnosisByWeek("true")` or `new Date("true")`) returned a falsy/NaN
+value, and the callsite fell back to `archivedParam` as a label — assuming
+the resolver always succeeded. Then the PageHeader template-literal stitched
+it into "for week ending true" without a guard.
+
+**Takeaway:** any place a URL param reaches user-facing copy needs three
+states, not two: (1) resolver succeeded → show resolved label,
+(2) resolver failed but param is present → show a generic "archived run"
+label, (3) no param → show the live variant. The distinction between (1)
+and (2) has to be made explicitly at the callsite; a one-line ternary that
+collapses "no data" with "no param" leaks the param. Defence in depth at
+the component layer (`looksLikeDateLabel` in `ArchivalLine`) is belt-and-
+suspenders but the real fix is the page not passing the raw param in the
+first place.
+
 ## 2026-04-21 — `?archived=` changes the ROUTE but not always the DATA
 
 **Context:** wiring `?archived=<run-id>` on `/strategy` and `/plan` to

@@ -8,15 +8,29 @@
 
 import Link from "next/link";
 
+// `archiveDateLabel` is considered a valid display date only when it looks
+// like a human-readable date (letters + digits). Raw query params like "true"
+// or "1" would otherwise render as "Viewing archived run from true" — we
+// degrade gracefully to "Viewing archived run" without a date in that case.
+function looksLikeDateLabel(s: string): boolean {
+  const v = (s || "").trim();
+  if (!v) return false;
+  if (/^(true|false|1|0|yes|no|null|undefined)$/i.test(v)) return false;
+  // Expect at least one letter (month abbreviation) OR an ISO-ish date.
+  return /[A-Za-z]/.test(v) || /^\d{4}-\d{2}-\d{2}/.test(v);
+}
+
 export default function ArchivalLine({
   archiveDateLabel,
   livePath,
 }: {
-  /** Short human-readable label for the archived run, e.g. "Apr 11". */
+  /** Short human-readable label for the archived run, e.g. "Apr 11". May be
+   *  empty or a raw param like "true" — the component degrades gracefully. */
   archiveDateLabel: string;
   /** The page's base path, without any query. Link target for "Return". */
   livePath: string;
 }) {
+  const showDate = looksLikeDateLabel(archiveDateLabel);
   return (
     <div
       role="status"
@@ -33,8 +47,14 @@ export default function ArchivalLine({
         <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
       </svg>
       <span>
-        Viewing archived run from{" "}
-        <span className="font-medium text-slate-700">{archiveDateLabel}</span>
+        {showDate ? (
+          <>
+            Viewing archived run from{" "}
+            <span className="font-medium text-slate-700">{archiveDateLabel}</span>
+          </>
+        ) : (
+          <>Viewing archived run</>
+        )}
       </span>
       <span className="text-slate-300" aria-hidden>·</span>
       <Link

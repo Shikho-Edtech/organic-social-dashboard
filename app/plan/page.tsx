@@ -137,10 +137,14 @@ export default async function PlanPage({ searchParams }: { searchParams: Record<
   return (
     <div className={isArchival ? "opacity-[0.97] [filter:saturate(0.9)]" : ""}>
       {isArchival ? (
+        // Pass "" (not archivedParam) when we can't resolve a real date —
+        // ArchivalLine falls back to "Viewing archived run" without a "from X"
+        // clause, preventing the raw query param (e.g. "true") from leaking
+        // into the UI.
         <ArchivalLine
           archiveDateLabel={runStatus.last_successful_calendar_at
             ? new Date(runStatus.last_successful_calendar_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-            : archivedParam}
+            : ""}
           livePath="/plan"
         />
       ) : (

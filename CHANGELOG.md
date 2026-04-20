@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-04-21 — Fix: archival URL no longer leaks raw query param into UI copy
+
+Live check caught `/strategy?archived=true` rendering "Archived diagnosis
+for week ending **true**" and `/plan?archived=true` rendering "Viewing
+archived run from **true**". Root cause: both pages fell back to the raw
+`archivedParam` string when no real date could be resolved (no matching
+`Weekly_Analysis` row for the diagnosis, blank `last_successful_calendar_at`
+on the Plan side).
+
+Fix: pages now pass `""` (empty string) to `ArchivalLine` and suppress
+the "for week ending X" subtitle clause when no date is resolvable.
+`ArchivalLine` itself has a small guard — `looksLikeDateLabel()` — that
+rejects values like `true/false/1/0/yes/no/null/undefined` and degrades
+to "Viewing archived run" without a "from X" clause. Defence in depth so
+neither the Strategy/Plan pages nor any future page hitting the same
+component can accidentally leak a raw param.
+
 ## 2026-04-21 — Step 3 shipped: 4-state banner + AI-disabled empty state + archival URL param
 
 4-state `StalenessBanner`: `ok` (emerald) / `warn` (amber) / `crit` (red)

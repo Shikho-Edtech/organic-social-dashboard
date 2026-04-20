@@ -171,9 +171,15 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
   // When viewing an archive, the banner is replaced by the persistent slate
   // ArchivalLine — it's a read-only snapshot, the live-freshness banner
   // would be misleading here.
+  //
+  // archiveDateLabel is "" when we don't have a resolvable week-ending (e.g.
+  // user passed `?archived=true` without a date key, or the archive row isn't
+  // in Weekly_Analysis yet). Empty string is the explicit signal for callers
+  // to render the no-date variant of the copy — never leak the raw param
+  // (which produced "week ending true" in the earlier build).
   const archiveDateLabel = isArchival && diagnosis?.week_ending
     ? new Date(diagnosis.week_ending).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-    : archivedParam;
+    : "";
 
   // When the AI diagnosis stage is deliberately off AND we're NOT in archival
   // read mode, the primary view is the empty-state card. The regular
@@ -246,7 +252,9 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
       <PageHeader
         title="Strategy"
         subtitle={isArchival
-          ? `Archived diagnosis for week ending ${archiveDateLabel}`
+          ? (archiveDateLabel
+              ? `Archived diagnosis for week ending ${archiveDateLabel}`
+              : "Archived diagnosis")
           : "Claude's diagnosis and recommended actions"}
         dateLabel={`${range.label} · Funnel charts filtered; verdict = ${isArchival ? "archived snapshot" : "latest weekly snapshot"}`}
         lastScrapedAt={runStatus.last_run_at}
