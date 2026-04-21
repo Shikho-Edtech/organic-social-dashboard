@@ -77,6 +77,35 @@ export function reach(p: Post): number {
   return p.unique_views || p.media_views || 0;
 }
 
+// ─── Stage-0 item 8: classifier confidence down-weighting ───
+//
+// The classifier self-reports a 0..1 confidence per row (default 0.85 on a
+// normal row; 0.5-0.7 on genuinely ambiguous captions). Until now the
+// dashboard treated every classification as ground truth, which inflated
+// rankings whenever a noisy label landed in a big reach post — e.g. a
+// misclassified Student-Success post driving the "top pillar" verdict.
+//
+// Rule: weights stay in [MIN_CONFIDENCE_FLOOR, 1]. Missing / unparseable
+// confidence is treated as 1 (backward compat with pre-v2.3 rows that
+// pre-date the field). Below the floor, the weight is clamped — we don't
+// want a single 0.2-confidence viral post to completely drop off the
+// ranking either; we want it to count for less.
+
+const MIN_CONFIDENCE_FLOOR = 0.3;
+
+export function confidenceWeight(p: Post): number {
+  const c = p.classifier_confidence;
+  if (c === undefined || c === null || Number.isNaN(c)) return 1;
+  if (c >= 1) return 1;
+  if (c <= MIN_CONFIDENCE_FLOOR) return MIN_CONFIDENCE_FLOOR;
+  return c;
+}
+
+/** Reach contribution adjusted by classifier confidence. */
+export function weightedReach(p: Post): number {
+  return reach(p) * confidenceWeight(p);
+}
+
 // ─── Filtering ───
 
 export type PostFilters = {
@@ -173,6 +202,13 @@ export type GroupStatRow = {
   // teacher into a recommendation.
   reach_summary: Summary;
   er_summary: Summary;
+  // Stage-0 item 8 (Apr 2026): classifier-confidence-weighted totals. Use
+  // these for "best X" rankings instead of `total_reach`/`avg_reach_per_post`
+  // when the label being grouped on is classifier-derived (pillar, funnel
+  // stage, caption tone, hook type, etc.). Raw reach is kept for display.
+  weighted_reach: number;          // sum of reach * confidenceWeight
+  avg_weighted_reach_per_post: number;
+  avg_confidence: number;          // 0..1; 1.0 on pre-v2.3 rows (no field)
 };
 
 export function groupStats(posts: Post[], dim: keyof Post): GroupStatRow[] {
@@ -185,12 +221,20 @@ export function groupStats(posts: Post[], dim: keyof Post): GroupStatRow[] {
         const r = reach(p);
         return r ? (totalInteractions(p) / r) * 100 : 0;
       });
+      const weightedSum = items.reduce((s, p) => s + weightedReach(p), 0);
+      const confSum = items.reduce((s, p) => s + confidenceWeight(p), 0);
+      const avgConf = items.length ? confSum / items.length : 0;
       return {
         key,
         count: items.length,
         ...k,
         reach_summary: summarize(reachValues),
         er_summary: summarize(erValues),
+        weighted_reach: Math.round(weightedSum),
+        avg_weighted_reach_per_post: items.length
+          ? Math.round(weightedSum / items.length)
+          : 0,
+        avg_confidence: Number(avgConf.toFixed(3)),
       };
     })
     .sort((a, b) => b.total_reach - a.total_reach);

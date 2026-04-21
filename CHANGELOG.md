@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-04-21 — Stage 0 items 8 + 9: confidence-weighted aggregates + entity canonicalization
+
+Item 8: `lib/aggregate.ts` gains `confidenceWeight(p)` and `weightedReach(p)`
+helpers and three new fields on `GroupStatRow` (`weighted_reach`,
+`avg_weighted_reach_per_post`, `avg_confidence`). Classifier confidence is
+clamped to [0.3, 1] and defaults to 1 when missing (pre-v2.3 rows). Existing
+`total_reach` stays untouched for display; new fields let "best X" rankings
+down-weight low-confidence labels so noisy classifications can't drive a
+pillar to the top of the leaderboard.
+
+Item 9: new `lib/entities.ts` canonical dictionary mirrors
+`facebook-pipeline/src/entities.py`. `getPosts()` in `lib/sheets.ts`
+canonicalizes spotlight_name at read-time so historical rows (written
+pre-pipeline-canonicalization) show one bucket per entity during the
+migration window. Keep both dicts in sync when adding teachers/products.
+
 ## 2026-04-21 — Stage 0 item 12: Post.permalink_url wired through from Raw_Posts
 
 `Post.permalink_url` (optional) added to `lib/types.ts` and read from the new

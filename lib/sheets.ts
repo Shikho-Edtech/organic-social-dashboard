@@ -1,6 +1,7 @@
 // Google Sheets reader using the existing service account credentials
 import { google } from "googleapis";
 import type { Post, DailyMetric, VideoMetric, Diagnosis, CalendarSlot } from "./types";
+import { canonicalizeEntity } from "./entities";
 
 let cachedClient: any = null;
 
@@ -117,7 +118,11 @@ export async function getPosts(): Promise<Post[]> {
       primary_audience: c["Primary Audience"] || "General",
       // v2 classifier fields (Day 2B schema) — empty string on pre-v2 rows
       spotlight_type: c["Spotlight Type"] || "",
-      spotlight_name: c["Spotlight Name"] || "",
+      // Stage-0 item 9: canonicalize spotlight_name at read-time so
+      // historical rows written before the pipeline gained its own
+      // canonicalization pass still aggregate cleanly on the dashboard.
+      // New rows (pipeline-canonicalized) pass through untouched.
+      spotlight_name: canonicalizeEntity((c["Spotlight Name"] as string) || ""),
       classifier_confidence: (() => {
         const v = c["Classifier Confidence"];
         if (v === "" || v === null || v === undefined) return undefined;
