@@ -33,7 +33,7 @@ Per stage:
 For each prefix, three variables:
 
 ```bash
-<PREFIX>PROVIDER   # "anthropic" (step 2) | "openai" (future) | "none"
+<PREFIX>PROVIDER   # "anthropic" | "gemini" | "none"
 <PREFIX>MODEL      # provider-specific model id
 <PREFIX>API_KEY    # provider-specific key
 ```
@@ -54,12 +54,23 @@ CALENDAR_MODEL=claude-sonnet-4-6
 CALENDAR_API_KEY=sk-ant-...
 ```
 
-A mixed config (after step 2 ships OpenAI adapter, if ever):
+All-Gemini config (Shikho Tier 3 credits, current default):
 
 ```bash
-CLASSIFY_PROVIDER=openai
-CLASSIFY_MODEL=gpt-4o-mini
-CLASSIFY_API_KEY=sk-...
+DEFAULT_LLM_PROVIDER=gemini
+GEMINI_API_KEY=AIza...
+# Per-stage triples auto-backfilled from defaults in config.py:
+#   CLASSIFY_MODEL  = gemini-2.5-flash
+#   DIAGNOSIS_MODEL = gemini-2.5-pro
+#   CALENDAR_MODEL  = gemini-2.5-pro
+```
+
+Mixed config (per-stage override wins over DEFAULT_LLM_PROVIDER):
+
+```bash
+CLASSIFY_PROVIDER=gemini
+CLASSIFY_MODEL=gemini-2.5-flash
+CLASSIFY_API_KEY=AIza...
 
 DIAGNOSIS_PROVIDER=anthropic
 DIAGNOSIS_MODEL=claude-sonnet-4-6
@@ -67,6 +78,25 @@ DIAGNOSIS_API_KEY=sk-ant-...
 
 CALENDAR_PROVIDER=none   # skip calendar entirely this run
 ```
+
+## Gemini-specific notes
+
+- **SDK:** `google-genai` (the unified Gen AI SDK, not the older
+  `google-generativeai`). Instantiates per-adapter, so each stage can
+  carry its own key if ever needed.
+- **Model defaults** (in `facebook-pipeline/src/config.py`):
+  Classify on `gemini-2.5-flash`, Diagnosis and Calendar on
+  `gemini-2.5-pro`. Override per stage via `<STAGE>_MODEL`.
+- **Salvage parser caveat:** `classify.py::_salvage_truncated_calendar`
+  reads Anthropic fields (`raw.content`, `raw.stop_reason`). When
+  `CALENDAR_PROVIDER=gemini`, salvage is a no-op. Gemini truncation
+  surfaces as `response.candidates[0].finish_reason == "MAX_TOKENS"`.
+  Bump `CALENDAR` max_tokens in config if calendar output truncates,
+  or extend salvage to read Gemini fields.
+- **Rate limits:** Gemini API has per-minute limits that differ from
+  Anthropic's. Tier 3 is generous, but classification's batched calls
+  may need brief sleeps between batches if you see 429s. `_call_with_retry`
+  handles this transparently today.
 
 **`PROVIDER=none`** (or any key unset) → the stage logs "skipped: no
 provider configured" and returns empty. The pipeline continues. The
