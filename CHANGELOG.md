@@ -1,5 +1,32 @@
 # Changelog
 
+## 2026-04-21 — Session roll-up: PLAN_COMPARISON items 1–58 (dashboard side)
+
+Dashboard contributions to the bulk shipment covering Buckets A–G of the
+89-item master plan. Per-item detail lives in the entries below; this
+entry is the roll-up.
+
+- **Bucket E (items 33–42):** nine new derived-metric helpers in
+  `lib/aggregate.ts` — virality (shares ÷ reach), discussion quality
+  (comments ÷ reactions), sentiment polarity, CTR proxy, cadence gaps,
+  format × hour matrix, save/completion, north-star score
+  ((saves + shares × 1.5) ÷ reach). Surfaced on Overview KPI strip and
+  Engagement-page derived-metrics strip + heatmap. Item 39 (saves-to-reach)
+  is WIP pending pipeline ingestion. Item 41 (DM velocity) skipped
+  (Meta Business Suite API blocker).
+- **Bucket G item 58:** `runCostSummary(logs)` + AI cost budget banner on
+  Overview (`$5/week` budget, `brand-shikho-coral` >80%, `brand-red` >100%,
+  mobile-first, `role="status"` + `aria-live="polite"`).
+- **Ranking honesty:** `RANKING_CONFIDENCE_FLOOR = 0.5` + `isLowConfidence`
+  helper in `lib/aggregate.ts` — low-confidence rows excluded from rankings,
+  flagged for manual review instead.
+- **Type surface:** `Post.caption_primary_language?: string` added to match
+  the v2.5 classifier field in `Classifications` col 17.
+- **Brand audit:** clean, no regressions.
+- **Pause point:** items 59–89 (dashboard interactivity, exports,
+  Buckets H–K) remain queued pending sanity checks against the fresh
+  90-day run.
+
 ## 2026-04-21 — Bucket G item 58: AI cost budget banner on Overview
 
 `runCostSummary(logs)` in `lib/sheets.ts` aggregates Analysis_Log rows into
