@@ -94,6 +94,7 @@ export async function getPosts(): Promise<Post[]> {
       sorry: toNumber(r["Sad"]),
       anger: toNumber(r["Angry"]),
       is_reel: toBool(r["Is Reel"]),
+      permalink_url: (r["Permalink URL"] as string) || "",
       content_pillar: c["Content Pillar"] || "",
       funnel_stage: c["Funnel Stage"] || "",
       caption_tone: c["Caption Tone"] || "",

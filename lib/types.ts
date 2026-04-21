@@ -18,6 +18,9 @@ export type Post = {
   sorry: number;
   anger: number;
   is_reel: boolean;
+  // Stage-0 item 12 (Apr 2026): direct link to the post on Facebook. Empty
+  // string for pre-item-12 historical rows (column was added late).
+  permalink_url?: string;
   // From classifications
   content_pillar?: string;
   funnel_stage?: string;

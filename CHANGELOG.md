@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-04-21 — Stage 0 item 12: Post.permalink_url wired through from Raw_Posts
+
+`Post.permalink_url` (optional) added to `lib/types.ts` and read from the new
+`Permalink URL` column in `Raw_Posts` via `getPosts()`. Enables deep-linking
+from UI cards to live Facebook posts once the UI consumers land. Empty string
+for historical rows until the pipeline's next fetch run.
+
 ## 2026-04-21 — Stage 0 item 11: StageEngine type expanded to carry provider + cache signal
 
 `lib/sheets.ts` `StageEngine` union grew from `"ai" | "native" | "off" |
