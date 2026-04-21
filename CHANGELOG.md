@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-04-21 — Bucket C item 22: read `caption_primary_language` from Classifications
+
+Pipeline bumped classifier to v2.5 and appended `Caption Primary Language`
+as a trailing column on the Classifications tab. Reader side: `lib/sheets.ts`
+now pulls that column into `Post.caption_primary_language` (string enum:
+`"bangla" | "english" | "mixed" | "unknown"`, empty string on pre-v2.5
+rows), and `lib/types.ts` declares the optional field on the `Post` type.
+No UI surfaces it yet — the wire-through is so future pages (tone-by-
+language ranking, Bangla-vs-English engagement split) can light up without
+a schema change.
+
 ## 2026-04-21 — Stage 2 item 18: hard-exclude low-confidence rows from rankings
 
 New `isLowConfidence(p)` helper + `RANKING_CONFIDENCE_FLOOR = 0.5` in

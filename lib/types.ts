@@ -40,6 +40,10 @@ export type Post = {
   classifier_confidence?: number;
   prompt_version?: string;
   manual_override?: string;
+  // Bucket C item 22 (Apr 2026): classifier v2.5 script-weighted primary
+  // language verdict. Enum: "bangla" | "english" | "mixed" | "unknown".
+  // Empty string on pre-v2.5 rows.
+  caption_primary_language?: string;
 };
 
 export type DailyMetric = {

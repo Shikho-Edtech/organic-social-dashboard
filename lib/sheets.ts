@@ -131,6 +131,11 @@ export async function getPosts(): Promise<Post[]> {
       })(),
       prompt_version: c["Prompt Version"] || "",
       manual_override: c["Manual Override"] || "",
+      // Bucket C item 22 (Apr 2026): script-weighted primary language verdict
+      // from classifier v2.5. Legacy (pre-v2.5) rows read "" here; callers
+      // that need a non-empty bucket should coerce to "unknown".
+      caption_primary_language:
+        (c["Caption Primary Language"] as string) || "",
     };
   });
 }
