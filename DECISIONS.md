@@ -1,5 +1,52 @@
 # Decisions
 
+## 2026-04-21 — Bucket E item 42: north-star score is a deliberate one-time historical break
+
+The north-star score ships as `(saves + shares × 1.5) ÷ reach`. This is
+not the textbook Bucket-E definition, which reads `(saves + shares + dms) ÷ 3`
+normalized to reach. Two deliberate departures from the textbook:
+
+1. **DMs excluded.** `dms_generated` is only available via the Meta Business
+   Suite API. The weekly pipeline uses the standard Graph API, which does not
+   expose it. Rather than ship a composite that silently reads 0 on a real
+   input dimension (making every current north-star number inflated relative
+   to the future version that includes DMs), the formula omits DMs entirely
+   and the share term absorbs the weight. When MBS access lands (item 41),
+   the formula becomes `(saves + shares × 1.5 + dms × 2.0) ÷ reach` and
+   historical comparability breaks a second time. Both breaks are documented.
+
+2. **Shares weighted 1.5×.** A share is a public recommendation that expands
+   reach beyond the existing follower base — organic-growth-terms, it is
+   strictly more valuable than a save (intent-to-return on an already-present
+   viewer). A flat equal-weighted composite underrates shares. The 1.5 factor
+   is a judgment call; if the team prefers parity, it's a single line change
+   in `northStarScore()`.
+
+Alternative considered: ship two scores — "north-star current" (without DMs)
+and "north-star target" (with DMs, pinned to 0). Rejected because two metrics
+on a leadership dashboard that the team has to mentally reconcile is worse
+than one metric with a clear "break on access unlock" footnote.
+
+The comparability break is called out in-UI on Overview (the "DMs pending MBS"
+sublabel) and on Engagement. Anyone pulling this number into a deck needs to
+know it isn't the same score last week's deck was reading, and the footnote
+surfaces the distinction.
+
+## 2026-04-21 — Bucket E item 39 (save rate) scoped down to "helper + tile, pending pipeline column"
+
+The Bucket E spec treats save-to-reach as an existing-data metric. On inspection,
+`Raw_Posts` has no `Saves` column — the Graph API `post_activity_unique` action=saved
+signal is not currently fetched in `facebook-pipeline/src/fetch.py`. Rather than
+block the rest of Bucket E on a pipeline-side change, the dashboard ships the
+helper (`saveRate()` in `lib/aggregate.ts`) and the tile (Engagement "Save Rate"
+card), both of which return 0 / "pending" today and auto-light-up once the
+pipeline writes the column. The PLAN_COMPARISON row is marked `status-wip` so
+the cut-down is visible from the roadmap view.
+
+This is the same shape of scope-down used for item 41 (DM velocity) and is the
+reason north-star is not blocked on either: the helper is the contract, the
+data source is the variable.
+
 ## 2026-04-21 — StageEngine type keeps legacy "ai" alongside new provider values (Stage 0 item 11)
 
 Alternative considered: migrate historical `Analysis_Log` rows from `"ai"` to

@@ -1,5 +1,18 @@
-import { getPosts, getRunStatus } from "@/lib/sheets";
-import { filterPosts, groupStats, isLowConfidence } from "@/lib/aggregate";
+import { getPosts, getRunStatus, getVideoMetrics } from "@/lib/sheets";
+import {
+  filterPosts,
+  groupStats,
+  isLowConfidence,
+  discussionQuality,
+  sentimentPolarity,
+  ctrProxy,
+  virality,
+  saveRate,
+  northStarScore,
+  completionRate,
+  formatHourMatrix,
+  reach as postReach,
+} from "@/lib/aggregate";
 import { minPostsForRange, reliabilityLabel } from "@/lib/stats";
 import { resolveRange, rangeDays as computeRangeDays } from "@/lib/daterange";
 import { canonicalColor } from "@/lib/colors";
@@ -27,7 +40,11 @@ function rankByReachWeighted(items: GroupStatRow[]): GroupStatRow | undefined {
 
 export default async function EngagementPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   const range = resolveRange(searchParams);
-  const [posts, runStatus] = await Promise.all([getPosts(), getRunStatus()]);
+  const [posts, runStatus, videos] = await Promise.all([
+    getPosts(),
+    getRunStatus(),
+    getVideoMetrics(),
+  ]);
   const inRange = filterPosts(posts, { start: range.start, end: range.end });
 
   // Centralized via lib/daterange — prior inline `daysBetween(...) + 1` pushed
@@ -148,6 +165,107 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
     { label: "Comments", value: totals.comments },
     { label: "Shares", value: totals.shares },
   ].sort((a, b) => b.value - a.value);
+
+  // ─── Bucket E derived-metrics roll-up ───────────────────────────
+  //
+  // Each of these is a ratio that's been computed per-post in lib/aggregate,
+  // then rolled up to the period level via Σ numerator ÷ Σ denominator
+  // (NOT mean-of-ratios — that's the "simpson's paradox on small-reach
+  // posts" trap the codebase already guards against in computeKpis).
+
+  const sumShares = inRange.reduce((s, p) => s + (p.shares || 0), 0);
+  const sumReach = inRange.reduce((s, p) => s + postReach(p), 0);
+  const sumComments = inRange.reduce((s, p) => s + (p.comments || 0), 0);
+  const sumReactions = inRange.reduce((s, p) => s + (p.reactions || 0), 0);
+  const sumClicks = inRange.reduce((s, p) => s + (p.clicks || 0), 0);
+  const sumPositive = inRange.reduce((s, p) => s + (p.love || 0) + (p.wow || 0), 0);
+  const sumNegative = inRange.reduce((s, p) => s + (p.sorry || 0) + (p.anger || 0), 0);
+
+  // Item 33 — virality (shares ÷ reach). Percent for display.
+  const viralityPct = sumReach > 0 ? (sumShares / sumReach) * 100 : 0;
+
+  // Item 34 — discussion quality (comments ÷ reactions). Ratio, shown with 2dp.
+  const discussionRatio = sumReactions > 0 ? sumComments / sumReactions : 0;
+
+  // Item 35 — sentiment polarity ((love+wow) ÷ (sad+angry)). Null when no
+  // negative signal exists so we can render "—" instead of Infinity.
+  const polarity = sumNegative > 0 ? sumPositive / sumNegative : sumPositive > 0 ? null : 0;
+
+  // Item 36 — CTR proxy on LINK posts only. Link posts are where the
+  // click signal is meaningful — other formats pick up incidental clicks
+  // (tag, permalink) that muddy the ratio.
+  const linkPosts = inRange.filter((p) => (p.type || "").toLowerCase() === "link");
+  const linkClicks = linkPosts.reduce((s, p) => s + (p.clicks || 0), 0);
+  const linkReach = linkPosts.reduce((s, p) => s + postReach(p), 0);
+  const linkCtrPct = linkReach > 0 ? (linkClicks / linkReach) * 100 : 0;
+
+  // Item 39 — save-to-reach ratio (SCOPE-DOWN: Saves column not ingested,
+  // see lib/aggregate.ts saveRate + DECISIONS). Value will be 0% everywhere
+  // until the pipeline writes a Saves column. Surfaced now so the tile
+  // exists and auto-updates once the data lands.
+  const saves = inRange.reduce((s, p) => {
+    const sv = (p as any).saves ?? 0;
+    return s + (typeof sv === "number" ? sv : 0);
+  }, 0);
+  const saveRatePct = sumReach > 0 ? (saves / sumReach) * 100 : 0;
+
+  // Item 42 — north-star composite. Per-post score, averaged. Shown as
+  // percent for comparability with the other ratios on this strip.
+  const nsScores = inRange.map((p) => northStarScore(p));
+  const avgNorthStar = nsScores.length
+    ? nsScores.reduce((s, x) => s + x, 0) / nsScores.length
+    : 0;
+
+  // Item 40 — reel completion rate, view-weighted across reels in range.
+  // VideoMetric lives on Raw_Video. Filter to reels that fall inside the
+  // selected date range. Meta's `complete_views` field is often empty on
+  // modern reels — reported count reflects only reels where it's non-zero.
+  const reelsInRange = videos.filter((v) => {
+    if (!v.is_reel || !v.created_time) return false;
+    const t = new Date(v.created_time).getTime();
+    return t >= range.start.getTime() && t <= range.end.getTime();
+  });
+  let completionNumerator = 0;
+  let completionDenom = 0;
+  let reelsWithCompletionData = 0;
+  for (const v of reelsInRange) {
+    const plays = v.reel_plays || v.total_views || 0;
+    if (plays <= 0) continue;
+    if (!v.complete_views) continue;
+    completionNumerator += v.complete_views;
+    completionDenom += plays;
+    reelsWithCompletionData += 1;
+  }
+  const completionPct = completionDenom > 0 ? (completionNumerator / completionDenom) * 100 : 0;
+
+  // Item 38 — format × hour-of-day reach matrix. Flatten into cells the
+  // small Heatmap grid component can render; apply a minimum-n filter to
+  // dim cells that are a single post so a 1-post outlier doesn't paint
+  // the grid.
+  const fhMatrix = formatHourMatrix(inRange, "reach");
+  const matrixFormats = Object.keys(fhMatrix)
+    .filter((f) => f && f !== "Unknown")
+    // Cap to the 6 most-posted formats so the grid stays legible at 360px.
+    .sort((a, b) => {
+      const na = Object.values(fhMatrix[a]).reduce((s, c) => s + c.n, 0);
+      const nb = Object.values(fhMatrix[b]).reduce((s, c) => s + c.n, 0);
+      return nb - na;
+    })
+    .slice(0, 6);
+  const MATRIX_MIN_N = 2;
+  // Compute the max mean across reliable cells so the heat intensity
+  // normalizes on only the cells we'd actually recommend acting on.
+  let matrixMax = 0;
+  for (const f of matrixFormats) {
+    for (const h of Object.keys(fhMatrix[f])) {
+      const c = fhMatrix[f][Number(h)];
+      if (c.n >= MATRIX_MIN_N && c.mean > matrixMax) matrixMax = c.mean;
+    }
+  }
+
+  // Row 6 of the Best-X strip gains virality as its 6th metric. Only
+  // interesting when there's non-zero reach — keep the render guarded.
+  const hasViralityData = sumReach > 0;
 
   return (
     <div>
@@ -284,6 +402,225 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           )}
         </Card>
       </div>
+
+      {/* Bucket E derived-metrics strip (items 33, 34, 35, 36, 39, 40, 42).
+          These are all "second-order" ratios — computed from fields already
+          on Post/VideoMetric. Sits above the AI recommendation block so the
+          reader sees raw shaping signals first, then the AI-synthesized
+          "so do this" directly below. Each tile uses ink-* typography, no
+          slate or gray classes (brand rule). Save-to-reach renders 0% today because
+          the pipeline hasn't added the Saves column yet — see the TODO on
+          saveRate() in lib/aggregate.ts.
+
+          Layout: 2 cols on mobile (380px ÷ 2 ≈ 190 per card, fine for
+          short values like "1.24%") up to 4 cols on lg+. Keeps the strip
+          short enough not to push charts below the fold. */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <Card className="!p-4">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">Virality</div>
+          <div
+            className="text-base sm:text-lg font-bold mt-1.5 break-words leading-snug"
+            style={{ color: "#C02080" }}
+            title="Shares divided by reach across the period"
+          >
+            {hasViralityData ? viralityPct.toFixed(2) + "%" : "—"}
+          </div>
+          <div className="text-xs text-ink-400 mt-1">
+            shares ÷ reach
+          </div>
+          <div className="text-[11px] text-ink-400 mt-0.5">
+            {sumShares.toLocaleString()} shares · {sumReach.toLocaleString()} reach
+          </div>
+        </Card>
+        <Card className="!p-4">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">Discussion Quality</div>
+          <div
+            className="text-base sm:text-lg font-bold mt-1.5 break-words leading-snug"
+            style={{ color: "#304090" }}
+            title="Comments divided by reactions — separates liked-and-moved-on from sparked-conversation"
+          >
+            {sumReactions > 0 ? discussionRatio.toFixed(3) : "—"}
+          </div>
+          <div className="text-xs text-ink-400 mt-1">
+            comments ÷ reactions
+          </div>
+          <div className="text-[11px] text-ink-400 mt-0.5">
+            {sumComments.toLocaleString()} comments · {sumReactions.toLocaleString()} reactions
+          </div>
+        </Card>
+        <Card className="!p-4">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">Sentiment Polarity</div>
+          <div
+            className="text-base sm:text-lg font-bold mt-1.5 break-words leading-snug"
+            style={{ color: polarity === null ? "#1A8E78" : polarity >= 1 ? "#10b981" : "#E03050" }}
+            title="(love + wow) ÷ (sad + angry) — values >1 mean positive reactions outweigh negative"
+          >
+            {polarity === null
+              ? "all +"
+              : sumNegative === 0 && sumPositive === 0
+              ? "—"
+              : polarity.toFixed(2)}
+          </div>
+          <div className="text-xs text-ink-400 mt-1">
+            (love + wow) ÷ (sad + angry)
+          </div>
+          <div className="text-[11px] text-ink-400 mt-0.5">
+            +{sumPositive.toLocaleString()} · −{sumNegative.toLocaleString()}
+          </div>
+        </Card>
+        <Card className="!p-4">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">CTR Proxy (Links)</div>
+          <div
+            className="text-base sm:text-lg font-bold mt-1.5 break-words leading-snug"
+            style={{ color: "#E0A010" }}
+            title="Clicks divided by reach on link posts only — off-platform traffic signal"
+          >
+            {linkPosts.length > 0 && linkReach > 0 ? linkCtrPct.toFixed(2) + "%" : "—"}
+          </div>
+          <div className="text-xs text-ink-400 mt-1">
+            clicks ÷ reach · link posts
+          </div>
+          <div className="text-[11px] text-ink-400 mt-0.5">
+            {linkPosts.length} link post{linkPosts.length === 1 ? "" : "s"} · {linkClicks.toLocaleString()} clicks
+          </div>
+        </Card>
+        <Card className="!p-4">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">Save Rate</div>
+          <div
+            className="text-base sm:text-lg font-bold mt-1.5 break-words leading-snug"
+            style={{ color: "#6E7389" }}
+            title="Saves divided by reach — intent-to-return signal. Currently 0% because the pipeline hasn't ingested the Saves column yet."
+          >
+            {saves > 0 ? saveRatePct.toFixed(2) + "%" : "pending"}
+          </div>
+          <div className="text-xs text-ink-400 mt-1">
+            saves ÷ reach
+          </div>
+          <div className="text-[11px] text-ink-400 mt-0.5">
+            {saves > 0 ? `${saves.toLocaleString()} saves in range` : "awaiting pipeline Saves column"}
+          </div>
+        </Card>
+        <Card className="!p-4">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">Reel Completion</div>
+          <div
+            className="text-base sm:text-lg font-bold mt-1.5 break-words leading-snug"
+            style={{ color: reelsWithCompletionData > 0 ? "#C02080" : "#6E7389" }}
+            title="complete_views ÷ reel_plays across reels in range that have completion data populated by Meta"
+          >
+            {reelsWithCompletionData > 0 ? completionPct.toFixed(1) + "%" : "—"}
+          </div>
+          <div className="text-xs text-ink-400 mt-1">
+            complete ÷ plays
+          </div>
+          <div className="text-[11px] text-ink-400 mt-0.5">
+            {reelsWithCompletionData > 0
+              ? `${reelsWithCompletionData} of ${reelsInRange.length} reel${reelsInRange.length === 1 ? "" : "s"} with data`
+              : reelsInRange.length
+              ? `${reelsInRange.length} reel${reelsInRange.length === 1 ? "" : "s"}, no completion data`
+              : "no reels in range"}
+          </div>
+        </Card>
+        <Card className="!p-4">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">North-Star Score</div>
+          <div
+            className="text-base sm:text-lg font-bold mt-1.5 break-words leading-snug"
+            style={{ color: "#304090" }}
+            title="Composite: (shares × 1.5 + saves) ÷ reach. DMs excluded pending Meta Business Suite access."
+          >
+            {inRange.length > 0 ? (avgNorthStar * 100).toFixed(2) + "%" : "—"}
+          </div>
+          <div className="text-xs text-ink-400 mt-1">
+            (shares×1.5 + saves) ÷ reach
+          </div>
+          <div className="text-[11px] text-ink-400 mt-0.5">
+            per-post avg · DMs pending MBS
+          </div>
+        </Card>
+      </div>
+
+      {/* Item 38: format × hour-of-day reach heatmap. Small inline grid
+          (not the full Heatmap component — that's 7 rows × 24 cols and
+          this is 3-6 formats × 24 hours, different shape). Mean reach
+          per cell; cells with fewer than MATRIX_MIN_N posts render at
+          reduced opacity so a single-post bucket can't hijack the
+          color scale. Uses Shikho indigo (same scale as Timing heatmap)
+          for visual consistency across "when" views. */}
+      {matrixFormats.length > 0 && matrixMax > 0 && (
+        <div className="mb-6">
+          <ChartCard
+            title="Format × Hour · Reach"
+            kind="derived"
+            subtitle="Mean reach per post for each (format, publish hour) cell"
+            definition={`For each (format, hour) cell: mean unique reach per post published in that cell. Color intensity encodes reach relative to the strongest cell on the grid. Cells with fewer than ${MATRIX_MIN_N} posts are dimmed — still visible so you can see where coverage is thin, but the color isn't trustworthy. Top ${matrixFormats.length} formats shown.`}
+            sampleSize={`${matrixFormats.length} format${matrixFormats.length === 1 ? "" : "s"} × 24 hours, n = ${inRange.length} post${inRange.length === 1 ? "" : "s"}`}
+            caption="Reels at 8pm behave nothing like Carousels at 8pm. Find the dark cells per format, not just overall."
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr>
+                    <th className="text-left font-semibold text-ink-400 px-2 py-1.5 whitespace-nowrap">Format</th>
+                    {Array.from({ length: 24 }, (_, h) => (
+                      <th
+                        key={h}
+                        className="text-center font-semibold text-ink-400 px-0.5 py-1.5 tabular-nums"
+                        title={`${h}:00 BDT`}
+                      >
+                        {h % 3 === 0 ? h : ""}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {matrixFormats.map((f) => (
+                    <tr key={f}>
+                      <td className="px-2 py-1 whitespace-nowrap">
+                        <span
+                          className="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium text-white"
+                          style={{ backgroundColor: canonicalColor("format", f) }}
+                        >
+                          {f}
+                        </span>
+                      </td>
+                      {Array.from({ length: 24 }, (_, h) => {
+                        const cell = fhMatrix[f][h];
+                        const n = cell?.n ?? 0;
+                        const mean = cell?.mean ?? 0;
+                        const intensity = matrixMax > 0 ? Math.min(1, mean / matrixMax) : 0;
+                        // Dim cells with n<MATRIX_MIN_N; hide completely empty ones.
+                        const isReliable = n >= MATRIX_MIN_N;
+                        const alpha = n === 0 ? 0 : isReliable ? intensity : intensity * 0.35;
+                        const bg = n === 0
+                          ? "transparent"
+                          : `rgba(48, 64, 144, ${Math.max(0.08, alpha)})`;
+                        return (
+                          <td
+                            key={h}
+                            className="px-0 py-0.5 text-center"
+                            title={n === 0 ? `${f} @ ${h}:00 — no posts` : `${f} @ ${h}:00 — mean reach ${Math.round(mean).toLocaleString()} over ${n} post${n === 1 ? "" : "s"}${isReliable ? "" : " (low-n, dimmed)"}`}
+                          >
+                            <div
+                              className="mx-0.5 h-5 rounded-xs"
+                              style={{ backgroundColor: bg, border: n === 0 ? "1px dashed #E6E8F0" : "none" }}
+                            />
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="mt-2 flex items-center gap-3 text-[11px] text-ink-400">
+                <span>Darker = more reach</span>
+                <span>·</span>
+                <span>Dashed outline = no posts in that cell</span>
+                <span>·</span>
+                <span>Faded fill = fewer than {MATRIX_MIN_N} posts (low confidence)</span>
+              </div>
+            </div>
+          </ChartCard>
+        </div>
+      )}
 
       {/* Recommendations — synthesizes the 4 Best X signals above into
           2-3 sentences a human can act on. Prior layout assumed the

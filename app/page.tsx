@@ -1,5 +1,5 @@
 import { getPosts, getDailyMetrics, getRunStatus } from "@/lib/sheets";
-import { filterPosts, computeKpis, dailyReach, groupStats, wowDelta } from "@/lib/aggregate";
+import { filterPosts, computeKpis, dailyReach, groupStats, wowDelta, virality, northStarScore, cadenceGaps, reach as postReach } from "@/lib/aggregate";
 import { resolveRange } from "@/lib/daterange";
 import PageHeader from "@/components/PageHeader";
 import KpiCard from "@/components/KpiCard";
@@ -41,6 +41,45 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
 
   // Weekly reach trend
   const trend = dailyReach(inRange).map((d) => ({ date: d.date.slice(5), value: d.reach }));
+
+  // Bucket E items 33 + 42 + 37: reach-weighted virality + north-star, and
+  // cadence-gap stats. Reach-weighting (Σ shares ÷ Σ reach) avoids the mean-
+  // of-ratios trap where a 5-reach-3-share post swamps the rate. North-star
+  // is averaged the same way so both KPIs are on the same footing.
+  const totalShares = inRange.reduce((s, p) => s + (p.shares || 0), 0);
+  const totalReach = inRange.reduce((s, p) => s + postReach(p), 0);
+  const viralityPct = totalReach > 0 ? (totalShares / totalReach) * 100 : 0;
+  const prevTotalShares = prevRange.reduce((s, p) => s + (p.shares || 0), 0);
+  const prevTotalReach = prevRange.reduce((s, p) => s + postReach(p), 0);
+  const prevViralityPct = prevTotalReach > 0 ? (prevTotalShares / prevTotalReach) * 100 : 0;
+  const viralityDelta = wowDelta(viralityPct, prevViralityPct).pct;
+
+  // North-star: per-post score, then posts-weighted average (mean of the
+  // per-post scores). Using the simple mean — not reach-weighted — because
+  // north-star already normalizes to reach at the per-post level.
+  const nsScores = inRange.map((p) => northStarScore(p));
+  const avgNorthStar = nsScores.length
+    ? nsScores.reduce((s, x) => s + x, 0) / nsScores.length
+    : 0;
+  const prevNsScores = prevRange.map((p) => northStarScore(p));
+  const prevAvgNorthStar = prevNsScores.length
+    ? prevNsScores.reduce((s, x) => s + x, 0) / prevNsScores.length
+    : 0;
+  const northStarDelta = wowDelta(avgNorthStar, prevAvgNorthStar).pct;
+
+  // Cadence gap: hours between consecutive posts. `avg` is the mean gap;
+  // `min` / `max` bound the posting rhythm. When there's <2 posts there's
+  // no gap to compute — show "—" in the sublabel.
+  const gaps = cadenceGaps(inRange);
+  const avgGap = gaps.length ? gaps.reduce((s, x) => s + x, 0) / gaps.length : 0;
+  const minGap = gaps.length ? Math.min(...gaps) : 0;
+  const maxGap = gaps.length ? Math.max(...gaps) : 0;
+  const fmtHours = (h: number) => {
+    if (!isFinite(h) || h <= 0) return "—";
+    if (h < 1) return `${Math.round(h * 60)}m`;
+    if (h < 48) return `${h.toFixed(1)}h`;
+    return `${(h / 24).toFixed(1)}d`;
+  };
 
   // Format distribution
   const formatStats = groupStats(inRange, "format");
@@ -96,6 +135,36 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
         <KpiCard label="Engagement Rate" value={kpis.avg_engagement_rate.toFixed(2) + "%"} delta={engDelta} sublabel="vs prev · reach-weighted" />
         <KpiCard label="Avg Reach/Post" value={kpis.avg_reach_per_post} />
         <KpiCard label="Followers" value={currentFollowers} sublabel={`${netFollowers >= 0 ? "+" : ""}${netFollowers.toLocaleString()} in range`} />
+      </div>
+
+      {/* Bucket E (items 33, 37, 42): virality / cadence / north-star strip.
+          Sits below the primary KPIs because these are derived / second-order
+          signals — if the primary strip is healthy, this strip is the next
+          question you ask. Virality is the single most predictive organic-
+          growth ratio; north-star is the one-number team metric; cadence
+          surfaces under- or over-posting that's invisible on the others. */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+        <KpiCard
+          label="Virality Coefficient"
+          value={viralityPct.toFixed(2) + "%"}
+          delta={viralityDelta}
+          sublabel="shares ÷ reach · vs prev"
+        />
+        <KpiCard
+          label="North-Star Score"
+          value={(avgNorthStar * 100).toFixed(2) + "%"}
+          delta={northStarDelta}
+          sublabel="(shares×1.5 + saves) ÷ reach"
+        />
+        <KpiCard
+          label="Avg Cadence Gap"
+          value={fmtHours(avgGap)}
+          sublabel={
+            gaps.length
+              ? `min ${fmtHours(minGap)} · max ${fmtHours(maxGap)} · ${gaps.length + 1} posts`
+              : "need 2+ posts"
+          }
+        />
       </div>
 
       {/* Primary chart: reach trend */}

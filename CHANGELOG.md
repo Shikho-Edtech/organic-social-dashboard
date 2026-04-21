@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-04-21 — Bucket E items 33-42: metrics library (virality, discussion, polarity, CTR, cadence, heatmap, completion, north-star)
+
+Shipped nine derived-metric helpers in `lib/aggregate.ts` and surfaced them
+across Overview + Engagement. All are pure ratios over fields already on
+`Post` / `VideoMetric` — no API changes, no new tabs. Matters because the
+team was mentally computing these from raw KPIs every week.
+
+- **Item 33 virality (shares ÷ reach):** new Overview KPI tile with WoW delta. Reach-weighted at the period level to avoid mean-of-ratios bias.
+- **Item 34 discussion quality (comments ÷ reactions):** Engagement card. Separates "liked and scrolled past" from "sparked thread."
+- **Item 35 sentiment polarity ((love+wow) ÷ (sad+angry)):** Engagement card. Returns null (renders "all +") when there are no negative reactions, so we don't paint Infinity into the UI.
+- **Item 36 CTR proxy:** Link-post-only clicks ÷ reach. Card shows "—" and link-post count when no links in range.
+- **Item 37 cadence gap:** Overview tile with avg + min + max hours between posts. First view that surfaces posting rhythm.
+- **Item 38 format × hour heatmap:** Engagement chart. 6-format × 24-hour grid, mean reach per cell, dim cells with n<2.
+- **Item 39 save rate:** SCOPE DOWN — helper + tile shipped but returns 0% because `Saves` isn't ingested yet (see DECISIONS). Marked WIP in PLAN_COMPARISON. Auto-lights-up when pipeline adds the column.
+- **Item 40 reel completion rate:** Engagement card, view-weighted over reels with non-zero Meta `complete_views`. Dim when Meta didn't populate the field.
+- **Item 41 DM velocity:** BLOCKED on Meta Business Suite API. Marked WIP, north-star weighting adjusted to compensate (see DECISIONS).
+- **Item 42 north-star score ((saves + shares × 1.5) ÷ reach):** Overview KPI + Engagement card. Documented one-time comparability break in DECISIONS.
+
+Stress-tested: build green, brand audit green (306 baseline, no regressions), all new code uses `ink-*` / `shikho-*` / hex tokens — no new `slate-*` / `gray-*`.
+
 ## 2026-04-21 — Bucket C item 22: read `caption_primary_language` from Classifications
 
 Pipeline bumped classifier to v2.5 and appended `Caption Primary Language`

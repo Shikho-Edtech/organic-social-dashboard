@@ -122,6 +122,199 @@ export function weightedReach(p: Post): number {
   return reach(p) * confidenceWeight(p);
 }
 
+// ─── Bucket E (items 33-42): derived metrics library ───
+//
+// These are ratio/rate helpers that compute the "second-order" signals the
+// marketing team asks for — virality, discussion quality, CTR proxy, reel
+// completion, etc. All derive from fields already present on Post /
+// VideoMetric; no new fetches. Safe-divide everywhere (0-reach posts
+// return 0, not NaN or Infinity), and item-35 / item-40 return `null`
+// when the denominator is unavailable so callers can render "—" instead
+// of a misleading 0.
+
+/** Item 33: virality coefficient = shares ÷ reach. 0 when reach is 0. */
+export function virality(p: Post): number {
+  const r = reach(p);
+  if (r <= 0) return 0;
+  return (p.shares || 0) / r;
+}
+
+/** Item 34: discussion quality = comments ÷ reactions. 0 when reactions is 0. */
+export function discussionQuality(p: Post): number {
+  const reactions = p.reactions || 0;
+  if (reactions <= 0) return 0;
+  return (p.comments || 0) / reactions;
+}
+
+/**
+ * Item 35: sentiment polarity = (love + wow) ÷ (sad + angry).
+ *
+ * Returns `null` when the denominator is 0 — rather than Infinity — so the
+ * caller shows "—" instead of a misleading "infinite positivity" number.
+ * When both numerator and denominator are 0 (a post with no love/wow AND
+ * no sad/angry), returns 0 because there's no negative signal to react to.
+ *
+ * Uses Post.sorry + Post.anger (the field names `lib/sheets.ts` writes
+ * from the Sad / Angry columns of Raw_Posts).
+ */
+export function sentimentPolarity(p: Post): number | null {
+  const positive = (p.love || 0) + (p.wow || 0);
+  const negative = (p.sorry || 0) + (p.anger || 0);
+  if (negative <= 0) {
+    // No negative reactions at all → polarity is undefined as a ratio.
+    // Return 0 when there's also no positive reaction (a dead post), null
+    // otherwise (positive-only posts — caller decides how to render).
+    return positive > 0 ? null : 0;
+  }
+  return positive / negative;
+}
+
+/** Item 36: CTR proxy = clicks ÷ reach. Most meaningful for link posts. */
+export function ctrProxy(p: Post): number {
+  const r = reach(p);
+  if (r <= 0) return 0;
+  return (p.clicks || 0) / r;
+}
+
+/**
+ * Item 37: cadence gaps in hours between consecutive posts.
+ *
+ * Sorts posts by `created_time` ascending (BDT) and returns the gap-in-hours
+ * between each adjacent pair. Length is `posts.length - 1` (empty array for
+ * 0 or 1 posts). Posts with missing / unparseable timestamps are skipped.
+ */
+export function cadenceGaps(posts: Post[]): number[] {
+  const ts: number[] = [];
+  for (const p of posts) {
+    if (!p.created_time) continue;
+    const t = bdt(p.created_time).getTime();
+    if (!isFinite(t)) continue;
+    ts.push(t);
+  }
+  ts.sort((a, b) => a - b);
+  const gaps: number[] = [];
+  for (let i = 1; i < ts.length; i++) {
+    gaps.push((ts[i] - ts[i - 1]) / (1000 * 60 * 60));
+  }
+  return gaps;
+}
+
+/**
+ * Item 38: format × hour-of-day interaction matrix.
+ *
+ * Groups posts by (format, publish-hour-BDT). Cell value is the MEAN of
+ * the chosen metric across posts in that cell. `n` is the raw post count.
+ *
+ * Callers typically render this as a small heatmap; apply their own
+ * min-N filter when painting so a single-post cell doesn't look confident.
+ *
+ * metric:
+ *  - "reach"     → mean unique reach per post in the cell
+ *  - "engagement" → mean engagement rate (totalInteractions ÷ reach × 100)
+ */
+export function formatHourMatrix(
+  posts: Post[],
+  metric: "reach" | "engagement"
+): Record<string, Record<number, { mean: number; n: number }>> {
+  const buckets: Record<string, Record<number, number[]>> = {};
+  for (const p of posts) {
+    if (!p.created_time) continue;
+    const d = bdt(p.created_time);
+    if (isNaN(d.getTime())) continue;
+    const hour = d.getHours();
+    if (!Number.isInteger(hour) || hour < 0 || hour > 23) continue;
+    const fmt = (p.format || "").trim() || "Unknown";
+    if (!buckets[fmt]) buckets[fmt] = {};
+    if (!buckets[fmt][hour]) buckets[fmt][hour] = [];
+    const v =
+      metric === "reach"
+        ? reach(p)
+        : engagementRate(p);
+    buckets[fmt][hour].push(v);
+  }
+  const out: Record<string, Record<number, { mean: number; n: number }>> = {};
+  for (const [fmt, hours] of Object.entries(buckets)) {
+    out[fmt] = {};
+    for (const [h, vals] of Object.entries(hours)) {
+      const mean = vals.length
+        ? vals.reduce((s, x) => s + x, 0) / vals.length
+        : 0;
+      out[fmt][Number(h)] = { mean, n: vals.length };
+    }
+  }
+  return out;
+}
+
+/**
+ * Item 39: save-to-reach ratio.
+ *
+ * SCOPED DOWN — `Saves` is not currently captured from the Graph API
+ * (see `src/fetch.py` / `src/sheets.py` — no "Saves" column on Raw_Posts,
+ * and `Post` on the dashboard side has no `saves` field). This function
+ * exists so callers compile now and start returning real values once the
+ * pipeline adds the column. Today it returns 0 everywhere.
+ *
+ * TODO(bucket-e-39): wire up `Post.saves` once `Raw_Posts.Saves` lands
+ *   (Graph API `post_activity_unique` with type=saved action).
+ */
+export function saveRate(p: Post): number {
+  const saves = (p as Post & { saves?: number }).saves ?? 0;
+  const r = reach(p);
+  if (r <= 0) return 0;
+  return saves / r;
+}
+
+/**
+ * Item 40: reel completion rate = complete_views ÷ reel_plays.
+ *
+ * Only applies to reels — lives on VideoMetric, not Post — so the helper
+ * takes a VideoMetric-shaped object. Returns `null` for non-reels or when
+ * plays is 0 (so the caller renders "—" instead of "0.0%" on a reel
+ * that never played).
+ *
+ * NOTE: Meta's "Complete Views" bucket is not populated for modern reels
+ * (see the comments in `app/reels/page.tsx`). For reels where it IS
+ * populated (older video posts + some reels), this ratio is meaningful;
+ * otherwise the Reels page's per-second retention curve is more honest.
+ */
+export function completionRate(
+  v: { is_reel: boolean; complete_views: number; reel_plays: number; total_views?: number }
+): number | null {
+  if (!v.is_reel) return null;
+  const denom = v.reel_plays || v.total_views || 0;
+  if (denom <= 0) return null;
+  if (!v.complete_views) return 0;
+  return v.complete_views / denom;
+}
+
+/**
+ * Item 42: composite north-star score.
+ *
+ * Weighted blend of the high-intent interactions (saves + shares * 1.5)
+ * normalized to reach. Shares are weighted 1.5× because a share is a
+ * public recommendation that expands the audience beyond the current
+ * follower base — it's worth more than a save in organic growth terms.
+ *
+ * DMs are INTENTIONALLY EXCLUDED for now — the `dms_generated` signal is
+ * only available via the Meta Business Suite API, not the standard Graph
+ * API this pipeline uses. See `DECISIONS.md` (2026-04-21 "Bucket E item 42
+ * north-star excludes DMs pending MBS access") — when MBS lands we'll
+ * re-introduce the `+ dms * 2.0` term and break historical comparability
+ * one more time.
+ *
+ * Saves currently contribute 0 on all posts (item 39 is scope-down;
+ * `Raw_Posts.Saves` isn't ingested yet). Once it lands, the score
+ * automatically picks it up without a code change.
+ */
+export function northStarScore(p: Post): number {
+  const saves = (p as Post & { saves?: number }).saves ?? 0;
+  const shares = p.shares || 0;
+  const r = reach(p);
+  if (r <= 0) return 0;
+  // Normalize to a small decimal (e.g., 0.01 = 1% of reach is high-intent).
+  return (saves + shares * 1.5) / r;
+}
+
 // ─── Filtering ───
 
 export type PostFilters = {
