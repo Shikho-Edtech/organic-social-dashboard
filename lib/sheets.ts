@@ -480,7 +480,41 @@ export async function getCalendarByRunId(runId: string): Promise<CalendarSlot[]>
 // existing code path for `--no-ai`. Success / fallback / failed all return
 // false (page stays on the staleness banner).
 
-export type StageEngine = "ai" | "native" | "off" | "unknown";
+// Stage-0 item 11 (Apr 2026): engine values expanded to carry provider name
+// ("anthropic" | "gemini") and distinguish live-AI from cache-fallback runs.
+// Legacy "ai" remains valid and is treated as equivalent to a live-AI run for
+// the AI-disabled-empty-state decision. "cache" is surfaced as a distinct
+// degraded signal — the caller can use isLiveAI() / isAiRunning() helpers
+// instead of equality checks.
+export type StageEngine =
+  | "ai"         // legacy, pre-Stage-0
+  | "anthropic"  // Stage-0+: live Anthropic call succeeded
+  | "gemini"     // Stage-0+: live Gemini call succeeded
+  | "native"     // rule-based classifier (classify stage only)
+  | "cache"      // AI call failed, fell back to cached data
+  | "off"        // stage skipped / disabled / failed without fallback
+  | "unknown";   // row missing the column (pre-Day-2O schema)
+
+const KNOWN_ENGINE_VALUES: ReadonlySet<string> = new Set([
+  "ai", "anthropic", "gemini", "native", "cache", "off",
+]);
+
+/**
+ * True if the stage produced output via a live AI call this run.
+ * Treat "ai" (legacy) the same as the new provider-specific values.
+ */
+export function isLiveAI(engine: StageEngine): boolean {
+  return engine === "ai" || engine === "anthropic" || engine === "gemini";
+}
+
+/**
+ * True if the stage's last run produced any output at all (live AI, native,
+ * or cache-fallback). Used to decide whether to show the AI-disabled empty
+ * state: only stages that returned "off" truly have no output to display.
+ */
+export function isAiRunning(engine: StageEngine): boolean {
+  return engine !== "off" && engine !== "unknown";
+}
 
 export async function getStageEngine(stage: "diagnosis" | "calendar"): Promise<StageEngine> {
   const rows = await readTab("Analysis_Log");
@@ -492,7 +526,7 @@ export async function getStageEngine(stage: "diagnosis" | "calendar"): Promise<S
     : ["Calendar Engine"];
   for (const col of colCandidates) {
     const raw = String(last[col] || "").toLowerCase().trim();
-    if (raw === "native" || raw === "off" || raw === "ai") return raw as StageEngine;
+    if (KNOWN_ENGINE_VALUES.has(raw)) return raw as StageEngine;
   }
   const status = stage === "diagnosis" ? last["Diagnosis Status"] : last["Calendar Status"];
   if (String(status || "").toLowerCase().trim() === "skipped") return "off";

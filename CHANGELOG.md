@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-04-21 — Stage 0 item 11: StageEngine type expanded to carry provider + cache signal
+
+`lib/sheets.ts` `StageEngine` union grew from `"ai" | "native" | "off" |
+"unknown"` to seven values: `"ai"` (legacy), `"anthropic"`, `"gemini"`,
+`"native"`, `"cache"`, `"off"`, `"unknown"`. Added `isLiveAI(engine)` and
+`isAiRunning(engine)` helpers so callers don't need to enumerate the valid
+values in equality chains. `getStageEngine()` now reads against a
+`KNOWN_ENGINE_VALUES` set — future engine values land in one place.
+
+Existing callers (`app/strategy/page.tsx:131`, `app/plan/page.tsx:95`) use
+`=== "native" || === "off"` which is forward-compatible: the new `"cache"`
+value correctly evaluates to `aiDisabled = false`, so cached output still
+renders under the staleness banner instead of flipping to the AI-disabled
+empty state. Build + brand:audit green; no UI regressions.
+
 ## 2026-04-21 — Brand compliance made an enforceable rule (QA gate #8 + ratchet audit)
 
 Shikho v1.0 is now a hard contract, not a style guideline. Four artifacts:

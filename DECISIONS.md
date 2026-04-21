@@ -1,5 +1,22 @@
 # Decisions
 
+## 2026-04-21 — StageEngine type keeps legacy "ai" alongside new provider values (Stage 0 item 11)
+
+Alternative considered: migrate historical `Analysis_Log` rows from `"ai"` to
+`"anthropic"` (the pre-Stage-0 runs were all Anthropic). Rejected — rewriting
+shared-sheet history from the dashboard is a dangerous pattern and the data
+is just noisy enough that a miss would silently corrupt audit trails. Instead,
+the union carries both `"ai"` (legacy) and `"anthropic"` (Stage-0+) and the
+new `isLiveAI()` helper treats them equivalently. Callers that don't need the
+distinction use the helper; callers that want the provider name specifically
+(e.g., a future "powered by Gemini" badge) key off the exact value.
+
+Adding `KNOWN_ENGINE_VALUES` as a `ReadonlySet` instead of an inline equality
+chain in `getStageEngine()` is minor but deliberate: the previous code checked
+three values; the new union has six runtime-valid values plus `"unknown"` for
+missing columns. Future engine values (e.g., `"openai"` when the adapter lands)
+add one line to the set, not an edit to an `||` chain in two places.
+
 ## 2026-04-21 — Brand compliance enforced via ratchet baseline, not upfront cleanup
 
 When brand compliance became a rule, the honest state of the codebase was 306
