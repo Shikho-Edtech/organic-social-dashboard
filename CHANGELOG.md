@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-04-21 — Bucket G item 58: AI cost budget banner on Overview
+
+`runCostSummary(logs)` in `lib/sheets.ts` aggregates Analysis_Log rows into
+`{this_week, last_week, budget, pct_of_budget, tracked}` using `AI_WEEKLY_BUDGET_USD = $5.00`.
+New banner at the top of `app/page.tsx` renders the week's AI spend vs the
+budget with progress bar — `brand-shikho-coral` above 80%, `brand-red` +
+bold above 100%. Mobile-first (stacked on narrow, row at `sm:`), no
+`slate-*`/`gray-*` classes. When the pipeline hasn't shipped per-run cost
+capture yet, surfaces `tracked=false` with the budget still visible so the
+commitment is on-screen from day one. Brand audit clean (no regressions),
+build green.
+
 ## 2026-04-21 — Bucket E items 33-42: metrics library (virality, discussion, polarity, CTR, cadence, heatmap, completion, north-star)
 
 Shipped nine derived-metric helpers in `lib/aggregate.ts` and surfaced them

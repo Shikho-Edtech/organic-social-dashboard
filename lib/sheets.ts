@@ -543,3 +543,93 @@ export async function getStageEngine(stage: "diagnosis" | "calendar"): Promise<S
   if (String(status || "").toLowerCase().trim() === "skipped") return "off";
   return "unknown";
 }
+
+// ─── Bucket G item 58: AI cost budget summary ───
+//
+// Reads Analysis_Log and sums the per-run cost for the current + previous
+// ISO weeks. Budget is a weekly ceiling defined in AI_WEEKLY_BUDGET_USD.
+// When Analysis_Log carries no "Cost USD" column yet (pipeline hasn't shipped
+// per-call cost capture), the helper returns zeros — the banner on Overview
+// still renders "budget: $X" so the commitment is visible. As soon as the
+// pipeline starts writing cost, the banner lights up automatically.
+
+export const AI_WEEKLY_BUDGET_USD = 5.0;
+
+export interface CostSummary {
+  this_week: number;       // USD spent on AI calls since most recent Monday
+  last_week: number;       // USD spent in the prior ISO week
+  budget: number;          // AI_WEEKLY_BUDGET_USD
+  pct_of_budget: number;   // 0..100+ (can exceed 100 when over budget)
+  tracked: boolean;        // true iff Analysis_Log carries a Cost USD column
+}
+
+function _monday(d: Date): Date {
+  // ISO week starts Monday. Returns a new Date at 00:00 local time.
+  const out = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const dow = out.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
+  const delta = dow === 0 ? -6 : 1 - dow; // shift to Monday
+  out.setDate(out.getDate() + delta);
+  return out;
+}
+
+function _parseCostCell(raw: any): number {
+  if (raw == null) return 0;
+  const s = String(raw).trim().replace(/[^0-9.\-]/g, "");
+  if (!s) return 0;
+  const n = parseFloat(s);
+  return Number.isFinite(n) ? n : 0;
+}
+
+export function runCostSummary(
+  logs: Record<string, any>[],
+  opts: { now?: Date; budget?: number } = {}
+): CostSummary {
+  const now = opts.now ?? new Date();
+  const budget = opts.budget ?? AI_WEEKLY_BUDGET_USD;
+  const thisMonday = _monday(now);
+  const lastMonday = new Date(thisMonday);
+  lastMonday.setDate(lastMonday.getDate() - 7);
+
+  // Detect whether ANY row carries a parseable cost. If no row does, we
+  // surface tracked=false so the UI can show "budget: $X (tracking pending)"
+  // instead of a misleading $0.00 of $5.00 chart.
+  let tracked = false;
+
+  let thisWeek = 0;
+  let lastWeek = 0;
+  for (const r of logs) {
+    // Accept a few sensible column names so the column can be added without
+    // breaking this reader: "Cost USD" is the canonical name going forward.
+    const costRaw =
+      r["Cost USD"] ?? r["AI Cost USD"] ?? r["Cost"] ?? r["Estimated Cost USD"];
+    const runDate = r["Run Date"] || r["Date"] || "";
+    if (!runDate) continue;
+    const ts = new Date(runDate);
+    if (isNaN(ts.getTime())) continue;
+
+    const cost = _parseCostCell(costRaw);
+    if (costRaw != null && String(costRaw).trim() !== "") tracked = true;
+
+    if (ts >= thisMonday && ts <= now) {
+      thisWeek += cost;
+    } else if (ts >= lastMonday && ts < thisMonday) {
+      lastWeek += cost;
+    }
+  }
+
+  const pct = budget > 0 ? (thisWeek / budget) * 100 : 0;
+  return {
+    this_week: Math.round(thisWeek * 100) / 100,
+    last_week: Math.round(lastWeek * 100) / 100,
+    budget,
+    pct_of_budget: Math.round(pct * 10) / 10,
+    tracked,
+  };
+}
+
+/** Async convenience — reads Analysis_Log then delegates to runCostSummary. */
+export async function getCostSummary(): Promise<CostSummary> {
+  const rows = await readTab("Analysis_Log");
+  const objects = rowsToObjects(rows);
+  return runCostSummary(objects);
+}

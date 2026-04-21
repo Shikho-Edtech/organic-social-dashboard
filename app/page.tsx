@@ -1,4 +1,4 @@
-import { getPosts, getDailyMetrics, getRunStatus } from "@/lib/sheets";
+import { getPosts, getDailyMetrics, getRunStatus, getCostSummary, AI_WEEKLY_BUDGET_USD } from "@/lib/sheets";
 import { filterPosts, computeKpis, dailyReach, groupStats, wowDelta, virality, northStarScore, cadenceGaps, reach as postReach } from "@/lib/aggregate";
 import { resolveRange } from "@/lib/daterange";
 import PageHeader from "@/components/PageHeader";
@@ -15,7 +15,12 @@ export const revalidate = 300;
 export default async function OverviewPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   const range = resolveRange(searchParams);
 
-  const [posts, daily, runStatus] = await Promise.all([getPosts(), getDailyMetrics(), getRunStatus()]);
+  const [posts, daily, runStatus, cost] = await Promise.all([
+    getPosts(),
+    getDailyMetrics(),
+    getRunStatus(),
+    getCostSummary(),
+  ]);
   const inRange = filterPosts(posts, { start: range.start, end: range.end });
   const kpis = computeKpis(inRange);
 
@@ -123,6 +128,90 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
   return (
     <div>
       <PageHeader title="Overview" subtitle="Key performance at a glance" dateLabel={range.label} lastScrapedAt={runStatus.last_run_at} />
+
+      {/* Bucket G item 58: AI cost vs weekly budget.
+          Shikho-coral when over 80%, bold red when over 100%.
+          When tracked=false (pipeline hasn't shipped Cost USD column yet),
+          shows the commitment so the budget is visible — the bar lights up
+          automatically once cost capture lands. Mobile-first: single column
+          on narrow screens, row on sm+. */}
+      {(() => {
+        const over100 = cost.pct_of_budget > 100;
+        const over80 = cost.pct_of_budget > 80;
+        const barPct = Math.max(0, Math.min(100, cost.pct_of_budget));
+        // Bar + amount color: red > 100%, coral > 80%, indigo otherwise.
+        const amountColor = over100
+          ? "text-brand-red"
+          : over80
+            ? "text-brand-shikho-coral"
+            : "text-brand-shikho-indigo";
+        const amountWeight = over100 ? "font-extrabold" : "font-semibold";
+        const barColor = over100
+          ? "bg-brand-red"
+          : over80
+            ? "bg-brand-shikho-coral"
+            : "bg-brand-shikho-indigo";
+        const borderColor = over100
+          ? "border-brand-red/50"
+          : over80
+            ? "border-brand-shikho-coral/50"
+            : "border-ink-100";
+        return (
+          <div
+            role="status"
+            aria-live="polite"
+            className={`mb-6 rounded-md border ${borderColor} bg-ink-paper px-4 py-3 shadow-xs`}
+          >
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <div className="min-w-0">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">
+                  AI cost this week
+                </div>
+                <div className="mt-1 flex items-baseline gap-2 flex-wrap">
+                  <div className={`text-xl sm:text-2xl ${amountWeight} ${amountColor} break-words leading-tight tabular-nums`}>
+                    ${cost.this_week.toFixed(2)}
+                  </div>
+                  <div className="text-sm text-ink-500 tabular-nums">
+                    of ${cost.budget.toFixed(2)} budget
+                  </div>
+                  <div className="text-xs text-ink-400 tabular-nums">
+                    ({cost.pct_of_budget.toFixed(1)}%)
+                  </div>
+                </div>
+                <div className="mt-1 text-xs text-ink-500 tabular-nums">
+                  Last week: ${cost.last_week.toFixed(2)}
+                  {!cost.tracked && (
+                    <span className="ml-2 text-ink-400">
+                      · per-run cost tracking not yet wired
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="sm:w-48 md:w-56 max-w-full">
+                <div
+                  className="h-2 w-full rounded-full bg-ink-100 overflow-hidden"
+                  aria-hidden="true"
+                >
+                  <div
+                    className={`h-full ${barColor} transition-all duration-base ease-shikho-out`}
+                    style={{ width: `${barPct}%` }}
+                  />
+                </div>
+                {over100 && (
+                  <div className="mt-1 text-xs font-semibold text-brand-red">
+                    Over budget — cap further AI runs this week
+                  </div>
+                )}
+                {!over100 && over80 && (
+                  <div className="mt-1 text-xs font-semibold text-brand-shikho-coral">
+                    Approaching budget ceiling
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* KPIs — canonical template caps at 5 cards (Batch 3d, #19). Dropped
           "Interactions" because Engagement Rate is the same signal normalized
