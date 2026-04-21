@@ -1,5 +1,53 @@
 # Learnings
 
+## 2026-04-21 — Palette discipline needs a scriptable audit, or the palette drifts
+
+The Shikho v1.0 rollout did a wide remap across three surfaces, then I claimed
+"done." Running `npm run brand:audit` immediately found **308 residual
+violations**: `text-slate-500` still in engagement pages and StalenessBanner,
+three legacy hexes still in `report.py`, Inter font still in an archived deck
+and START_HERE.html. Human-scale sweeps miss human-scale things; a 200-line
+component has dozens of colour classes and the eyeballing miss rate is high.
+
+Rule: **every brand rule gets a grep-based audit before it's considered
+enforceable.** The rule in CLAUDE.md is advisory; the script is the contract.
+Same pattern as the mobile checklist (which would also benefit from a linter,
+but that's a harder script to write).
+
+Audit design notes worth reusing for future contracts:
+
+- **Zero dependencies.** Node stdlib only. Surviving `npm install` is one
+  fewer failure mode.
+- **Ratchet baseline, not absolute.** Real codebases carry legacy. An absolute
+  audit that fails from commit 1 gets disabled within a week.
+- **Regressions report the delta, not the full list.** When a commit introduces
+  a new violation, the output shows only the new lines, not the 300 legacy
+  ones — otherwise the signal drowns in noise.
+- **Opt-in verbose.** `--list` prints everything for audits/cleanups.
+- **Document the ratchet ritual.** Re-running `--write-baseline` after cleanup
+  must be explicit — automatic silent updating defeats the contract.
+
+## 2026-04-21 — Cross-repo brand rollouts: swap hex inside the config, never the class names
+
+Rolling out Shikho v1.0 across dashboard + pipeline + master HTML decks had two seductive
+forms: (a) rename tokens to match the new design system ("brand-indigo-400" not
+"brand-shikho-indigo"), or (b) keep every class in every component and just change the hex
+behind the existing tokens in `tailwind.config.ts`. (a) feels cleaner in isolation; (b) is
+what actually works when the same repo has 40+ component files, 8 pages, and two sibling
+surfaces (Python-generated HTML + standalone docs) that don't share the Tailwind config.
+
+Rule: **for any palette shift, the rename cost compounds with every consumer surface.** The
+config remap is O(1) regardless of how much UI exists. Only rename when the semantics of
+the token genuinely change (e.g. adding `brand-shikho-coral` as a new token because
+nothing previously mapped to that role), never because the new palette uses different
+vocabulary.
+
+Corollary for the Python reports + master HTML: they each have their own `:root` block with
+a palette vocabulary. When rolling out, touch each `:root` + the font-family + any hardcoded
+rgba tuples that were written before the CSS variables existed (ripgrep for `rgba\(` and
+remap the exact tuples). Don't try to unify the vocabulary across surfaces — let each
+surface keep its own role-based names (`--shipped`, `--v2`, `--p1`) and just remap the hex.
+
 ## 2026-04-21 — Raw URL params leak into UI copy when the fallback path isn't thought through
 
 **Context:** live-check on `/strategy?archived=true` and `/plan?archived=true`

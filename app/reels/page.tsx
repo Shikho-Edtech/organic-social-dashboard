@@ -315,7 +315,7 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
           sampleSize={`${reelsWithCurve} of ${totalReels} reel${totalReels === 1 ? "" : "s"} ${reelsWithCurve === 1 ? "has" : "have"} retention curves`}
           caption="Biggest drop on Shikho reels is typically between 2s and 6s — the hook window. If 6s→15s survival is high, format is sticky. If 15s→30s drop is steep, middle loses people."
         >
-          <BarChartBase data={funnel} color="#4f46e5" metricName="Viewers" valueAxisLabel="Viewers" categoryAxisLabel="Seconds watched" />
+          <BarChartBase data={funnel} color="#304090" metricName="Viewers" valueAxisLabel="Viewers" categoryAxisLabel="Seconds watched" />
         </ChartCard>
         <ChartCard
           title="Average Retention Curve"
@@ -328,7 +328,7 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
           <TrendChart
             data={avgCurveLine}
             variant="line"
-            color="#ec4899"
+            color="#C02080"
             valueFormat="percent1"
             metricName="% still watching"
             valueAxisLabel="% still watching"
@@ -346,7 +346,7 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
           definition="Total reel plays (includes replays). Highest-distribution reels in the period. Tooltip shows avg watch time (seconds)."
           sampleSize={`top ${topByPlays.length}`}
         >
-          <BarChartBase data={topByPlays} horizontal height={340} color="#4f46e5" metricName="Plays" valueAxisLabel="Plays" categoryAxisLabel="Reel caption (preview)" />
+          <BarChartBase data={topByPlays} horizontal height={340} color="#304090" metricName="Plays" valueAxisLabel="Plays" categoryAxisLabel="Reel caption (preview)" />
         </ChartCard>
         <ChartCard
           title="Top 10 Reels by Avg Watch Time"
@@ -356,7 +356,7 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
           sampleSize={`top ${topByWatchTime.length}`}
           caption="Long watch time with decent plays = replicable format. Short watch time with high plays = good hook, weak middle."
         >
-          <BarChartBase data={topByWatchTime} horizontal height={340} color="#ec4899" valueFormat="number" metricName="Avg watch (s)" valueAxisLabel="Seconds" categoryAxisLabel="Reel caption (preview)" />
+          <BarChartBase data={topByWatchTime} horizontal height={340} color="#C02080" valueFormat="number" metricName="Avg watch (s)" valueAxisLabel="Seconds" categoryAxisLabel="Reel caption (preview)" />
         </ChartCard>
       </div>
 

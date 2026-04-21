@@ -74,7 +74,7 @@ export default function InfoTooltip({ text }: { text: string }) {
         <span
           id={tooltipId}
           role="tooltip"
-          className="absolute left-5 top-0 z-20 w-64 max-w-[calc(100vw-3rem)] rounded-md bg-slate-900 text-white text-[11px] leading-snug p-2.5 shadow-lg"
+          className="absolute left-5 top-0 z-20 w-64 max-w-[calc(100vw-3rem)] rounded-lg bg-shikho-indigo-900 text-white text-[11px] leading-snug p-2.5 shadow-lg ring-1 ring-shikho-indigo-800"
         >
           {text}
         </span>

@@ -41,12 +41,12 @@ export default function Nav() {
   }, [mobileOpen]);
 
   return (
-    <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
+    <header className="bg-ink-paper/90 backdrop-blur-md border-b border-ink-100 sticky top-0 z-50 shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-14">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <Link href="/" className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-              <div className="w-9 h-9 shrink-0 rounded-lg bg-white border border-slate-200 flex items-center justify-center overflow-hidden">
+              <div className="w-9 h-9 shrink-0 rounded-xl bg-ink-paper ring-1 ring-ink-100 shadow-xs flex items-center justify-center overflow-hidden">
                 <Image src="/shikho-bird.png" alt="Shikho" width={30} height={30} className="object-contain" />
               </div>
               <div className="leading-tight min-w-0">

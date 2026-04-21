@@ -29,7 +29,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-slate-50">
+    <div className="min-h-screen flex flex-col lg:flex-row bg-brand-canvas">
       {/* Left: brand panel */}
       <div className="relative lg:flex-1 overflow-hidden bg-brand-shikho-indigo flex flex-col justify-between p-8 lg:p-12 min-h-[240px] lg:min-h-screen">
         {/* Decorative gradient blobs — subtle */}
@@ -174,7 +174,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading || !password}
-            className="mt-5 w-full bg-brand-shikho-indigo hover:bg-brand-shikho-blue disabled:bg-slate-300 disabled:text-slate-500 text-white font-semibold py-3 rounded-lg transition-colors shadow-sm"
+            className="mt-5 w-full bg-brand-shikho-indigo hover:bg-brand-shikho-blue disabled:bg-ink-200 disabled:text-ink-muted text-white font-semibold py-3 rounded-xl transition-all duration-base ease-shikho-out shadow-indigo-lift hover:shadow-lg active:scale-[0.99]"
           >
             {loading ? "Signing in..." : "Sign in"}
           </button>

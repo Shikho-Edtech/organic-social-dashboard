@@ -25,7 +25,8 @@ function makeFormatter(spec?: FormatSpec): (v: number) => string {
 
 export default function TrendChart({
   data,
-  color = "#06b6d4",
+  // Shikho indigo-600 — default trend line lands on brand identity.
+  color = "#304090",
   height = 220,
   valueFormat,
   variant = "area",
@@ -39,10 +40,10 @@ export default function TrendChart({
   const tooltipFormatter = (v: number): [string, string] => [fmt(v), metricName || "Value"];
 
   const yAxisLabelProp = valueAxisLabel
-    ? { value: valueAxisLabel, angle: -90, position: "insideLeft" as const, offset: 5, style: { fontSize: 11, fill: "#64748b", fontWeight: 500, textAnchor: "middle" as const } }
+    ? { value: valueAxisLabel, angle: -90, position: "insideLeft" as const, offset: 5, style: { fontSize: 11, fill: "#4A506A", fontWeight: 500, textAnchor: "middle" as const } }
     : undefined;
   const xAxisLabelProp = xAxisLabel
-    ? { value: xAxisLabel, position: "insideBottom" as const, offset: -5, style: { fontSize: 11, fill: "#64748b", fontWeight: 500 } }
+    ? { value: xAxisLabel, position: "insideBottom" as const, offset: -5, style: { fontSize: 11, fill: "#4A506A", fontWeight: 500 } }
     : undefined;
 
   const margin = { top: 5, right: 10, left: valueAxisLabel ? 15 : 0, bottom: xAxisLabel ? 20 : 5 };
@@ -51,11 +52,11 @@ export default function TrendChart({
     <ResponsiveContainer width="100%" height={height}>
       {variant === "line" ? (
         <LineChart data={data} margin={margin}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-          <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#475569" }} label={xAxisLabelProp} />
-          <YAxis axisLine={false} tickLine={false} tickFormatter={fmt} width={55} tick={{ fontSize: 11, fill: "#475569" }} label={yAxisLabelProp} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#E6E8F0" vertical={false} />
+          <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#333A50" }} label={xAxisLabelProp} />
+          <YAxis axisLine={false} tickLine={false} tickFormatter={fmt} width={55} tick={{ fontSize: 11, fill: "#333A50" }} label={yAxisLabelProp} />
           <Tooltip
-            contentStyle={{ backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "12px" }}
+            contentStyle={{ backgroundColor: "white", border: "1px solid #E6E8F0", borderRadius: "12px", fontSize: "12px", boxShadow: "0 6px 14px rgba(16,22,54,0.08)" }}
             formatter={tooltipFormatter}
           />
           <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2} dot={false} />
@@ -68,11 +69,11 @@ export default function TrendChart({
               <stop offset="95%" stopColor={color} stopOpacity={0.02} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-          <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#475569" }} label={xAxisLabelProp} />
-          <YAxis axisLine={false} tickLine={false} tickFormatter={fmt} width={55} tick={{ fontSize: 11, fill: "#475569" }} label={yAxisLabelProp} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#E6E8F0" vertical={false} />
+          <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#333A50" }} label={xAxisLabelProp} />
+          <YAxis axisLine={false} tickLine={false} tickFormatter={fmt} width={55} tick={{ fontSize: 11, fill: "#333A50" }} label={yAxisLabelProp} />
           <Tooltip
-            contentStyle={{ backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "12px" }}
+            contentStyle={{ backgroundColor: "white", border: "1px solid #E6E8F0", borderRadius: "12px", fontSize: "12px", boxShadow: "0 6px 14px rgba(16,22,54,0.08)" }}
             formatter={tooltipFormatter}
           />
           <Area type="monotone" dataKey="value" stroke={color} fill={`url(#${gradId})`} strokeWidth={2} />

@@ -25,7 +25,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const authed = await verifyAuthToken(c.get(AUTH_COOKIE)?.value || "");
   return (
     <html lang="en">
-      <body className="bg-slate-50">
+      <head>
+        {/* Preconnect the Google Fonts domains — Poppins + Hind Siliguri are
+            loaded via globals.css; preconnect shaves ~200ms on first paint. */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      </head>
+      {/* bg-brand-canvas = #F4F5FA (Shikho canvas). Body copy inherits ink.700
+          from globals.css. */}
+      <body className="bg-brand-canvas text-ink-primary antialiased">
         {authed && <Nav />}
         <main className="max-w-7xl mx-auto px-6 py-8">{children}</main>
         {authed && <DataFooter />}

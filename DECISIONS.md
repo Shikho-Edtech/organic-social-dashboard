@@ -1,5 +1,51 @@
 # Decisions
 
+## 2026-04-21 — Brand compliance enforced via ratchet baseline, not upfront cleanup
+
+When brand compliance became a rule, the honest state of the codebase was 306
+legacy violations (mostly `text-slate-500` carried over from pre-Shikho). Two
+options:
+
+1. Block all commits until the 306 violations are cleaned up.
+2. Capture the 306 as a grandfathered baseline; enforce "no regressions"
+   forward; ratchet down opportunistically.
+
+Picked (2). The cleanup is low-risk but high-effort (mechanical find/replace
+across 24 files), and blocking on it would stall every other change. The
+ratchet pattern is standard (eslintrc grandfather lists, mypy baselines,
+rubocop --auto-gen) — it respects that "reality has a legacy" without letting
+"legacy" excuse new violations.
+
+Mechanism: `.brand-audit-baseline.json` stores `{file: {ruleId: count}}`.
+Audit reports **regressions** (current count exceeds baseline) and exits 1.
+Cleanup is invited, not mandated: when a commit reduces violations, re-run
+`npm run brand:audit -- --write-baseline` and the expectation drops and
+never drifts back up.
+
+The alternative — file-level allowlist — was rejected: it hides ratio of
+violations per file. Count-per-rule-per-file is more honest.
+
+## 2026-04-21 — Shikho v1.0 brand rollout: remap hex, keep token names
+
+When applying the Shikho v1.0 design system, the obvious path was to rename Tailwind tokens
+(`brand-shikho-indigo` → `brand-indigo`, `brand-cyan` → `brand-indigo-400`, etc.) to match
+the Shikho naming convention. That would have touched 20+ component files with churn that
+adds no visual value.
+
+Picked the opposite: **keep all existing token names, remap the hex values inside
+`tailwind.config.ts`**. `brand-shikho-indigo` now resolves to Shikho Indigo #304090,
+`brand-cyan` to #4A66C4, `brand-amber` to Sunrise #E0A010, `brand-red` to Coral #E03050.
+Consumers never learn the change happened — the entire app shifts palette on a single
+config file.
+
+Tradeoff accepted: token names don't literally match the Shikho spec labels. That's fine
+because the spec is a palette contract, not a naming contract. Anyone reading the code
+sees the hex and the usage; anyone reading the spec sees the hex and the role. The names
+are an internal index, not a deliverable.
+
+Where we did rename: added `brand-shikho-coral` as a new token (no existing mapping to
+reuse for coral), so negative-delta KPIs now read `text-brand-shikho-coral` explicitly.
+
 ## 2026-04-21 — Archival mode via `?archived=<run-id>` URL param, not client-side tab state
 
 Considered two patterns for "view last week's calendar":

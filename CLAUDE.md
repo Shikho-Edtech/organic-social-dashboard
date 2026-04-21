@@ -159,10 +159,65 @@ stages silently go stale...") for the rationale and failure mode.
 
 ---
 
+## Brand system — Shikho v1.0 is the only palette allowed
+
+`docs/BRAND.md` is the source of truth. It lists the four core hues (Indigo
+`#304090`, Magenta `#C02080`, Sunrise `#E0A010`, Coral `#E03050`), the ink
+neutral scale on Canvas/Paper, Poppins + Hind Siliguri fonts, 4/8/12/16/20/28px
+radii, ambient + `indigo-lift` shadows, and 140/220/420ms motion tokens with
+`ease-shikho-out`. **Read it before any UI commit.**
+
+### Hard rules
+
+- **No `slate-*` / `gray-*` / `zinc-*` classes** on new code. Use `text-ink-*`,
+  `bg-ink-paper` / `bg-brand-canvas`, `border-ink-100`.
+- **No Inter font.** Poppins + Hind Siliguri, full stop.
+- **No legacy Tailwind dark hexes** (`#0b1120`, `#111827`, `#0f172a`, `#1f2937`,
+  `#334155`, `#475569`, `#64748b`, `#94a3b8`, `#cbd5e1`, `#e2e8f0`, `#e5e7eb`,
+  `#f1f5f9`, `#f8fafc`). Remap to Shikho ink.* / shikho-indigo-*.
+- **No ad-hoc chart hexes.** Charts lead with the four core hues. If the
+  FALLBACK_PALETTE in `lib/colors.ts` doesn't cover your need, extend that
+  file — don't inline a one-off.
+- **Token names over values.** Prefer `text-brand-shikho-indigo` over `#304090`
+  in components so a future palette shift lands in `tailwind.config.ts` alone.
+
+### Enforcement — the audit script
+
+`npm run brand:audit` greps every scanned file for the banned patterns above.
+It uses a **ratchet baseline** (`.brand-audit-baseline.json`) so existing
+violations are grandfathered; the script exits non-zero only on **regressions**
+(new violations beyond the baseline).
+
+```
+npm run brand:audit                      # check against baseline (QA gate #8)
+npm run brand:audit -- --list            # list every violation, grandfathered + new
+npm run brand:audit -- --write-baseline  # ratchet DOWN after a cleanup pass
+```
+
+### The ratchet rule
+
+- **Never introduce a new violation.** The audit will block it at QA gate #8.
+- **Fix on touch.** When a commit edits a file that carries grandfathered
+  violations, fix the ones in the lines you're changing (not the whole file
+  — keep diffs focused). After a cleanup pass, re-run with `--write-baseline`
+  so the expectation drops and never drifts back up.
+- **Never write a new file with grandfathered violations.** New files start
+  clean; the baseline only forgives legacy code.
+
+### The rollout rule (for any future palette version)
+
+If the brand system advances (v1.1, v2.0), repeat what worked for v1.0:
+remap hex inside `tailwind.config.ts`, keep token names, walk each surface's
+own `:root` block (pipeline report + master HTML decks), ripgrep for raw
+`rgba()` tuples that bypass the vars. Do **not** rename tokens — O(1) config
+change is better than O(N) component churn.
+
+---
+
 ## Pre-commit QA gate — multi-perspective pass
 
 `npm run build` is necessary but **not sufficient**. Every commit that changes
-UI, data flow, or user-facing logic must pass the seven perspectives below
+UI, data flow, or user-facing logic must pass the eight perspectives below
 before it's reported done. This exists because past commits shipped with
 desktop-only assumptions, broken empty states, and keyboard-inaccessible
 controls that all compiled cleanly. Type-checks don't catch intent.
@@ -170,7 +225,7 @@ controls that all compiled cleanly. Type-checks don't catch intent.
 Run this as a **self-review before commit**, not as a reason to ask the user
 to verify. Report what was checked and what was caught.
 
-### The seven perspectives
+### The eight perspectives
 
 1. **Viewport sweep.** Mentally (or via the running dev server) walk every
    changed page at **360 / 768 / 1280px**. Anything that overflows, stacks
@@ -195,8 +250,8 @@ to verify. Report what was checked and what was caught.
    - No `:hover`-only tooltips or menus
 
 4. **Accessibility.** For each new piece of UI:
-   - Text contrast ≥ 4.5:1 on regular copy (use slate-500 minimum for
-     secondary text on white; slate-700 on slate-50 backgrounds)
+   - Text contrast ≥ 4.5:1 on regular copy (use `text-ink-muted` minimum for
+     secondary text on Paper; `text-ink-secondary` on Canvas backgrounds)
    - Dynamic content (banners, toasts) has `role="status"` / `aria-live`
    - Icons that convey state have `aria-label` or visible text siblings
    - Tap targets are ≥ 44×44px (pad with `py-2 px-3` minimum)
@@ -214,6 +269,15 @@ to verify. Report what was checked and what was caught.
    Does the headline answer "what is this?" Does the first KPI answer "is
    this good or bad?" Can a new user act on the page in under 30 seconds?
    If not, the copy or layout needs one more pass.
+
+8. **Brand compliance.** `npm run brand:audit` must exit 0 (no regressions
+   beyond the ratchet baseline). If the commit cleans up grandfathered
+   violations, re-run with `--write-baseline` to ratchet the expectation
+   down. Spec: `docs/BRAND.md`. Rules:
+   - No new `slate-*` / `gray-*` / `zinc-*` classes, legacy Tailwind hexes,
+     or Inter font references
+   - Charts lead with the four Shikho core hues
+   - Prefer Tailwind tokens (`text-brand-shikho-indigo`) over raw hex
 
 ### What to report
 

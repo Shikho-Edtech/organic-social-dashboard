@@ -265,8 +265,8 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
               minN={CELL_MIN_N}
               metricLabel="engagement rate"
               valueFormat="percent"
-              minColor="#fdf2f8" // pink-50
-              maxColor="#ec4899" // pink-500 — matches the "ER" family color
+              minColor="#FCEAF3" // shikho-magenta-50
+              maxColor="#C02080" // shikho-magenta-500 — matches the "ER" family color
             />
           )}
         </ChartCard>
@@ -294,8 +294,8 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
               minN={CELL_MIN_N}
               metricLabel="avg reach"
               valueFormat="number"
-              minColor="#eef2ff" // indigo-50
-              maxColor="#4f46e5" // indigo-600
+              minColor="#EEF0FA" // shikho-indigo-50
+              maxColor="#304090" // shikho-indigo-600
             />
           )}
         </ChartCard>

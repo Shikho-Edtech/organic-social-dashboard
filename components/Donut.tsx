@@ -1,10 +1,19 @@
 "use client";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
-// Palette ordered to lead with brand: Shikho indigo + pink first so single-
-// slice / 2-slice charts carry brand identity without extra config. Secondary
-// colours follow in a perceptually-distinct sequence.
-const PALETTE = ["#4f46e5", "#ec4899", "#f59e0b", "#06b6d4", "#10b981", "#8b5cf6", "#14b8a6", "#ef4444"];
+// Shikho v1.0 palette — four core hues up front (indigo, magenta, sunrise,
+// coral) so single- and two-slice charts land on brand identity without any
+// override. Secondary tones are 500/700 variants of the same families.
+const PALETTE = [
+  "#304090", // shikho-indigo-600 (core)
+  "#C02080", // shikho-magenta-500 (core)
+  "#E0A010", // shikho-sunrise-500 (core)
+  "#E03050", // shikho-coral-500 (core)
+  "#3F4FA2", // indigo-500
+  "#A11A6D", // magenta-600
+  "#1A8E78", // brand teal
+  "#243172", // indigo-700
+];
 
 type FormatSpec = "number" | "percent" | "percent1";
 
@@ -52,7 +61,7 @@ export default function Donut({ data, height = 220, valueFormat, metricName, sho
           ))}
         </Pie>
         <Tooltip
-          contentStyle={{ backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "12px" }}
+          contentStyle={{ backgroundColor: "white", border: "1px solid #E6E8F0", borderRadius: "12px", fontSize: "12px", boxShadow: "0 6px 14px rgba(16,22,54,0.08)" }}
           formatter={tooltipFormatter}
         />
         <Legend

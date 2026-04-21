@@ -109,10 +109,11 @@ export default async function TrendsPage({ searchParams }: { searchParams: Recor
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { key: "reach", label: "Reach", color: "#4f46e5", fmt: (v: number) => v.toLocaleString() },
-              { key: "volume", label: "Posts", color: "#06b6d4", fmt: (v: number) => v.toString() },
-              { key: "shares", label: "Shares", color: "#f59e0b", fmt: (v: number) => v.toLocaleString() },
-              { key: "er", label: "Eng. rate", color: "#ec4899", fmt: (v: number) => v.toFixed(2) + "%" },
+              // Shikho v1.0: each metric family gets a distinct core hue.
+              { key: "reach",  label: "Reach",     color: "#304090", fmt: (v: number) => v.toLocaleString() }, // indigo-600
+              { key: "volume", label: "Posts",     color: "#3F4FA2", fmt: (v: number) => v.toString() },       // indigo-500
+              { key: "shares", label: "Shares",    color: "#E0A010", fmt: (v: number) => v.toLocaleString() }, // sunrise-500
+              { key: "er",     label: "Eng. rate", color: "#C02080", fmt: (v: number) => v.toFixed(2) + "%" }, // magenta-500
             ].map((m) => {
               const vals = multiples.map((w) => w[m.key as keyof typeof w] as number);
               const max = Math.max(...vals, 0.0001);
@@ -167,7 +168,7 @@ export default async function TrendsPage({ searchParams }: { searchParams: Recor
           definition="Count of posts published on each calendar day (BDT). Gaps mean no posts were published that day."
           caption="Number of posts published each day in the selected period."
         >
-          <BarChartBase data={volumeData} color="#06b6d4" metricName="Posts" valueAxisLabel="Posts published" categoryAxisLabel="Date (MM-DD)" />
+          <BarChartBase data={volumeData} color="#3F4FA2" metricName="Posts" valueAxisLabel="Posts published" categoryAxisLabel="Date (MM-DD)" />
         </ChartCard>
         <ChartCard
           title="Daily Reach"
@@ -176,7 +177,7 @@ export default async function TrendsPage({ searchParams }: { searchParams: Recor
           definition="Sum of post-level unique reach for posts published that day. Not lifetime page reach — reach attributed to posts. Spikes typically mean a single post went viral."
           caption="Daily unique reach — spikes often indicate viral or boosted content."
         >
-          <TrendChart data={reachData} color="#10b981" variant="area" metricName="Reach" valueAxisLabel="Unique reach" />
+          <TrendChart data={reachData} color="#304090" variant="area" metricName="Reach" valueAxisLabel="Unique reach" />
         </ChartCard>
       </div>
 
@@ -190,7 +191,7 @@ export default async function TrendsPage({ searchParams }: { searchParams: Recor
         >
           <TrendChart
             data={weeklyEng}
-            color="#ec4899"
+            color="#C02080"
             variant="line"
             valueFormat="percent1"
             metricName="Engagement rate"
@@ -204,7 +205,7 @@ export default async function TrendsPage({ searchParams }: { searchParams: Recor
           definition="Total shares across all posts published in each ISO week."
           caption="Shares are the strongest virality signal — they expand reach beyond your existing audience."
         >
-          <BarChartBase data={sharesData} color="#f59e0b" metricName="Shares" valueAxisLabel="Shares" />
+          <BarChartBase data={sharesData} color="#E0A010" metricName="Shares" valueAxisLabel="Shares" />
         </ChartCard>
       </div>
     </div>

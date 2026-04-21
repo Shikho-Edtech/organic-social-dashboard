@@ -1,5 +1,47 @@
 # Changelog
 
+## 2026-04-21 — Brand compliance made an enforceable rule (QA gate #8 + ratchet audit)
+
+Shikho v1.0 is now a hard contract, not a style guideline. Four artifacts:
+
+1. **`docs/BRAND.md`** — single-page spec (core hues, ink scale, fonts, tokens,
+   forbidden patterns, light/dark-surface mapping).
+2. **`scripts/brand-audit.mjs`** — zero-dependency Node script that greps for
+   banned patterns (`slate-*` / `gray-*` / `zinc-*` classes, legacy Tailwind
+   dark hexes, Inter font, non-brand chart hexes) across dashboard + pipeline
+   + master HTML. Uses a ratchet baseline (`.brand-audit-baseline.json`) —
+   exits non-zero only on **regressions** beyond the grandfathered count.
+   Current baseline: 306 legacy violations across 24 files.
+3. **`package.json`** → `npm run brand:audit` (+ `--list`, `--write-baseline`).
+4. **CLAUDE.md updates** (dashboard + pipeline + master): new "Brand system"
+   section in each, plus perspective #8 ("Brand compliance") added to the
+   pre-commit QA gate. Accessibility copy updated to recommend `text-ink-*`
+   instead of `slate-*`.
+
+Ratchet rule: never introduce a new violation; fix violations in lines you
+touch; re-run `--write-baseline` after cleanup passes so the expectation
+only moves down.
+
+## 2026-04-21 — Shikho v1.0 brand system rolled out across dashboard, pipeline reports, and master HTML decks
+
+Applied the Shikho v1.0 design system (March 2026) end-to-end. `tailwind.config.ts` now carries
+the four core hues (Indigo #304090, Magenta #C02080, Sunrise #E0A010, Coral #E03050) with full
+50-900 scales, ink neutrals on #F4F5FA canvas / #FFFFFF paper, Poppins + Hind Siliguri font
+stack, 4/8/12/16/20/28px radii, ambient Shikho shadows plus `indigo-lift` for primary CTAs,
+and 140/220/420ms motion tokens with `ease-shikho-out` cubic-bezier.
+
+Shared chart components (BarChart, Donut, TrendChart, Heatmap) lead with the four core hues;
+`lib/colors.ts` FORMAT/HOOK/SPOTLIGHT/FUNNEL maps now resolve to Shikho palette; KPI cards use
+`shadow-indigo-lift` and coral for negative deltas. `app/login/page.tsx` CTA uses the new
+motion + shadow tokens. `facebook-pipeline/src/report.py` re-skinned with the matching dark
+surface (#0A0C18 ink-900, #1A2558 borders) and indigo+magenta+sunrise tri-colour headline box.
+`START_HERE.html`, `docs/PLAN_COMPARISON.html`, `docs/ROADMAP_V2.html` all swapped Inter for
+Poppins + Hind Siliguri and remapped their root variables to the Shikho palette.
+
+Build verified green (all 13 routes compile, no type errors). Token names left unchanged so
+component-level classes (`brand-shikho-indigo`, `brand-cyan/amber/red`) pick up the new hex
+automatically — no rename sweep needed.
+
 ## 2026-04-21 — Fix: archival URL no longer leaks raw query param into UI copy
 
 Live check caught `/strategy?archived=true` rendering "Archived diagnosis

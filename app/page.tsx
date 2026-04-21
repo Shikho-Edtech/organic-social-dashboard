@@ -107,7 +107,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
           definition="Sum of post-level unique reach for posts published that day. Attributed to post-publish date, not page impression date."
           caption="Daily unique users reached by posts in the selected period."
         >
-          <TrendChart data={trend} color="#06b6d4" metricName="Reach" valueAxisLabel="Unique reach" />
+          <TrendChart data={trend} color="#304090" metricName="Reach" valueAxisLabel="Unique reach" />
         </ChartCard>
 
         <ChartCard

@@ -83,8 +83,8 @@ export default function Heatmap({
   minN,
   metricLabel,
   valueFormat = "number",
-  minColor = "#eef2ff", // indigo-50
-  maxColor = "#4f46e5", // indigo-600
+  minColor = "#EEF0FA", // shikho-indigo-50
+  maxColor = "#304090", // shikho-indigo-600 (core)
 }: Props) {
   const fmt = (v: number) => formatValue(v, valueFormat);
   const [hovered, setHovered] = useState<HeatmapCell | null>(null);

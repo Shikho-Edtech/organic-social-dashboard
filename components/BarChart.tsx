@@ -20,11 +20,24 @@ type Props = {
   showPercent?: boolean;
 };
 
-// Palette ordered to lead with brand: Shikho indigo + pink first so 2-3 bar
-// charts land on brand colours without requiring `color={}` overrides.
-// Secondary tones follow in a perceptually-distinct sequence that avoids
-// adjacent hues blending into each other.
-const PALETTE = ["#4f46e5", "#ec4899", "#f59e0b", "#06b6d4", "#10b981", "#8b5cf6", "#3b82f6", "#14b8a6", "#ef4444", "#84cc16", "#f97316", "#a78bfa"];
+// Shikho v1.0 palette. Lead with the four core hues (indigo, magenta,
+// sunrise, coral) so 2-4 bar charts read as the Shikho identity without
+// any `color={}` override. Secondary tones are 500/700 variants of the
+// same families so the chart stays on-brand even with many categories.
+const PALETTE = [
+  "#304090", // shikho-indigo-600 (core)
+  "#C02080", // shikho-magenta-500 (core)
+  "#E0A010", // shikho-sunrise-500 (core)
+  "#E03050", // shikho-coral-500 (core)
+  "#3F4FA2", // indigo-500
+  "#A11A6D", // magenta-600
+  "#B7820A", // sunrise-600
+  "#1A8E78", // brand teal (informational)
+  "#8C3FA8", // magenta-purple
+  "#243172", // indigo-700 (deep)
+  "#10b981", // emerald (success)
+  "#6E7389", // ink-400 (neutral filler)
+];
 
 function makeFormatter(spec?: FormatSpec): (v: number) => string {
   if (spec === "percent") return (v) => v + "%";
@@ -79,7 +92,7 @@ export default function BarChartBase({
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data} layout={horizontal ? "vertical" : "horizontal"} margin={margin}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={!horizontal} horizontal={horizontal} />
+        <CartesianGrid strokeDasharray="3 3" stroke="#E6E8F0" vertical={!horizontal} horizontal={horizontal} />
         {horizontal ? (
           <>
             <XAxis
@@ -89,7 +102,7 @@ export default function BarChartBase({
               tickFormatter={fmt}
               label={
                 valueAxisLabel
-                  ? { value: valueAxisLabel, position: "insideBottom", offset: -8, style: { fontSize: 11, fill: "#64748b", fontWeight: 500 } }
+                  ? { value: valueAxisLabel, position: "insideBottom", offset: -8, style: { fontSize: 11, fill: "#4A506A", fontWeight: 500 } }
                   : undefined
               }
             />
@@ -103,10 +116,10 @@ export default function BarChartBase({
               // reclaim ~40px of drawing area; desktop charts with long pillar
               // names ("Study Tips & Exam Prep") still get the ~130 they need.
               width={yAxisWidth}
-              tick={{ fontSize: 11, fill: "#475569" }}
+              tick={{ fontSize: 11, fill: "#333A50" }}
               label={
                 categoryAxisLabel
-                  ? { value: categoryAxisLabel, angle: -90, position: "insideLeft", style: { fontSize: 11, fill: "#64748b", fontWeight: 500, textAnchor: "middle" } }
+                  ? { value: categoryAxisLabel, angle: -90, position: "insideLeft", style: { fontSize: 11, fill: "#4A506A", fontWeight: 500, textAnchor: "middle" } }
                   : undefined
               }
             />
@@ -117,10 +130,10 @@ export default function BarChartBase({
               dataKey="label"
               axisLine={false}
               tickLine={false}
-              tick={{ fontSize: 11, fill: "#475569" }}
+              tick={{ fontSize: 11, fill: "#333A50" }}
               label={
                 categoryAxisLabel
-                  ? { value: categoryAxisLabel, position: "insideBottom", offset: -8, style: { fontSize: 11, fill: "#64748b", fontWeight: 500 } }
+                  ? { value: categoryAxisLabel, position: "insideBottom", offset: -8, style: { fontSize: 11, fill: "#4A506A", fontWeight: 500 } }
                   : undefined
               }
             />
@@ -129,19 +142,19 @@ export default function BarChartBase({
               tickLine={false}
               tickFormatter={fmt}
               width={55}
-              tick={{ fontSize: 11, fill: "#475569" }}
+              tick={{ fontSize: 11, fill: "#333A50" }}
               label={
                 valueAxisLabel
-                  ? { value: valueAxisLabel, angle: -90, position: "insideLeft", offset: 5, style: { fontSize: 11, fill: "#64748b", fontWeight: 500, textAnchor: "middle" } }
+                  ? { value: valueAxisLabel, angle: -90, position: "insideLeft", offset: 5, style: { fontSize: 11, fill: "#4A506A", fontWeight: 500, textAnchor: "middle" } }
                   : undefined
               }
             />
           </>
         )}
         <Tooltip
-          contentStyle={{ backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "12px" }}
+          contentStyle={{ backgroundColor: "white", border: "1px solid #E6E8F0", borderRadius: "12px", boxShadow: "0 6px 14px rgba(16,22,54,0.08)", fontSize: "12px" }}
           formatter={tooltipFormatter}
-          cursor={{ fill: "#f8fafc" }}
+          cursor={{ fill: "rgba(48,64,144,0.06)" }}
         />
         {/*
           maxBarSize caps each bar at ~56px so a 1-bar chart doesn't fill the
@@ -157,9 +170,9 @@ export default function BarChartBase({
               key={i}
               fill={
                 d.muted
-                  ? "#cbd5e1"
+                  ? "#C8CCD9"
                   : d.color ||
-                    (colorByIndex ? PALETTE[i % PALETTE.length] : color || "#4f46e5")
+                    (colorByIndex ? PALETTE[i % PALETTE.length] : color || "#304090")
               }
             />
           ))}
@@ -168,7 +181,7 @@ export default function BarChartBase({
               dataKey="value"
               position={horizontal ? "right" : "top"}
               formatter={pctLabel}
-              style={{ fontSize: 10, fill: "#64748b", fontWeight: 600 }}
+              style={{ fontSize: 10, fill: "#4A506A", fontWeight: 600 }}
             />
           )}
         </Bar>

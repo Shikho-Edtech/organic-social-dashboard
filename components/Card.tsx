@@ -7,13 +7,14 @@ type Props = {
 };
 
 export function Card({ children, className = "" }: Props) {
-  // Shadow-sm is the lightest tailwind elevation; separates cards from the
-  // slate-50 page background without creating the heavy-drop-shadow look
-  // that reads as dated. Hover nudges the shadow up so cards feel
-  // touchable on desktop — a no-op cost on touch devices.
+  // Shikho v1.0 surface: paper white, ink-100 hairline border, 2xl radius
+  // (28px) for the headline-card look, ambient Shikho shadow. Hover lifts
+  // into the indigo-tinted shadow — no cost on touch, feels considered on
+  // desktop. rounded-2xl replaces rounded-xl to align with design-system
+  // card radius for major content surfaces.
   return (
     <div
-      className={`bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow transition-shadow ${className}`}
+      className={`bg-ink-paper border border-ink-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow duration-base ease-shikho-out ${className}`}
     >
       {children}
     </div>
@@ -57,17 +58,16 @@ export function ChartCard({
   children: ReactNode;
   className?: string;
 }) {
-  // The left border colour alone communicates kind (cyan=observed / indigo=
-  // AI-classified / violet=derived). The old right-aligned text badge
-  // ("Meta data" / "AI-classified" / "Derived") duplicated that same info in
-  // a second visual channel, which was redundant on desktop and fought with
-  // the sample-size badge for space on mobile. Kind is now encoded in border
-  // colour + `data-kind` (for screen readers / debugging). The InfoTooltip
-  // definition still explains the provenance in plain English.
+  // The left border colour alone communicates kind. Remapped to Shikho v1.0:
+  //   observed = teal (off-core, quiet informational — raw Meta data)
+  //   ai       = indigo-600 (core — AI-classified, the "trust" hue)
+  //   derived  = magenta-500 (core — computed, the "motion" hue)
+  // Kind is also encoded via `data-kind` for screen readers / debugging; the
+  // InfoTooltip definition still explains provenance in plain English.
   const kindBorder =
-    kind === "observed" ? "border-l-4 border-l-cyan-500"
-    : kind === "ai"     ? "border-l-4 border-l-indigo-500"
-    : kind === "derived"? "border-l-4 border-l-violet-500"
+    kind === "observed" ? "border-l-4 border-l-brand-teal"
+    : kind === "ai"     ? "border-l-4 border-l-brand-shikho-indigo"
+    : kind === "derived"? "border-l-4 border-l-brand-shikho-pink"
     : "";
   return (
     <Card className={`${kindBorder} ${className}`}>
