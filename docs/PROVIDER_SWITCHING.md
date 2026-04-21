@@ -60,16 +60,16 @@ All-Gemini config (Shikho Tier 3 credits, current default):
 DEFAULT_LLM_PROVIDER=gemini
 GEMINI_API_KEY=AIza...
 # Per-stage triples auto-backfilled from defaults in config.py:
-#   CLASSIFY_MODEL  = gemini-2.5-flash
-#   DIAGNOSIS_MODEL = gemini-2.5-pro
-#   CALENDAR_MODEL  = gemini-2.5-pro
+#   CLASSIFY_MODEL  = gemini-3.1-flash-lite-preview
+#   DIAGNOSIS_MODEL = gemini-3.1-pro-preview
+#   CALENDAR_MODEL  = gemini-3.1-pro-preview
 ```
 
 Mixed config (per-stage override wins over DEFAULT_LLM_PROVIDER):
 
 ```bash
 CLASSIFY_PROVIDER=gemini
-CLASSIFY_MODEL=gemini-2.5-flash
+CLASSIFY_MODEL=gemini-3.1-flash-lite-preview
 CLASSIFY_API_KEY=AIza...
 
 DIAGNOSIS_PROVIDER=anthropic
@@ -85,8 +85,11 @@ CALENDAR_PROVIDER=none   # skip calendar entirely this run
   `google-generativeai`). Instantiates per-adapter, so each stage can
   carry its own key if ever needed.
 - **Model defaults** (in `facebook-pipeline/src/config.py`):
-  Classify on `gemini-2.5-flash`, Diagnosis and Calendar on
-  `gemini-2.5-pro`. Override per stage via `<STAGE>_MODEL`.
+  Classify on `gemini-3.1-flash-lite-preview`, Diagnosis and Calendar on
+  `gemini-3.1-pro-preview`. Override per stage via `<STAGE>_MODEL`.
+  Preview models carry a 2-week deprecation notice; watch
+  [ai.google.dev/gemini-api/docs/changelog](https://ai.google.dev/gemini-api/docs/changelog)
+  and bump forward when the next preview lands.
 - **Salvage parser caveat:** `classify.py::_salvage_truncated_calendar`
   reads Anthropic fields (`raw.content`, `raw.stop_reason`). When
   `CALENDAR_PROVIDER=gemini`, salvage is a no-op. Gemini truncation
