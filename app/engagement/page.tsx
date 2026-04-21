@@ -1,5 +1,5 @@
 import { getPosts, getRunStatus } from "@/lib/sheets";
-import { filterPosts, groupStats } from "@/lib/aggregate";
+import { filterPosts, groupStats, isLowConfidence } from "@/lib/aggregate";
 import { minPostsForRange, reliabilityLabel } from "@/lib/stats";
 import { resolveRange, rangeDays as computeRangeDays } from "@/lib/daterange";
 import { canonicalColor } from "@/lib/colors";
@@ -37,6 +37,14 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
   // interpretation of "Last 30 days".
   const MIN_N = minPostsForRange(computeRangeDays(range));
 
+  // Stage 2 / item 18 (Apr 2026): hard-filter low-confidence classifications
+  // out of classifier-derived rankings (pillar / tone / hook / spotlight).
+  // `isLowConfidence(p)` returns true when classifier_confidence < 0.5 (the
+  // `_low_confidence` flag the pipeline writes). Format is NOT classifier-
+  // derived — it comes from Raw_Posts.Type — so we leave the full `inRange`
+  // set for that ranking.
+  const inRangeConfident = inRange.filter((p) => !isLowConfidence(p));
+
   // Format × engagement rate. Each bar carries its canonical category
   // colour so "Reel" on this chart matches "Reel" on Plan's calendar pill
   // and the "Best Format" card above.
@@ -55,7 +63,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
   // Pillar × engagement rate (top 12 for readability). Per-row colour from
   // canonicalColor("pillar", ...) means the same pillar keeps the same
   // colour across Overview → Engagement → Strategy.
-  const pillarStats = groupStats(inRange, "content_pillar").filter((s) => s.count >= MIN_N).slice(0, 12);
+  const pillarStats = groupStats(inRangeConfident, "content_pillar").filter((s) => s.count >= MIN_N).slice(0, 12);
   const pillarER = pillarStats.map((s) => ({
     label: s.key,
     value: Number(s.avg_engagement_rate.toFixed(2)),
@@ -63,7 +71,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
   }));
 
   // Hook type effectiveness
-  const hookStats = groupStats(inRange, "hook_type").filter((s) => s.count >= MIN_N).slice(0, 10);
+  const hookStats = groupStats(inRangeConfident, "hook_type").filter((s) => s.count >= MIN_N).slice(0, 10);
   const hookER = hookStats.map((s) => ({
     label: s.key,
     value: Number(s.avg_engagement_rate.toFixed(2)),
@@ -75,7 +83,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
   // / Informational / Celebratory / Urgent-FOMO). Same MIN_N gate + canonical
   // palette as the other dimensions — so "Educational" renders in the same
   // indigo wherever it appears across pages.
-  const toneStats = groupStats(inRange, "caption_tone")
+  const toneStats = groupStats(inRangeConfident, "caption_tone")
     .filter((s) => s.count >= MIN_N && s.key && s.key !== "Unknown");
   const toneER = toneStats.map((s) => ({
     label: s.key,
@@ -84,7 +92,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
   }));
 
   // Spotlight type effectiveness (v2 classifier)
-  const spotlightStats = groupStats(inRange, "spotlight_type")
+  const spotlightStats = groupStats(inRangeConfident, "spotlight_type")
     .filter((s) => s.count >= MIN_N && s.key && s.key !== "None" && s.key !== "Unknown");
   const spotlightER = spotlightStats.map((s) => ({
     label: s.key,

@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-04-21 — Stage 2 item 18: hard-exclude low-confidence rows from rankings
+
+New `isLowConfidence(p)` helper + `RANKING_CONFIDENCE_FLOOR = 0.5` in
+`lib/aggregate.ts`. Engagement page now computes an `inRangeConfident`
+subset (drops posts where `classifier_confidence < 0.5`) and uses it for
+the classifier-derived rankings: pillar, hook, spotlight, and tone.
+Format still uses the full `inRange` set because format comes from
+`Raw_Posts.Type`, not the classifier.
+
+Pairs with the pipeline's new `_low_confidence` flag — classifications
+written by `classify_posts_v2` at `classifier_confidence < 0.5` get
+tagged so the row still appears in Classifications (for human review)
+but can't crown a "Best X" card.
+
+Soft `confidenceWeight` (0.3 floor, used inside `weighted_reach`) stays
+— it's the right knob for the [0.5, 1] confidence band. The hard
+exclusion is specifically for ranking verdicts where a 0.3-confidence
+label shouldn't compete with a 0.95-confidence one at all.
+
 ## 2026-04-21 — Stage 0 item 10: caption_tone surfaced on Engagement
 
 Engagement page gets a new "Best Tone" card in the top strip (now 5-up on

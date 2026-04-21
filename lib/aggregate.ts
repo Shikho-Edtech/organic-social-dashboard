@@ -93,6 +93,22 @@ export function reach(p: Post): number {
 
 const MIN_CONFIDENCE_FLOOR = 0.3;
 
+// Stage 2 / item 18 (Apr 2026): hard-exclusion floor for "best X" rankings.
+// Classifications below this threshold were flagged `_low_confidence` by
+// the pipeline (src/classify.py CONFIDENCE_FLOOR = 0.5) — keep them in the
+// sheet so reviewers see them, but drop them from rankings so noisy labels
+// can't drive recommendations. The soft `confidenceWeight` below (used in
+// weighted_reach) stays — it handles the [0.5, 1] band; this filter handles
+// the floor.
+export const RANKING_CONFIDENCE_FLOOR = 0.5;
+
+/** True if this post should be excluded from "best X" / ranking verdicts. */
+export function isLowConfidence(p: Post): boolean {
+  const c = p.classifier_confidence;
+  if (c === undefined || c === null || Number.isNaN(c)) return false;
+  return c < RANKING_CONFIDENCE_FLOOR;
+}
+
 export function confidenceWeight(p: Post): number {
   const c = p.classifier_confidence;
   if (c === undefined || c === null || Number.isNaN(c)) return 1;
