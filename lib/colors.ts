@@ -69,6 +69,20 @@ export const FUNNEL_COLORS: Record<string, string> = {
   BOFU: "#C02080", // magenta-500 — bottom, conversion, urgency
 };
 
+// Stage-0 item 10 (Apr 2026): caption_tone canonical palette. Keys mirror
+// `CAPTION_TONES` in facebook-pipeline/src/config.py — if the pipeline adds
+// a tone, add it here so the Engagement bar chart + "Best Tone" card stop
+// falling back to the hash palette for a known value.
+export const TONE_COLORS: Record<string, string> = {
+  Educational:     "#304090", // indigo-600 — authoritative, learning
+  Motivational:    "#E0A010", // sunrise-500 — warm, encouraging
+  Promotional:     "#C02080", // magenta-500 — selling energy
+  Entertaining:    "#8C3FA8", // magenta-purple — playful
+  Informational:   "#3F4FA2", // indigo-500 — neutral info
+  Celebratory:     "#10b981", // emerald — positive, festive
+  "Urgent / FOMO": "#E03050", // coral-500 — alert, time-sensitive
+};
+
 // Hash a string to a stable index in [0, mod). Same string in → same
 // index out, across server renders. djb2-style — fast and good enough
 // for palette selection (we don't need crypto-grade distribution).
@@ -80,7 +94,7 @@ function hashIndex(s: string, mod: number): number {
   return Math.abs(h) % mod;
 }
 
-export type ColorField = "format" | "hook" | "spotlight" | "pillar" | "funnel";
+export type ColorField = "format" | "hook" | "spotlight" | "pillar" | "funnel" | "tone";
 
 // Canonical color for a (field, value) pair.
 //
@@ -100,6 +114,7 @@ export function canonicalColor(field: ColorField, value: string | undefined | nu
   else if (field === "hook") map = HOOK_COLORS;
   else if (field === "spotlight") map = SPOTLIGHT_COLORS;
   else if (field === "funnel") map = FUNNEL_COLORS;
+  else if (field === "tone") map = TONE_COLORS;
 
   if (map && map[v]) return map[v];
   return FALLBACK_PALETTE[hashIndex(v, FALLBACK_PALETTE.length)];

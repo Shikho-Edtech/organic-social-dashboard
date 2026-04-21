@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-04-21 — Stage 0 item 10: caption_tone surfaced on Engagement
+
+Engagement page gets a new "Best Tone" card in the top strip (now 5-up on
+desktop, 2-up on mobile), a full-width "Caption Tone Effectiveness"
+horizontal bar chart, and a matching line in the "Recommended this period"
+synthesis. `lib/colors.ts` gets a `TONE_COLORS` canonical map mirroring the
+pipeline's 7-tone vocabulary (Educational / Motivational / Promotional /
+Entertaining / Informational / Celebratory / Urgent / FOMO), plus `"tone"`
+added to the `ColorField` union. Same MIN_N gate + reach-weighted ranking
+as the existing dimensions — a single viral post can't crown a tone. New
+copy uses `text-ink-400` instead of `text-slate-500` so we're not growing
+the brand-audit baseline.
+
+Why tone AND hook both: they answer different questions. Hook is the
+opening line. Tone is the caption's overall register. A tone that wins on
+a losing hook (or vice versa) is directly actionable — keep the tone, vary
+the hook. The recommendation copy spells this out.
+
 ## 2026-04-21 — Stage 0 items 8 + 9: confidence-weighted aggregates + entity canonicalization
 
 Item 8: `lib/aggregate.ts` gains `confidenceWeight(p)` and `weightedReach(p)`

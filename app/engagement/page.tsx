@@ -70,6 +70,19 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
     color: canonicalColor("hook", s.key),
   }));
 
+  // Stage-0 item 10 (Apr 2026): caption_tone bucket. Mirrors the classifier's
+  // 7-tone vocabulary (Educational / Motivational / Promotional / Entertaining
+  // / Informational / Celebratory / Urgent-FOMO). Same MIN_N gate + canonical
+  // palette as the other dimensions — so "Educational" renders in the same
+  // indigo wherever it appears across pages.
+  const toneStats = groupStats(inRange, "caption_tone")
+    .filter((s) => s.count >= MIN_N && s.key && s.key !== "Unknown");
+  const toneER = toneStats.map((s) => ({
+    label: s.key,
+    value: Number(s.avg_engagement_rate.toFixed(2)),
+    color: canonicalColor("tone", s.key),
+  }));
+
   // Spotlight type effectiveness (v2 classifier)
   const spotlightStats = groupStats(inRange, "spotlight_type")
     .filter((s) => s.count >= MIN_N && s.key && s.key !== "None" && s.key !== "Unknown");
@@ -92,6 +105,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
   const bestPillar = rankByReachWeighted(pillarStats);
   const bestHook = rankByReachWeighted(hookStats);
   const bestSpotlight = rankByReachWeighted(spotlightStats);
+  const bestTone = rankByReachWeighted(toneStats);
 
   // Engagement breakdown (overall). Sorted descending so the biggest
   // interaction type lands at the top of the horizontal bar chart —
@@ -150,7 +164,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           text-base/lg, line-clamp-2 + title attribute so the value never
           occupies more than two lines but the full label is still
           discoverable on hover/long-press. Cards now cap around ~100px. */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
         <Card className="!p-4">
           <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Best Format</div>
           <div
@@ -239,6 +253,28 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
             <div className="text-xs text-slate-500 mt-1">Not enough posts in range to rank ({MIN_N}+ needed per spotlight type).</div>
           )}
         </Card>
+        <Card className="!p-4">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">Best Tone</div>
+          <div
+            className="text-base sm:text-lg font-bold mt-1.5 break-words leading-snug line-clamp-2"
+            style={{ color: canonicalColor("tone", bestTone?.key) }}
+            title={bestTone?.key || undefined}
+          >
+            {bestTone?.key || "—"}
+          </div>
+          {bestTone ? (
+            <>
+              <div className="text-xs text-ink-400 mt-1">
+                {bestTone.avg_engagement_rate.toFixed(2)}% eng rate
+              </div>
+              <div className="text-[11px] text-ink-400 mt-0.5">
+                {reliabilityLabel(bestTone.count)}
+              </div>
+            </>
+          ) : (
+            <div className="text-xs text-ink-400 mt-1">Not enough posts in range to rank ({MIN_N}+ needed per tone).</div>
+          )}
+        </Card>
       </div>
 
       {/* Recommendations — synthesizes the 4 Best X signals above into
@@ -247,7 +283,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           recommendation; in practice the cards were treated as
           standalone trivia. Putting the synthesis directly under them
           closes the loop from "here are the winners" to "so do this". */}
-      {(bestFormat || bestPillar || bestHook || bestSpotlight) && (
+      {(bestFormat || bestPillar || bestHook || bestSpotlight || bestTone) && (
         <Card className="!p-5 mb-6 border-l-4 border-l-brand-shikho-indigo bg-gradient-to-br from-white to-indigo-50/30">
           <div className="text-[11px] font-semibold uppercase tracking-wider text-brand-shikho-indigo mb-2">
             Recommended this period
@@ -278,6 +314,13 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
                 <span>Feature </span>
                 <span className="font-semibold" style={{ color: canonicalColor("spotlight", bestSpotlight.key) }}>{bestSpotlight.key}</span>
                 <span> — the spotlight category driving the highest reach-weighted engagement ({bestSpotlight.avg_engagement_rate.toFixed(2)}%).</span>
+              </li>
+            )}
+            {bestTone && (
+              <li>
+                <span>Write in a </span>
+                <span className="font-semibold" style={{ color: canonicalColor("tone", bestTone.key) }}>{bestTone.key}</span>
+                <span> tone — {bestTone.avg_engagement_rate.toFixed(2)}% ER across {bestTone.count} post{bestTone.count === 1 ? "" : "s"}. Tone is the caption's register (Educational vs Urgent / FOMO, etc.), independent of the hook line.</span>
               </li>
             )}
           </ul>
@@ -343,6 +386,21 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
             caption="High reach + high engagement means the spotlight type is working on both axes."
           >
             <BarChartBase data={spotlightReach} horizontal height={Math.max(180, spotlightReach.length * 36)} metricName="Avg reach" valueAxisLabel="Avg reach / post" />
+          </ChartCard>
+        </div>
+      )}
+
+      {toneStats.length > 0 && (
+        <div className="mb-6">
+          <ChartCard
+            title="Caption Tone Effectiveness"
+            kind="ai"
+            subtitle="Avg engagement rate by caption tone"
+            definition={`Posts grouped by classified caption tone (Educational, Motivational, Promotional, Entertaining, Informational, Celebratory, Urgent / FOMO). Reach-weighted engagement rate. Only tones with ${MIN_N}+ posts are shown. Tone is assigned by the weekly pipeline from the full caption text — not just the hook.`}
+            sampleSize={`${toneStats.length} tone${toneStats.length === 1 ? "" : "s"} shown (${MIN_N}+ posts)`}
+            caption="Tone and hook answer different questions: tone is the caption's overall register, hook is only the opening line. A winning tone on a losing hook (or vice versa) is worth A/B testing — keep the tone, vary the hook."
+          >
+            <BarChartBase data={toneER} horizontal height={Math.max(200, toneER.length * 36)} valueFormat="percent" metricName="Engagement rate" valueAxisLabel="Engagement rate" />
           </ChartCard>
         </div>
       )}
