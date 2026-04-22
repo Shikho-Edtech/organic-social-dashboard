@@ -660,8 +660,17 @@ export function runCostSummary(
   for (const r of logs) {
     // Accept a few sensible column names so the column can be added without
     // breaking this reader: "Cost USD" is the canonical name going forward.
+    // STR-12 (Sprint N3): "Strategy Cost USD" is the first per-stage cost
+    // column to ship on the pipeline side. Reading it here means the
+    // Overview budget banner lights up as soon as Sprint N3 P2 lands;
+    // once diagnosis/calendar cost capture follows, this lookup will
+    // widen to sum across all per-stage columns.
     const costRaw =
-      r["Cost USD"] ?? r["AI Cost USD"] ?? r["Cost"] ?? r["Estimated Cost USD"];
+      r["Cost USD"] ??
+      r["AI Cost USD"] ??
+      r["Cost"] ??
+      r["Estimated Cost USD"] ??
+      r["Strategy Cost USD"];
     const runDate = r["Run Date"] || r["Date"] || "";
     if (!runDate) continue;
     const ts = new Date(runDate);
