@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-04-22 — Sprint N3 P2: STR-12 runCostSummary reads Strategy Cost USD
+
+Widened the cost-column candidate list in `runCostSummary` to include
+`"Strategy Cost USD"` so the Overview budget banner starts summing
+actual strategy spend. Paired with pipeline commit `a93a0e1` which
+writes the column + ships the pricing table
+(`facebook-pipeline/src/llm/pricing.py`). Pre-Sprint-N3 rows are
+unaffected — they fall through the existing `??` chain and contribute
+nothing to the sum. Build green.
+
 ## 2026-04-22 — Sprint N3 P1: STR-11 dashboard reader for Strategy tabs
 
 Reads the 17-col Strategy / Strategy_Log schema the pipeline writes in
