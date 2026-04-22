@@ -5,11 +5,8 @@ import {
   isLowConfidence,
   discussionQuality,
   sentimentPolarity,
-  ctrProxy,
   virality,
   saveRate,
-  northStarScore,
-  completionRate,
   formatHourMatrix,
   reach as postReach,
 } from "@/lib/aggregate";
@@ -194,11 +191,6 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
   // Item 36 — CTR proxy on LINK posts only. Link posts are where the
   // click signal is meaningful — other formats pick up incidental clicks
   // (tag, permalink) that muddy the ratio.
-  const linkPosts = inRange.filter((p) => (p.type || "").toLowerCase() === "link");
-  const linkClicks = linkPosts.reduce((s, p) => s + (p.clicks || 0), 0);
-  const linkReach = linkPosts.reduce((s, p) => s + postReach(p), 0);
-  const linkCtrPct = linkReach > 0 ? (linkClicks / linkReach) * 100 : 0;
-
   // Item 39 — save-to-reach ratio (SCOPE-DOWN: Saves column not ingested,
   // see lib/aggregate.ts saveRate + DECISIONS). Value will be 0% everywhere
   // until the pipeline writes a Saves column. Surfaced now so the tile
@@ -208,35 +200,6 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
     return s + (typeof sv === "number" ? sv : 0);
   }, 0);
   const saveRatePct = sumReach > 0 ? (saves / sumReach) * 100 : 0;
-
-  // Item 42 — north-star composite. Per-post score, averaged. Shown as
-  // percent for comparability with the other ratios on this strip.
-  const nsScores = inRange.map((p) => northStarScore(p));
-  const avgNorthStar = nsScores.length
-    ? nsScores.reduce((s, x) => s + x, 0) / nsScores.length
-    : 0;
-
-  // Item 40 — reel completion rate, view-weighted across reels in range.
-  // VideoMetric lives on Raw_Video. Filter to reels that fall inside the
-  // selected date range. Meta's `complete_views` field is often empty on
-  // modern reels — reported count reflects only reels where it's non-zero.
-  const reelsInRange = videos.filter((v) => {
-    if (!v.is_reel || !v.created_time) return false;
-    const t = new Date(v.created_time).getTime();
-    return t >= range.start.getTime() && t <= range.end.getTime();
-  });
-  let completionNumerator = 0;
-  let completionDenom = 0;
-  let reelsWithCompletionData = 0;
-  for (const v of reelsInRange) {
-    const plays = v.reel_plays || v.total_views || 0;
-    if (plays <= 0) continue;
-    if (!v.complete_views) continue;
-    completionNumerator += v.complete_views;
-    completionDenom += plays;
-    reelsWithCompletionData += 1;
-  }
-  const completionPct = completionDenom > 0 ? (completionNumerator / completionDenom) * 100 : 0;
 
   // Item 38 — format × hour-of-day reach matrix. Flatten into cells the
   // small Heatmap grid component can render; apply a minimum-n filter to
@@ -469,22 +432,6 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           </div>
         </Card>
         <Card className="!p-4">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">CTR Proxy (Links)</div>
-          <div
-            className="text-base sm:text-lg font-bold mt-1.5 break-words leading-snug"
-            style={{ color: "#E0A010" }}
-            title="Clicks divided by reach on link posts only — off-platform traffic signal"
-          >
-            {linkPosts.length > 0 && linkReach > 0 ? linkCtrPct.toFixed(2) + "%" : "—"}
-          </div>
-          <div className="text-xs text-ink-400 mt-1">
-            clicks ÷ reach · link posts
-          </div>
-          <div className="text-[11px] text-ink-400 mt-0.5">
-            {linkPosts.length} link post{linkPosts.length === 1 ? "" : "s"} · {linkClicks.toLocaleString()} clicks
-          </div>
-        </Card>
-        <Card className="!p-4">
           <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">Save Rate</div>
           <div
             className="text-base sm:text-lg font-bold mt-1.5 break-words leading-snug"
@@ -498,42 +445,6 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           </div>
           <div className="text-[11px] text-ink-400 mt-0.5">
             {saves > 0 ? `${saves.toLocaleString()} saves in range` : "awaiting pipeline Saves column"}
-          </div>
-        </Card>
-        <Card className="!p-4">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">Reel Completion</div>
-          <div
-            className="text-base sm:text-lg font-bold mt-1.5 break-words leading-snug"
-            style={{ color: reelsWithCompletionData > 0 ? "#C02080" : "#6E7389" }}
-            title="complete_views ÷ reel_plays across reels in range that have completion data populated by Meta"
-          >
-            {reelsWithCompletionData > 0 ? completionPct.toFixed(1) + "%" : "—"}
-          </div>
-          <div className="text-xs text-ink-400 mt-1">
-            complete ÷ plays
-          </div>
-          <div className="text-[11px] text-ink-400 mt-0.5">
-            {reelsWithCompletionData > 0
-              ? `${reelsWithCompletionData} of ${reelsInRange.length} reel${reelsInRange.length === 1 ? "" : "s"} with data`
-              : reelsInRange.length
-              ? `${reelsInRange.length} reel${reelsInRange.length === 1 ? "" : "s"}, no completion data`
-              : "no reels in range"}
-          </div>
-        </Card>
-        <Card className="!p-4">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">North-Star Score</div>
-          <div
-            className="text-base sm:text-lg font-bold mt-1.5 break-words leading-snug"
-            style={{ color: "#304090" }}
-            title="Composite: (shares × 1.5 + saves) ÷ reach. DMs excluded pending Meta Business Suite access."
-          >
-            {inRange.length > 0 ? (avgNorthStar * 100).toFixed(2) + "%" : "—"}
-          </div>
-          <div className="text-xs text-ink-400 mt-1">
-            (shares×1.5 + saves) ÷ reach
-          </div>
-          <div className="text-[11px] text-ink-400 mt-0.5">
-            per-post avg · DMs pending MBS
           </div>
         </Card>
       </div>

@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-04-22 — Engagement page: drop CTR Proxy, Reel Completion, North-Star Score
+
+Trimmed the derived-metrics strip on `/engagement` from seven cards to four.
+CTR Proxy, Reel Completion, and North-Star Score removed (low-signal on a
+purely-organic page; CTR proxy in particular is misleading when reach is the
+real denominator, and North-Star composite was redundant with the four
+component metrics). Save Rate promoted to the fourth slot so the second row
+keeps its rhythm. Final strip: Virality | Discussion Quality | Sentiment
+Polarity | Save Rate. Dead imports + intermediate vars
+(`nsScores/avgNorthStar/reelsInRange/completionNumerator/...`) removed.
+`npm run build` green, no type errors.
+
+Shipped alongside the pipeline-side Phase 0 bug-fix round
+(schema check + polish pass guard + traceback visibility + viral-refresh
+range fix) — see `facebook-pipeline/CHANGELOG.md`. QA round continues with
+Phase 1 (classifier v2.6 + historical re-ingest from 2025-10-01).
+
 ## 2026-04-21 — Session roll-up: PLAN_COMPARISON items 1–58 (dashboard side)
 
 Dashboard contributions to the bulk shipment covering Buckets A–G of the
