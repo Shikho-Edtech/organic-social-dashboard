@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-04-22 — PL-12: priors stage in the staleness banner
+
+Extended `RunStatus` (`lib/sheets.ts`) with `priors_status` +
+`last_successful_priors_at` reading new Analysis_Log columns, and
+registered `priors` as its own entry in `lib/stages.ts` between
+`ai_classify` and `diagnosis` (aiBacked: false, no pages consume it
+directly — it's upstream of strategy/plan). Pre-PL-12 Analysis_Log
+rows missing the columns coerce to `"unknown"` via `normalize`, so
+the dashboard doesn't crash on historical rows. Paired with pipeline
+commit `867ab6c` which writes the new columns. `npm run build` green.
+
 ## 2026-04-22 — Engagement page: drop CTR Proxy, Reel Completion, North-Star Score
 
 Trimmed the derived-metrics strip on `/engagement` from seven cards to four.
