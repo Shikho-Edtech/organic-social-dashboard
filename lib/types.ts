@@ -115,3 +115,76 @@ export type CalendarSlot = {
 };
 
 export type DateRange = { start: Date; end: Date };
+
+// ─── Sprint N (Strategy) — STR-11 dashboard reader ───
+//
+// Shape of the `Strategy` + `Strategy_Log` tabs. Source-of-truth writer is
+// `facebook-pipeline/src/sheets.py::_strategy_row` (17 cols after Sprint N2).
+// JSON cells are parsed out at read time; see `strategyFromRow` in sheets.ts.
+
+export type StrategyPillarWeights = Record<string, number>;
+export type StrategyFormatMix = Record<string, number>; // keys: Reel | Photo | Video | Story
+
+export interface StrategyTeacherRotationEntry {
+  teacher: string;
+  rationale?: string;
+  cited_priors_row?: string;
+}
+
+export interface StrategyRiskEntry {
+  risk: string;
+  mitigation?: string;
+}
+
+export interface StrategyAbandonCriterion {
+  metric?: string;
+  operator?: string;
+  threshold?: number | string;
+  by_day?: number | string;
+  action?: string;
+}
+
+export type StrategyVerdictLabel =
+  | "beat_baseline"
+  | "matched_baseline"
+  | "missed_baseline"
+  | "not_executed"
+  | "insufficient_baseline";
+
+export interface StrategyVerdictCounts {
+  beat_baseline: number;
+  matched_baseline: number;
+  missed_baseline: number;
+  not_executed: number;
+  insufficient_baseline: number;
+}
+
+// STR-09 compact form persisted to the Strategy_Log sheet (the full block
+// with per-pillar / per-format deltas is passed to the LLM prompt but only
+// the summary lands in the cell budget).
+export interface AdherenceSummaryCompact {
+  graded_week: string;
+  verdict_counts: StrategyVerdictCounts;
+  source_engine?: string;
+}
+
+export interface StrategyEntry {
+  week_ending: string;
+  strategic_hypothesis: string;
+  pillar_weights: StrategyPillarWeights;
+  teacher_rotation: StrategyTeacherRotationEntry[];
+  format_mix: StrategyFormatMix;
+  risk_register: StrategyRiskEntry[];
+  abandon_criteria: StrategyAbandonCriterion[];
+  time_horizon_weeks: number;
+  confidence: string;
+  cited_priors: string[];
+  previous_hypothesis_adherence: string;
+  prompt_version: string;
+  engine: string;            // "ai" | "native" | provider-specific
+  generated_at: string;
+  // Sprint N2 provenance (STR-07 / STR-08 / STR-09)
+  fallback_reason: string;   // STR-07 — empty for AI-authored rows
+  validation_attempts: number; // STR-08 — 1 = clean first try, >1 = recovered via feedback retry
+  adherence_summary: AdherenceSummaryCompact | null; // STR-09 — null when no prior strategy to grade
+}

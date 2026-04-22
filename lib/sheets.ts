@@ -1,6 +1,20 @@
 // Google Sheets reader using the existing service account credentials
 import { google } from "googleapis";
-import type { Post, DailyMetric, VideoMetric, Diagnosis, CalendarSlot } from "./types";
+import type {
+  Post,
+  DailyMetric,
+  VideoMetric,
+  Diagnosis,
+  CalendarSlot,
+  StrategyEntry,
+  StrategyPillarWeights,
+  StrategyFormatMix,
+  StrategyTeacherRotationEntry,
+  StrategyRiskEntry,
+  StrategyAbandonCriterion,
+  AdherenceSummaryCompact,
+  StrategyVerdictCounts,
+} from "./types";
 import { canonicalizeEntity } from "./entities";
 
 let cachedClient: any = null;
@@ -276,12 +290,17 @@ export interface RunStatus {
   // SlotTime/WeekdaySeasonality/HourSeasonality/MoMDrift/Changepoints).
   // stdlib-only compute, no AI — status is success|skipped|failed|n/a.
   priors_status: ArtifactStatus;
+  // STR-04 / STR-11: strategy stage (Strategy + Strategy_Log tabs). AI call
+  // with STR-07 native-rule fallback when the LLM errors or keeps failing
+  // STR-08 validation after retries.
+  strategy_status: ArtifactStatus;
   // ISO timestamps of the most recent SUCCESSFUL diagnosis / calendar /
-  // priors writes, carried forward across runs by the pipeline. "" when
-  // never succeeded.
+  // priors / strategy writes, carried forward across runs by the pipeline.
+  // "" when never succeeded.
   last_successful_diagnosis_at: string;
   last_successful_calendar_at: string;
   last_successful_priors_at: string;
+  last_successful_strategy_at: string;
 }
 
 const EMPTY_RUN_STATUS: RunStatus = {
@@ -290,9 +309,11 @@ const EMPTY_RUN_STATUS: RunStatus = {
   diagnosis_status: "unknown",
   calendar_status: "unknown",
   priors_status: "unknown",
+  strategy_status: "unknown",
   last_successful_diagnosis_at: "",
   last_successful_calendar_at: "",
   last_successful_priors_at: "",
+  last_successful_strategy_at: "",
 };
 
 export async function getRunStatus(): Promise<RunStatus> {
@@ -316,9 +337,13 @@ export async function getRunStatus(): Promise<RunStatus> {
     // "—" in the detail panel — honest about historical blind spot rather
     // than falsely claiming success.
     priors_status: normalize(last["Priors Status"]),
+    // STR-04 / STR-11: pre-Sprint-N rows have blank Strategy Status ->
+    // "unknown" (same honest-blind-spot pattern as priors).
+    strategy_status: normalize(last["Strategy Status"]),
     last_successful_diagnosis_at: last["Last Successful Diagnosis At"] || "",
     last_successful_calendar_at: last["Last Successful Calendar At"] || "",
     last_successful_priors_at: last["Last Successful Priors At"] || "",
+    last_successful_strategy_at: last["Last Successful Strategy At"] || "",
   };
 }
 
@@ -346,31 +371,44 @@ function daysBetween(iso: string, now: Date): number {
 }
 
 export function computeStaleness(
-  artifact: "diagnosis" | "calendar",
+  artifact: "diagnosis" | "calendar" | "strategy",
   run: RunStatus,
   opts: { warnDays?: number; critDays?: number; now?: Date } = {}
 ): StalenessInfo {
   const warnDays = opts.warnDays ?? 7;
   const critDays = opts.critDays ?? 14;
   const now = opts.now ?? new Date();
+  // STR-11: strategy pulls from its own set of carry-forward columns.
+  // Diagnosis already powers the "Strategy" page in the pre-Sprint-N UI —
+  // keeping both artifact names valid lets the new `/strategy` view move
+  // onto the real STR-02 hypothesis without breaking the existing banner.
   const lastSuccessful =
     artifact === "diagnosis"
       ? run.last_successful_diagnosis_at
-      : run.last_successful_calendar_at;
+      : artifact === "calendar"
+      ? run.last_successful_calendar_at
+      : run.last_successful_strategy_at;
   const status =
-    artifact === "diagnosis" ? run.diagnosis_status : run.calendar_status;
+    artifact === "diagnosis"
+      ? run.diagnosis_status
+      : artifact === "calendar"
+      ? run.calendar_status
+      : run.strategy_status;
   const days = daysBetween(lastSuccessful, now);
 
   // No successful run ever — blank state. Crit so the page shows the banner
   // and the user understands why the tab looks empty.
   if (!lastSuccessful || days < 0) {
+    const never =
+      artifact === "diagnosis"
+        ? "No successful Strategy refresh has been recorded yet. Run the weekly pipeline to populate this view."
+        : artifact === "calendar"
+        ? "No successful Plan refresh has been recorded yet. Run the weekly pipeline to populate this view."
+        : "No successful Strategy hypothesis has been generated yet. Run the weekly pipeline to populate this view.";
     return {
       severity: "crit",
       days_since: -1,
-      reason:
-        artifact === "diagnosis"
-          ? "No successful Strategy refresh has been recorded yet. Run the weekly pipeline to populate this view."
-          : "No successful Plan refresh has been recorded yet. Run the weekly pipeline to populate this view.",
+      reason: never,
       last_successful_at: "",
       last_run_at: run.last_run_at,
       last_status: status,
@@ -540,20 +578,29 @@ export function isAiRunning(engine: StageEngine): boolean {
   return engine !== "off" && engine !== "unknown";
 }
 
-export async function getStageEngine(stage: "diagnosis" | "calendar"): Promise<StageEngine> {
+export async function getStageEngine(
+  stage: "diagnosis" | "calendar" | "strategy",
+): Promise<StageEngine> {
   const rows = await readTab("Analysis_Log");
   const objects = rowsToObjects(rows);
   if (objects.length === 0) return "unknown";
   const last = objects[objects.length - 1];
   const colCandidates = stage === "diagnosis"
     ? ["Diagnosis Engine", "Diagnose Engine"]
-    : ["Calendar Engine"];
+    : stage === "calendar"
+    ? ["Calendar Engine"]
+    : ["Strategy Engine"];
   for (const col of colCandidates) {
     const raw = String(last[col] || "").toLowerCase().trim();
     if (KNOWN_ENGINE_VALUES.has(raw)) return raw as StageEngine;
   }
-  const status = stage === "diagnosis" ? last["Diagnosis Status"] : last["Calendar Status"];
-  if (String(status || "").toLowerCase().trim() === "skipped") return "off";
+  const statusCol =
+    stage === "diagnosis"
+      ? "Diagnosis Status"
+      : stage === "calendar"
+      ? "Calendar Status"
+      : "Strategy Status";
+  if (String(last[statusCol] || "").toLowerCase().trim() === "skipped") return "off";
   return "unknown";
 }
 
@@ -645,4 +692,146 @@ export async function getCostSummary(): Promise<CostSummary> {
   const rows = await readTab("Analysis_Log");
   const objects = rowsToObjects(rows);
   return runCostSummary(objects);
+}
+
+// ─── Sprint N (Strategy) — STR-11 dashboard reader ───
+//
+// Pipeline writer: facebook-pipeline/src/sheets.py::_strategy_row (17 cols).
+// Snapshot tab `Strategy` is cleared + rewritten each run; append-only tab
+// `Strategy_Log` carries history. JSON cells decode back to typed shapes on
+// read so pages can render without per-page parsing boilerplate.
+//
+// The JSON decoders are tolerant on purpose — pre-Sprint-N2 rows lack the
+// three trailing provenance cols (Fallback Reason / Validation Attempts /
+// Adherence Summary); malformed cells return safe defaults rather than
+// throwing. The page stays up even when a legacy row is read.
+
+function _parseJsonCell<T>(raw: any, fallback: T): T {
+  if (raw === null || raw === undefined || raw === "") return fallback;
+  if (typeof raw === "object") return raw as T;
+  try {
+    return JSON.parse(String(raw)) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+const _EMPTY_VERDICT_COUNTS: StrategyVerdictCounts = {
+  beat_baseline: 0,
+  matched_baseline: 0,
+  missed_baseline: 0,
+  not_executed: 0,
+  insufficient_baseline: 0,
+};
+
+function _parseAdherenceSummary(raw: any): AdherenceSummaryCompact | null {
+  if (raw === null || raw === undefined || raw === "") return null;
+  const parsed = _parseJsonCell<any>(raw, null);
+  if (!parsed || typeof parsed !== "object") return null;
+  const vc = parsed.verdict_counts || {};
+  return {
+    graded_week: String(parsed.graded_week || ""),
+    verdict_counts: {
+      beat_baseline: toNumber(vc.beat_baseline),
+      matched_baseline: toNumber(vc.matched_baseline),
+      missed_baseline: toNumber(vc.missed_baseline),
+      not_executed: toNumber(vc.not_executed),
+      insufficient_baseline: toNumber(vc.insufficient_baseline),
+    },
+    source_engine: parsed.source_engine ? String(parsed.source_engine) : undefined,
+  };
+}
+
+function strategyFromRow(row: Record<string, any>): StrategyEntry {
+  return {
+    week_ending: String(row["Week Ending"] || ""),
+    strategic_hypothesis: String(row["Strategic Hypothesis"] || ""),
+    pillar_weights: _parseJsonCell<StrategyPillarWeights>(row["Pillar Weights"], {}),
+    teacher_rotation: _parseJsonCell<StrategyTeacherRotationEntry[]>(
+      row["Teacher Rotation"], [],
+    ),
+    format_mix: _parseJsonCell<StrategyFormatMix>(row["Format Mix"], {}),
+    risk_register: _parseJsonCell<StrategyRiskEntry[]>(row["Risk Register"], []),
+    abandon_criteria: _parseJsonCell<StrategyAbandonCriterion[]>(
+      row["Abandon Criteria"], [],
+    ),
+    time_horizon_weeks: toNumber(row["Time Horizon Weeks"]),
+    confidence: String(row["Confidence"] || ""),
+    cited_priors: _parseJsonCell<string[]>(row["Cited Priors"], []),
+    previous_hypothesis_adherence: String(row["Previous Hypothesis Adherence"] || ""),
+    prompt_version: String(row["Prompt Version"] || ""),
+    engine: String(row["Engine"] || ""),
+    generated_at: String(row["Generated At"] || ""),
+    // Sprint N2 provenance — missing on pre-Sprint-N2 rows, defaults are
+    // safe (empty string, 0 attempts, null summary).
+    fallback_reason: String(row["Fallback Reason"] || ""),
+    validation_attempts: toNumber(row["Validation Attempts"]),
+    adherence_summary: _parseAdherenceSummary(row["Adherence Summary"]),
+  };
+}
+
+/**
+ * Read the single-row `Strategy` snapshot tab. Returns null when the tab
+ * hasn't been populated (pre-Sprint-N runs) or the row is empty.
+ */
+export async function getLatestStrategy(): Promise<StrategyEntry | null> {
+  const rows = await readTab("Strategy");
+  const objects = rowsToObjects(rows);
+  if (objects.length === 0) return null;
+  // Snapshot tab has exactly one data row after each run; take the last to
+  // be safe if historical rows linger from a pre-refactor run.
+  const row = objects[objects.length - 1];
+  if (!row["Week Ending"] && !row["Strategic Hypothesis"]) return null;
+  return strategyFromRow(row);
+}
+
+/**
+ * Read the append-only `Strategy_Log` history tab. Returned newest-first
+ * so pages can render `[0]` as the current run. Empty array when the tab
+ * doesn't exist yet or carries only the header row.
+ */
+export async function getStrategyLog(): Promise<StrategyEntry[]> {
+  const rows = await readTab("Strategy_Log");
+  const objects = rowsToObjects(rows);
+  return objects
+    .filter((r) => r["Week Ending"] || r["Strategic Hypothesis"])
+    .map(strategyFromRow)
+    .reverse();
+}
+
+/**
+ * Archival lookup by `Week Ending`. Returns null when no row matches — the
+ * `/strategy?archived=<week>` page falls back to its current state + toast.
+ * Mirrors the shape of `getDiagnosisByWeek` / `getCalendarByRunId`.
+ */
+export async function getStrategyByWeek(
+  weekEnding: string,
+): Promise<StrategyEntry | null> {
+  if (!weekEnding) return null;
+  const rows = await readTab("Strategy_Log");
+  const objects = rowsToObjects(rows);
+  const match = objects.find(
+    (r) => String(r["Week Ending"] || "").trim() === weekEnding.trim(),
+  );
+  return match ? strategyFromRow(match) : null;
+}
+
+/**
+ * List all archived strategy runs (week_ending + short headline) for an
+ * archive picker. Newest-first. Honest about blank weeks — a row without
+ * a `Week Ending` is filtered out.
+ */
+export async function listStrategyArchive(): Promise<
+  Array<{ week_ending: string; hypothesis: string; engine: string }>
+> {
+  const rows = await readTab("Strategy_Log");
+  const objects = rowsToObjects(rows);
+  return objects
+    .map((r) => ({
+      week_ending: String(r["Week Ending"] || "").trim(),
+      hypothesis: String(r["Strategic Hypothesis"] || ""),
+      engine: String(r["Engine"] || ""),
+    }))
+    .filter((r) => r.week_ending)
+    .reverse();
 }
