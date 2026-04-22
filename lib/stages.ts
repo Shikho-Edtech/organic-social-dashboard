@@ -17,7 +17,13 @@
 
 import type { ArtifactStatus, RunStatus } from "./sheets";
 
-export type StageId = "extract" | "native_classify" | "ai_classify" | "diagnosis" | "calendar";
+export type StageId =
+  | "extract"
+  | "native_classify"
+  | "ai_classify"
+  | "priors"
+  | "diagnosis"
+  | "calendar";
 
 export interface StageDef {
   id: StageId;
@@ -84,6 +90,20 @@ export const STAGES: Record<StageId, StageDef> = {
     // when the most recent classify was a success; otherwise "".
     readLastSuccessful: (r) => (r.classify_status === "success" ? r.last_run_at : ""),
   },
+  priors: {
+    // PL-12: the 9 Priors_* snapshot tabs (Pillar, Teacher, Format, HookType,
+    // SlotTime, WeekdaySeasonality, HourSeasonality, MoMDrift, Changepoints).
+    // stdlib-only compute, no AI — but the detail panel surfaces it so an
+    // operator can see when "no AI but priors are stale" vs. a true hold.
+    id: "priors",
+    label: "Priors snapshot",
+    noun: "priors snapshot",
+    aiBacked: false,
+    envVars: [],
+    pages: [],
+    readStatus: (r) => r.priors_status,
+    readLastSuccessful: (r) => r.last_successful_priors_at,
+  },
   diagnosis: {
     id: "diagnosis",
     label: "Diagnose (AI)",
@@ -111,6 +131,7 @@ export const STAGE_ORDER: StageId[] = [
   "extract",
   "native_classify",
   "ai_classify",
+  "priors",
   "diagnosis",
   "calendar",
 ];

@@ -272,10 +272,16 @@ export interface RunStatus {
   classify_status: ArtifactStatus;
   diagnosis_status: ArtifactStatus;
   calendar_status: ArtifactStatus;
-  // ISO timestamps of the most recent SUCCESSFUL diagnosis / calendar writes,
-  // carried forward across runs by the pipeline. "" when never succeeded.
+  // PL-12: priors snapshot stage (Priors_Pillar/Teacher/Format/HookType/
+  // SlotTime/WeekdaySeasonality/HourSeasonality/MoMDrift/Changepoints).
+  // stdlib-only compute, no AI — status is success|skipped|failed|n/a.
+  priors_status: ArtifactStatus;
+  // ISO timestamps of the most recent SUCCESSFUL diagnosis / calendar /
+  // priors writes, carried forward across runs by the pipeline. "" when
+  // never succeeded.
   last_successful_diagnosis_at: string;
   last_successful_calendar_at: string;
+  last_successful_priors_at: string;
 }
 
 const EMPTY_RUN_STATUS: RunStatus = {
@@ -283,8 +289,10 @@ const EMPTY_RUN_STATUS: RunStatus = {
   classify_status: "unknown",
   diagnosis_status: "unknown",
   calendar_status: "unknown",
+  priors_status: "unknown",
   last_successful_diagnosis_at: "",
   last_successful_calendar_at: "",
+  last_successful_priors_at: "",
 };
 
 export async function getRunStatus(): Promise<RunStatus> {
@@ -304,8 +312,13 @@ export async function getRunStatus(): Promise<RunStatus> {
     classify_status: normalize(last["Classify Status"]),
     diagnosis_status: normalize(last["Diagnosis Status"]),
     calendar_status: normalize(last["Calendar Status"]),
+    // PL-12: pre-M3 rows read "" -> "unknown", which the banner shows as
+    // "—" in the detail panel — honest about historical blind spot rather
+    // than falsely claiming success.
+    priors_status: normalize(last["Priors Status"]),
     last_successful_diagnosis_at: last["Last Successful Diagnosis At"] || "",
     last_successful_calendar_at: last["Last Successful Calendar At"] || "",
+    last_successful_priors_at: last["Last Successful Priors At"] || "",
   };
 }
 
