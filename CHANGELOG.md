@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-04-22 — Sprint N3 P1: STR-11 dashboard reader for Strategy tabs
+
+Reads the 17-col Strategy / Strategy_Log schema the pipeline writes in
+Sprint N1+N2. Four new public readers in `lib/sheets.ts`:
+`getLatestStrategy`, `getStrategyLog`, `getStrategyByWeek`,
+`listStrategyArchive`. JSON cells (pillar_weights, teacher_rotation,
+format_mix, risk_register, abandon_criteria, cited_priors, adherence
+summary) decode back to typed shapes via `StrategyEntry` in
+`lib/types.ts`. `_parseJsonCell` wraps `JSON.parse` in try/catch so a
+pre-Sprint-N2 row without the three trailing provenance cols returns
+safe defaults instead of crashing. Staleness infra extended: `RunStatus`
+carries `strategy_status` + `last_successful_strategy_at`;
+`computeStaleness("strategy")` and `getStageEngine("strategy")` both
+wired. Paired with pipeline commit `031d6c4`
+(`scripts/qa_sprint_n3_str11.py`, 9/9 green cross-repo schema
+contract). Existing `app/strategy/page.tsx` (still reading
+`diagnosis`) unchanged — extension is purely additive. Build green.
+
 ## 2026-04-22 — PL-12: priors stage in the staleness banner
 
 Extended `RunStatus` (`lib/sheets.ts`) with `priors_status` +
