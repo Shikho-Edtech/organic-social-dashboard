@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-04-23 — Sprint P6 declutter 2/N: /overview + /trends cleanup, readable week labels
+
+- /overview: removed AI cost banner + virality/north-star/cadence KPI strip.
+  Second-order signals that nobody opened Overview to read. ~80 lines of
+  pre-render math gone with them. Helpers stay in lib/aggregate.
+- /trends: dropped "Weekly at-a-glance" 4-sparkline strip. Duplicated signals
+  already on /overview (reach trend, biggest movers).
+- `formatWeekRange(weekKey)` helper: "2026-W17" → "Apr 20–26" (same-month)
+  or "Apr 28–May 4" (cross-month). Wired into trends weekly-engagement chart
+  and weekly-shares bar labels. ISO 8601 Monday anchor.
+- Fix-on-touch: slate-500 → ink-500 in app/page.tsx. Brand baseline
+  ratcheted 306 → 292 (14 violations cleaned up).
+
 ## 2026-04-23 — Sprint P6 declutter 1/N: /strategy + /plan cleanup
 
 Post-P5 feedback pass. Users flagged that Sprint P5's "Calendar coverage by
