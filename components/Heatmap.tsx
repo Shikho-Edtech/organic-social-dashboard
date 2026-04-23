@@ -10,9 +10,12 @@ import { useState, useRef, useEffect } from "react";
 // `maxColor` based on a normalized 0..1 value. Cells below `minN` are
 // dimmed so a single-post bucket can't visually dominate the grid.
 //
-// Responsive: at 360px width, 24 columns leaves ~13px per cell after
-// the day-label gutter. Cells are square on lg+, squished-rectangular
-// on mobile (min-height 18px, stretches to container width).
+// Responsive: at 360px width, 14 columns leaves ~22px per cell after
+// the day-label gutter. Cells use FIXED row heights (20/22/26px at
+// mobile/sm/lg) instead of aspect-square because on desktop `aspect-
+// square` turned each cell into a ~80px × 80px block and the full grid
+// exceeded one viewport height — not scannable. Fixed heights keep the
+// whole 7-row grid visible in one glance on any viewport.
 
 export type HeatmapCell = {
   day: number;        // 0 = Sun .. 6 = Sat
@@ -216,7 +219,7 @@ export default function Heatmap({
                   onMouseLeave={() => setHovered(null)}
                   onFocus={() => setHovered(cell)}
                   onBlur={() => setHovered(null)}
-                  className={`aspect-square min-h-[18px] rounded-[2px] transition-transform ${
+                  className={`h-[20px] sm:h-[22px] lg:h-[26px] min-h-[18px] w-full rounded-[2px] transition-transform ${
                     isHover ? "ring-2 ring-slate-900 scale-110 z-10 relative" : ""
                   }`}
                   style={{ backgroundColor: color }}

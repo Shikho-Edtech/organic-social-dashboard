@@ -1,16 +1,13 @@
 import { getPosts, getLatestDiagnosis, getDiagnosisByWeek, getRunStatus, computeStaleness, getStageEngine } from "@/lib/sheets";
-import { filterPosts, groupStats } from "@/lib/aggregate";
-import { minPostsForRange } from "@/lib/stats";
-import { resolveRange, rangeDays as computeRangeDays } from "@/lib/daterange";
+import { filterPosts } from "@/lib/aggregate";
+import { resolveRange } from "@/lib/daterange";
 import PageHeader from "@/components/PageHeader";
-import { Card, ChartCard } from "@/components/Card";
-import BarChartBase from "@/components/BarChart";
 import StalenessBanner from "@/components/StalenessBanner";
 import AIDisabledEmptyState from "@/components/AIDisabledEmptyState";
 import ArchivalLine from "@/components/ArchivalLine";
 import AcademicContextStrip from "@/components/AcademicContextStrip";
+import PostReference from "@/components/PostReference";
 import { STAGES } from "@/lib/stages";
-import { canonicalColor } from "@/lib/colors";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -132,34 +129,19 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
   const aiDisabled = diagnosisEngine === "native" || diagnosisEngine === "off";
   const inRange = filterPosts(posts, { start: range.start, end: range.end });
 
-  // Funnel distribution
-  // Day 2U: apply the adaptive min-n gate to the engagement bars so a
-  // single BOFU post with 1 reach + 1 share can't produce a towering BOFU
-  // bar. The distribution/count chart still shows everything — it's a
-  // volume chart, not a rate chart, so low-n buckets are still honest.
-  const rangeDays = computeRangeDays(range);
-  const MIN_N_FUNNEL = minPostsForRange(rangeDays);
-  const funnelStats = groupStats(inRange, "funnel_stage");
-  const funnelOrder = ["TOFU", "MOFU", "BOFU"];
-  // Per-bar canonical colours so TOFU is always cyan, MOFU indigo, BOFU
-  // pink — matches any future funnel illustration or Plan pill.
-  const funnelDist = funnelOrder.map((stage) => {
-    const s = funnelStats.find((x) => x.key === stage);
-    return {
-      label: stage,
-      value: s?.count || 0,
-      color: canonicalColor("funnel", stage),
-    };
-  });
-  const funnelEng = funnelOrder.map((stage) => {
-    const s = funnelStats.find((x) => x.key === stage);
-    const eligible = s && s.count >= MIN_N_FUNNEL;
-    return {
-      label: stage,
-      value: eligible ? Number(s.avg_engagement_rate.toFixed(2)) : 0,
-      color: canonicalColor("funnel", stage),
-    };
-  });
+  // Funnel distribution / engagement charts moved to /engagement (Sprint P6
+  // user feedback: Strategy should focus on the weekly verdict + performers,
+  // not volume/rate bars that fit better alongside the other Engagement
+  // breakdowns).
+
+  // Post lookup — lets us surface PostReference (caption + permalink popover)
+  // next to each top / under performer when the diagnosis carries source
+  // post IDs. Falls through cleanly when findings.py emitted without the
+  // source_post_ids field on a given row.
+  const postById = new Map<string, { message?: string; permalink_url?: string }>();
+  for (const p of posts) {
+    postById.set(p.id, { message: p.message, permalink_url: p.permalink_url });
+  }
 
   const whatHappened: string[] = diagnosis?.what_happened || [];
   const topPerformers = diagnosis?.top_performers || [];
@@ -201,7 +183,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
         <PageHeader
           title="Strategy"
           subtitle="Claude's diagnosis and recommended actions"
-          dateLabel={`${range.label} · Funnel charts reflect native classification; AI diagnosis off`}
+          dateLabel={`${range.label} · AI diagnosis off`}
           lastScrapedAt={runStatus.last_run_at}
         />
         <AIDisabledEmptyState
@@ -211,30 +193,8 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
             ? extractWeekEnding(runStatus.last_successful_diagnosis_at)
             : ""}
           noun="AI diagnosis"
-          readsDescription="This page reads the weekly AI diagnosis."
+          readsDescription="This page reads the weekly AI diagnosis. Funnel-stage distribution + engagement charts have moved to /engagement."
         />
-        <div className="grid lg:grid-cols-2 gap-4 mb-6">
-          <ChartCard
-            title="Funnel Distribution"
-            kind="observed"
-            subtitle="Posts by marketing stage"
-            definition="TOFU (top-of-funnel): awareness / education. MOFU (middle): consideration / demo. BOFU (bottom): direct conversion asks. Funnel stage is assigned by the weekly classifier."
-            sampleSize={`n = ${inRange.length} post${inRange.length === 1 ? "" : "s"}`}
-            caption="Based on native classifier only — no AI."
-          >
-            <BarChartBase data={funnelDist} metricName="Posts" valueAxisLabel="Posts" categoryAxisLabel="Funnel stage" showPercent />
-          </ChartCard>
-          <ChartCard
-            title="Funnel Engagement"
-            kind="observed"
-            subtitle="Avg engagement rate by stage"
-            definition={`For each funnel stage: total interactions ÷ total reach across all posts in that stage. Reach-weighted. Stages with fewer than ${MIN_N_FUNNEL} posts in the period are hidden (zeroed bar).`}
-            sampleSize={`min ${MIN_N_FUNNEL} posts per stage · ${rangeDays}d window`}
-            caption="Which funnel stage resonates most in terms of interaction rate."
-          >
-            <BarChartBase data={funnelEng} valueFormat="percent" metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Funnel stage" />
-          </ChartCard>
-        </div>
       </div>
     );
   }
@@ -259,7 +219,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
               ? `Archived diagnosis for week ending ${archiveDateLabel}`
               : "Archived diagnosis")
           : "Claude's diagnosis and recommended actions"}
-        dateLabel={`${range.label} · Funnel charts filtered; verdict = ${isArchival ? "archived snapshot" : "latest weekly snapshot"}`}
+        dateLabel={`${range.label} · verdict = ${isArchival ? "archived snapshot" : "latest weekly snapshot"}`}
         lastScrapedAt={runStatus.last_run_at}
       />
 
@@ -304,37 +264,10 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
         </div>
       )}
 
-      {/* Funnel distribution */}
-      <div className="grid lg:grid-cols-2 gap-4 mb-2">
-        <ChartCard
-          title="Funnel Distribution"
-          kind="ai"
-          subtitle="Posts by marketing stage"
-          definition="TOFU (top-of-funnel): awareness / education. MOFU (middle): consideration / demo. BOFU (bottom): direct conversion asks. Funnel stage is assigned by the weekly classifier."
-          sampleSize={`n = ${inRange.length} post${inRange.length === 1 ? "" : "s"}`}
-          caption="Heavy BOFU may limit new audience growth. Healthy mix is typically ~50% TOFU, ~30% MOFU, ~20% BOFU for organic."
-        >
-          <BarChartBase data={funnelDist} metricName="Posts" valueAxisLabel="Posts" categoryAxisLabel="Funnel stage" showPercent />
-        </ChartCard>
-        <ChartCard
-          title="Funnel Engagement"
-          kind="ai"
-          subtitle="Avg engagement rate by stage"
-          definition={`For each funnel stage: total interactions ÷ total reach across all posts in that stage. Reach-weighted. Stages with fewer than ${MIN_N_FUNNEL} posts in the period are hidden (zeroed bar) so a single post can't produce a misleading spike.`}
-          sampleSize={`min ${MIN_N_FUNNEL} posts per stage · ${rangeDays}d window`}
-          caption="Which funnel stage resonates most in terms of interaction rate."
-        >
-          <BarChartBase data={funnelEng} valueFormat="percent" metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Funnel stage" />
-        </ChartCard>
-      </div>
-      {/* Sprint P6: inline explainer so users don't have to open the
-          ChartCard tooltip to learn what TOFU/MOFU/BOFU mean. */}
-      <div className="mb-6 text-[12px] text-ink-muted leading-relaxed px-1">
-        <span className="font-semibold text-ink-700">How funnel stages are assigned:</span>{" "}
-        <span className="text-brand-cyan font-semibold">TOFU</span> (top-of-funnel) covers awareness and education — explainers, free lessons, thought leadership.{" "}
-        <span className="text-brand-shikho-indigo font-semibold">MOFU</span> (middle) covers consideration and social proof — demos, student stories, course highlights.{" "}
-        <span className="text-brand-shikho-coral font-semibold">BOFU</span> (bottom) covers direct conversion — price, discount, enrollment deadline, last-call posts. Classification is done by the weekly AI pass on each post's hook and body.
-      </div>
+      {/* Funnel distribution / engagement charts moved to /engagement
+          (Sprint P6 user feedback — Strategy focuses on the AI verdict
+          + performer lists; funnel mix lives with the other engagement
+          breakdowns). */}
 
       {/* Key findings */}
       {whatHappened.length > 0 && (
@@ -403,7 +336,10 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
             {topPerformers.slice(0, 3).map((tp: any, i: number) => {
               const full = tp.metric_highlight || "";
               const { head, body } = splitHeadline(full);
-              const hasDetail = Boolean(body || tp.why_it_worked || tp.replicable_elements);
+              const sourceIds: string[] = Array.isArray(tp.source_post_ids)
+                ? tp.source_post_ids.slice(0, 5)
+                : [];
+              const hasDetail = Boolean(body || tp.why_it_worked || tp.replicable_elements || sourceIds.length);
               return (
                 <details key={i} className="group bg-white border border-slate-200 rounded-xl border-l-4 !border-l-brand-green overflow-hidden hover:border-brand-green/40 transition-colors">
                   <summary className="list-none cursor-pointer p-4">
@@ -445,6 +381,24 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
                           </div>
                         </div>
                       )}
+                      {sourceIds.length > 0 && (
+                        <div className="pl-9">
+                          <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted mb-1.5">
+                            {sourceIds.length === 1 ? "Source post" : `Source posts (${sourceIds.length})`}
+                          </div>
+                          <ul className="space-y-1">
+                            {sourceIds.map((pid) => {
+                              const p = postById.get(pid);
+                              if (!p) return null;
+                              return (
+                                <li key={pid} className="text-xs text-ink-secondary">
+                                  <PostReference caption={p.message || ""} permalinkUrl={p.permalink_url} maxChars={80} />
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      )}
                     </div>
                   )}
                 </details>
@@ -473,7 +427,10 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
             {underperformers.slice(0, 3).map((up: any, i: number) => {
               const full = up.metric_highlight || "";
               const { head, body } = splitHeadline(full);
-              const hasDetail = Boolean(body || up.why_it_failed || up.lesson);
+              const sourceIds: string[] = Array.isArray(up.source_post_ids)
+                ? up.source_post_ids.slice(0, 5)
+                : [];
+              const hasDetail = Boolean(body || up.why_it_failed || up.lesson || sourceIds.length);
               return (
                 <details key={i} className="group bg-white border border-slate-200 rounded-xl border-l-4 !border-l-brand-red overflow-hidden hover:border-brand-red/40 transition-colors">
                   <summary className="list-none cursor-pointer p-4">
@@ -514,6 +471,24 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
                           <div className="text-xs text-brand-amber leading-relaxed">
                             <span className="font-semibold uppercase tracking-wider text-[11px]">Lesson · </span>{up.lesson}
                           </div>
+                        </div>
+                      )}
+                      {sourceIds.length > 0 && (
+                        <div className="pl-9">
+                          <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted mb-1.5">
+                            {sourceIds.length === 1 ? "Source post" : `Source posts (${sourceIds.length})`}
+                          </div>
+                          <ul className="space-y-1">
+                            {sourceIds.map((pid) => {
+                              const p = postById.get(pid);
+                              if (!p) return null;
+                              return (
+                                <li key={pid} className="text-xs text-ink-secondary">
+                                  <PostReference caption={p.message || ""} permalinkUrl={p.permalink_url} maxChars={80} />
+                                </li>
+                              );
+                            })}
+                          </ul>
                         </div>
                       )}
                     </div>

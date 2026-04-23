@@ -9,15 +9,90 @@ import BarChartBase from "@/components/BarChart";
 import TrendChart from "@/components/TrendChart";
 import PostReference from "@/components/PostReference";
 
+/**
+ * TopReelList — ranked list replacement for BarChart on top-10 reels.
+ *
+ * Rendered as: #rank · PostReference (clickable, hover-reveal full caption,
+ * permalink-out) · proportional bar · metric value · meta.
+ *
+ * We had three identical BarChart renders (Plays / Watch Time / Followers)
+ * that truncated Bangla captions to ~34 chars with no way to see the rest
+ * and no way to open the post. Sprint P6 feedback asked for the Recent
+ * Reels table's PostReference behaviour to apply here. Because Recharts
+ * YAxis labels render as SVG text, there's no React popover hookable into
+ * them — so we render the leaderboard as HTML instead.
+ */
+type TopReelRow = {
+  id: string;
+  caption: string;
+  permalink: string;
+  value: number;
+  meta: string;
+};
+function TopReelList({
+  rows,
+  max,
+  valueLabel,
+  barColor,
+  formatValue,
+}: {
+  rows: TopReelRow[];
+  max: number;
+  valueLabel: string;
+  barColor: string;
+  formatValue?: (v: number) => string;
+}) {
+  if (rows.length === 0) {
+    return (
+      <p className="text-sm text-ink-muted px-1 py-2">No reels matched the threshold in this range.</p>
+    );
+  }
+  const fmt = formatValue || ((v: number) => v.toLocaleString());
+  return (
+    <ol className="space-y-2">
+      {rows.map((r, i) => {
+        const pct = max > 0 ? Math.max(4, Math.round((r.value / max) * 100)) : 0;
+        return (
+          <li key={r.id} className="flex items-center gap-2.5 group">
+            <span
+              className="flex-shrink-0 w-6 h-6 rounded-md bg-ink-100 text-ink-500 text-[11px] font-semibold flex items-center justify-center tabular-nums"
+              aria-hidden="true"
+            >
+              {i + 1}
+            </span>
+            <div className="flex-1 min-w-0">
+              <div className="text-[13px] text-ink-800 leading-tight">
+                <PostReference caption={r.caption} permalinkUrl={r.permalink} maxChars={60} className="max-w-full" />
+              </div>
+              <div className="mt-1 flex items-center gap-2">
+                <div
+                  className="h-1.5 rounded-full transition-[width]"
+                  style={{ width: `${pct}%`, backgroundColor: barColor, opacity: 0.85 }}
+                  aria-hidden="true"
+                />
+                <span className="text-[11px] text-ink-muted whitespace-nowrap">{r.meta}</span>
+              </div>
+            </div>
+            <span
+              className="flex-shrink-0 text-sm font-semibold tabular-nums text-ink-800 whitespace-nowrap"
+              title={`${fmt(r.value)} ${valueLabel}`}
+            >
+              {fmt(r.value)}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
 
-// Short preview of the post message for row labels on the top-N chart.
-function previewMessage(msg: string, maxLen = 40): string {
-  if (!msg) return "(no caption)";
-  const clean = msg.replace(/\s+/g, " ").trim();
-  return clean.length > maxLen ? clean.slice(0, maxLen - 1) + "…" : clean;
-}
+// previewMessage() helper was removed in Sprint P6 when the three Top-10
+// charts switched from BarChart to TopReelList (below) — the new list
+// uses <PostReference maxChars={60}> which does its own truncation while
+// still exposing the full caption on hover / tap.
 
 function inRange(iso: string, start: Date, end: Date): boolean {
   if (!iso) return false;
@@ -147,20 +222,29 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
   const hookRetention3s = viewsWithCurve ? (retentionViews[3] / viewsWithCurve) * 100 : 0;
   const replayRate = totalPlays ? (totalReplays / totalPlays) * 100 : 0;
 
-  // Top 10 reels by plays
+  // Top-10 ranked reel lists — Sprint P6 feedback: captions on these
+  // leaderboards must be clickable with the same hover-full-caption +
+  // permalink-out behaviour as the Recent Reels table. Recharts YAxis
+  // labels render as SVG text so they can't host a React popover; the
+  // practical fix is to stop using BarChartBase for these three and
+  // instead render a ranked list of (rank, PostReference, inline bar,
+  // value) rows. The bar visualisation is preserved via a CSS flex
+  // bar — proportional widths computed from max.
   const topByPlays = [...reels]
     .sort((a, b) => (b.reel_plays || 0) - (a.reel_plays || 0))
     .slice(0, 10)
     .map((r) => {
       const p = postById.get(r.post_id);
       return {
-        label: previewMessage(p?.message || "", 34),
+        id: r.post_id,
+        caption: (p?.message || "").replace(/\s+/g, " ").trim(),
+        permalink: p?.permalink_url || "",
         value: r.reel_plays || 0,
-        meta: r.avg_watch_time || 0,
+        meta: `${(r.avg_watch_time || 0).toFixed(1)}s avg watch`,
       };
     });
+  const topByPlaysMax = topByPlays.reduce((m, r) => Math.max(m, r.value), 0);
 
-  // Top 10 reels by avg watch time (min 500 views to filter noise)
   const topByWatchTime = [...reels]
     .filter((r) => (r.total_views || 0) >= 500)
     .sort((a, b) => (b.avg_watch_time || 0) - (a.avg_watch_time || 0))
@@ -168,13 +252,15 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
     .map((r) => {
       const p = postById.get(r.post_id);
       return {
-        label: previewMessage(p?.message || "", 34),
+        id: r.post_id,
+        caption: (p?.message || "").replace(/\s+/g, " ").trim(),
+        permalink: p?.permalink_url || "",
         value: Number((r.avg_watch_time || 0).toFixed(1)),
-        meta: r.total_views || 0,
+        meta: `${(r.total_views || 0).toLocaleString()} views`,
       };
     });
+  const topByWatchTimeMax = topByWatchTime.reduce((m, r) => Math.max(m, r.value), 0);
 
-  // Top 10 reels by followers gained
   const topByFollowers = [...reels]
     .filter((r) => (r.followers_gained || 0) > 0)
     .sort((a, b) => (b.followers_gained || 0) - (a.followers_gained || 0))
@@ -182,11 +268,14 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
     .map((r) => {
       const p = postById.get(r.post_id);
       return {
-        label: previewMessage(p?.message || "", 34),
+        id: r.post_id,
+        caption: (p?.message || "").replace(/\s+/g, " ").trim(),
+        permalink: p?.permalink_url || "",
         value: r.followers_gained || 0,
-        meta: r.reel_plays || 0,
+        meta: `${(r.reel_plays || 0).toLocaleString()} plays`,
       };
     });
+  const topByFollowersMax = topByFollowers.reduce((m, r) => Math.max(m, r.value), 0);
 
   // Retention funnel (aggregate drop-off across all reels) — derived from the
   // per-second curve so it works for reels (Meta's bucket fields are empty).
@@ -339,41 +428,43 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
         </ChartCard>
       </div>
 
-      {/* Top performers */}
+      {/* Top performers — ranked lists replace BarChart so captions are
+          clickable (hover shows full caption, icon links to the FB post). */}
       <div className="grid lg:grid-cols-2 gap-4 mb-6">
         <ChartCard
           title="Top 10 Reels by Plays"
           kind="observed"
-          subtitle="Raw reach leaders"
-          definition="Total reel plays (includes replays). Highest-distribution reels in the period. Tooltip shows avg watch time (seconds)."
+          subtitle="Raw reach leaders · tap a caption for the full text"
+          definition="Total reel plays (includes replays) — the highest-distribution reels in the period. Each row shows rank, caption (click / tap for the full Bangla text + a link out to the Facebook post), a bar showing relative scale against the top performer, and avg watch time as context."
           sampleSize={`top ${topByPlays.length}`}
+          caption="High plays with weak watch time = strong hook, weak middle. Use this list together with the Top 10 by Avg Watch Time below."
         >
-          <BarChartBase data={topByPlays} horizontal height={340} color="#304090" metricName="Plays" valueAxisLabel="Plays" categoryAxisLabel="Reel caption (preview)" />
+          <TopReelList rows={topByPlays} max={topByPlaysMax} valueLabel="plays" barColor="#304090" />
         </ChartCard>
         <ChartCard
           title="Top 10 Reels by Avg Watch Time"
           kind="observed"
-          subtitle="Engagement quality leaders (≥500 views)"
-          definition="Average watch time in seconds. Filtered to reels with ≥500 total views to avoid tiny-sample outliers. Tooltip shows total views."
+          subtitle="Engagement-quality leaders (≥500 views)"
+          definition="Average watch time in seconds. Filtered to reels with at least 500 total views to avoid tiny-sample outliers. Click a caption to read the full text / open the post on Facebook."
           sampleSize={`top ${topByWatchTime.length}`}
           caption="Long watch time with decent plays = replicable format. Short watch time with high plays = good hook, weak middle."
         >
-          <BarChartBase data={topByWatchTime} horizontal height={340} color="#C02080" valueFormat="number" metricName="Avg watch (s)" valueAxisLabel="Seconds" categoryAxisLabel="Reel caption (preview)" />
+          <TopReelList rows={topByWatchTime} max={topByWatchTimeMax} valueLabel="seconds" barColor="#C02080" formatValue={(v) => `${v}s`} />
         </ChartCard>
       </div>
 
-      {/* Followers gained chart */}
+      {/* Followers gained ranked list */}
       {topByFollowers.length > 0 && (
         <div className="mb-6">
           <ChartCard
             title="Top Reels by Followers Gained"
             kind="observed"
             subtitle="Reels that converted viewers → followers"
-            definition="Net new followers attributed to each reel by Meta. Tooltip shows total plays for context."
+            definition="Net new followers attributed to each reel by Meta. Click a caption to see the full post text or open it on Facebook. The trailing meta shows total plays for context — a reel with high follower gain on modest plays is punching above its weight."
             sampleSize={`${topByFollowers.length} reel${topByFollowers.length === 1 ? "" : "s"} gained followers`}
-            caption="High plays with zero follower gain = viral but not sticky. Low plays with high gain = niche but converts."
+            caption="High plays with zero follower gain = viral but not sticky. Low plays with high follower gain = niche but converts."
           >
-            <BarChartBase data={topByFollowers} horizontal height={340} color="#10b981" metricName="Followers gained" valueAxisLabel="Followers gained" categoryAxisLabel="Reel caption (preview)" />
+            <TopReelList rows={topByFollowers} max={topByFollowersMax} valueLabel="followers" barColor="#1A8E78" formatValue={(v) => `+${v}`} />
           </ChartCard>
         </div>
       )}

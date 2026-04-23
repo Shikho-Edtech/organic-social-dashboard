@@ -59,6 +59,28 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
   // set for that ranking.
   const inRangeConfident = inRange.filter((p) => !isLowConfidence(p));
 
+  // Funnel stage distribution + engagement (moved from /strategy in Sprint P6
+  // per user feedback — volume/rate bars belong with the other Engagement
+  // breakdowns, not above the AI weekly verdict). Same canonical colours as
+  // Plan's funnel pills: TOFU cyan, MOFU indigo, BOFU coral.
+  const rangeDaysForFunnel = computeRangeDays(range);
+  const MIN_N_FUNNEL = minPostsForRange(rangeDaysForFunnel);
+  const funnelStats = groupStats(inRange, "funnel_stage");
+  const funnelOrder = ["TOFU", "MOFU", "BOFU"];
+  const funnelDist = funnelOrder.map((stage) => {
+    const s = funnelStats.find((x) => x.key === stage);
+    return { label: stage, value: s?.count || 0, color: canonicalColor("funnel", stage) };
+  });
+  const funnelEng = funnelOrder.map((stage) => {
+    const s = funnelStats.find((x) => x.key === stage);
+    const eligible = s && s.count >= MIN_N_FUNNEL;
+    return {
+      label: stage,
+      value: eligible ? Number(s.avg_engagement_rate.toFixed(2)) : 0,
+      color: canonicalColor("funnel", stage),
+    };
+  });
+
   // Format × engagement rate. Each bar carries its canonical category
   // colour so "Reel" on this chart matches "Reel" on Plan's calendar pill
   // and the "Best Format" card above.
@@ -449,6 +471,39 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
         </Card>
       </div>
 
+      {/* Funnel distribution + engagement (moved from /strategy in Sprint P6).
+          TOFU cyan = awareness, MOFU indigo = consideration, BOFU coral =
+          conversion. The inline explainer below removes the need to open
+          the definition tooltip to learn what the acronyms mean. */}
+      <div className="grid lg:grid-cols-2 gap-4 mb-2">
+        <ChartCard
+          title="Funnel Distribution"
+          kind="ai"
+          subtitle="How posts are split across marketing stages"
+          definition="TOFU (top-of-funnel): awareness / education. MOFU (middle): consideration / demo. BOFU (bottom): direct conversion asks. Funnel stage is assigned by the weekly AI classifier on each post's hook and body."
+          sampleSize={`n = ${inRange.length} post${inRange.length === 1 ? "" : "s"}`}
+          caption="A healthy organic mix sits around ~50% TOFU · ~30% MOFU · ~20% BOFU. Heavy BOFU tilts the feed toward selling and can stall new-audience growth."
+        >
+          <BarChartBase data={funnelDist} metricName="Posts" valueAxisLabel="Posts" categoryAxisLabel="Funnel stage" showPercent />
+        </ChartCard>
+        <ChartCard
+          title="Funnel Engagement"
+          kind="ai"
+          subtitle="Avg engagement rate by stage"
+          definition={`For each funnel stage: total interactions ÷ total reach across all posts in that stage. Reach-weighted. Stages with fewer than ${MIN_N_FUNNEL} posts in the period render as a zeroed bar so a single post can't produce a misleading spike.`}
+          sampleSize={`min ${MIN_N_FUNNEL} posts per stage · ${rangeDaysForFunnel}d window`}
+          caption="Which stage the audience actually engages with. If BOFU engages higher than TOFU at organic scale, the audience is already close to buying — lean harder into conversion."
+        >
+          <BarChartBase data={funnelEng} valueFormat="percent" metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Funnel stage" />
+        </ChartCard>
+      </div>
+      <div className="mb-6 text-[12px] text-ink-muted leading-relaxed px-1">
+        <span className="font-semibold text-ink-700">How funnel stages are assigned:</span>{" "}
+        <span className="text-brand-cyan font-semibold">TOFU</span> (top) covers awareness and education — explainers, free lessons, thought leadership.{" "}
+        <span className="text-brand-shikho-indigo font-semibold">MOFU</span> (middle) covers consideration and social proof — demos, student stories, course highlights.{" "}
+        <span className="text-brand-shikho-coral font-semibold">BOFU</span> (bottom) covers direct conversion — price, discount, enrollment deadline, last-call posts.
+      </div>
+
       {/* Item 38: format × hour-of-day reach heatmap. Small inline grid
           (not the full Heatmap component — that's 7 rows × 24 cols and
           this is 3-6 formats × 24 hours, different shape). Mean reach
@@ -558,48 +613,133 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           recommendation; in practice the cards were treated as
           standalone trivia. Putting the synthesis directly under them
           closes the loop from "here are the winners" to "so do this". */}
+      {/* Recommended this period — redesigned as a grid of distinct
+          playbook cards (one per axis: lead, open, spotlight, tone).
+          Each card uses the axis's canonical colour for its rail + icon
+          so the eye lands on the recommendation type first, then the
+          winning value. Prior pass rendered these as a bulleted <ul>
+          where every bullet looked identical — users skimmed past the
+          section treating it as generic body copy. */}
       {(bestFormat || bestPillar || bestHook || bestSpotlight || bestTone) && (
-        <Card className="!p-5 mb-6 border-l-4 border-l-brand-shikho-indigo bg-gradient-to-br from-white to-indigo-50/30">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-brand-shikho-indigo mb-2">
-            Recommended this period
+        <section className="mb-6">
+          <div className="flex items-baseline gap-2 mb-3">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-brand-shikho-indigo">
+              Recommended this period
+            </div>
+            <div className="text-[11px] text-ink-muted">
+              Synthesised from the winning buckets above · treat as a test, not a guarantee
+            </div>
           </div>
-          <ul className="space-y-2 text-sm text-slate-800 leading-relaxed">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {bestFormat && bestPillar && (
-              <li>
-                <span className="font-semibold">Lead with </span>
-                <span className="font-semibold" style={{ color: canonicalColor("format", bestFormat.key) }}>{bestFormat.key}</span>
-                <span className="font-semibold"> on </span>
-                <span className="font-semibold" style={{ color: canonicalColor("pillar", bestPillar.key) }}>{bestPillar.key}</span>
-                <span>
-                  {" "}— {bestFormat.key} averages {bestFormat.avg_engagement_rate.toFixed(2)}% ER across {bestFormat.count} post{bestFormat.count === 1 ? "" : "s"},
-                  and {bestPillar.key} averages {bestPillar.avg_engagement_rate.toFixed(2)}% across {bestPillar.count} post{bestPillar.count === 1 ? "" : "s"}.
-                  The two are measured on different cuts, so the intersection is an unknown — treat it as a test, not a guarantee.
-                </span>
-              </li>
+              <div
+                className="relative rounded-xl bg-ink-paper border border-ink-100 p-4 overflow-hidden"
+                style={{ borderLeftWidth: 4, borderLeftColor: canonicalColor("format", bestFormat.key) }}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span
+                    className="inline-flex items-center justify-center w-6 h-6 rounded-md text-white"
+                    style={{ backgroundColor: canonicalColor("format", bestFormat.key) }}
+                    aria-hidden="true"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                  </span>
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-500">Lead format × pillar</div>
+                </div>
+                <div className="text-[15px] font-semibold text-ink-900 leading-snug">
+                  <span style={{ color: canonicalColor("format", bestFormat.key) }}>{bestFormat.key}</span>
+                  <span className="text-ink-400 mx-1.5">·</span>
+                  <span style={{ color: canonicalColor("pillar", bestPillar.key) }}>{bestPillar.key}</span>
+                </div>
+                <div className="text-[12px] text-ink-muted mt-1.5 leading-relaxed">
+                  {bestFormat.key} averages <span className="font-semibold text-ink-700">{bestFormat.avg_engagement_rate.toFixed(2)}%</span> ER
+                  ({bestFormat.count} post{bestFormat.count === 1 ? "" : "s"}) · {bestPillar.key} averages <span className="font-semibold text-ink-700">{bestPillar.avg_engagement_rate.toFixed(2)}%</span>
+                  ({bestPillar.count} post{bestPillar.count === 1 ? "" : "s"}). The intersection is untested — treat it as a hypothesis.
+                </div>
+              </div>
             )}
             {bestHook && (
-              <li>
-                <span>Open with a </span>
-                <span className="font-semibold" style={{ color: canonicalColor("hook", bestHook.key) }}>{bestHook.key}</span>
-                <span> hook — {bestHook.avg_engagement_rate.toFixed(2)}% engagement across {bestHook.count} post{bestHook.count === 1 ? "" : "s"}. Test it on the other pillars to see if the hook or the topic is carrying.</span>
-              </li>
+              <div
+                className="relative rounded-xl bg-ink-paper border border-ink-100 p-4 overflow-hidden"
+                style={{ borderLeftWidth: 4, borderLeftColor: canonicalColor("hook", bestHook.key) }}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span
+                    className="inline-flex items-center justify-center w-6 h-6 rounded-md text-white"
+                    style={{ backgroundColor: canonicalColor("hook", bestHook.key) }}
+                    aria-hidden="true"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="8" x2="12" y2="12"></line>
+                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                  </span>
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-500">Opening hook</div>
+                </div>
+                <div className="text-[15px] font-semibold leading-snug" style={{ color: canonicalColor("hook", bestHook.key) }}>
+                  {bestHook.key}
+                </div>
+                <div className="text-[12px] text-ink-muted mt-1.5 leading-relaxed">
+                  <span className="font-semibold text-ink-700">{bestHook.avg_engagement_rate.toFixed(2)}%</span> ER across {bestHook.count} post{bestHook.count === 1 ? "" : "s"}. Try this hook on the other pillars to see whether the opening or the topic is doing the work.
+                </div>
+              </div>
             )}
             {bestSpotlight && (
-              <li>
-                <span>Feature </span>
-                <span className="font-semibold" style={{ color: canonicalColor("spotlight", bestSpotlight.key) }}>{bestSpotlight.key}</span>
-                <span> — the spotlight category driving the highest reach-weighted engagement ({bestSpotlight.avg_engagement_rate.toFixed(2)}%).</span>
-              </li>
+              <div
+                className="relative rounded-xl bg-ink-paper border border-ink-100 p-4 overflow-hidden"
+                style={{ borderLeftWidth: 4, borderLeftColor: canonicalColor("spotlight", bestSpotlight.key) }}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span
+                    className="inline-flex items-center justify-center w-6 h-6 rounded-md text-white"
+                    style={{ backgroundColor: canonicalColor("spotlight", bestSpotlight.key) }}
+                    aria-hidden="true"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="4"></circle>
+                      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+                    </svg>
+                  </span>
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-500">Feature spotlight</div>
+                </div>
+                <div className="text-[15px] font-semibold leading-snug" style={{ color: canonicalColor("spotlight", bestSpotlight.key) }}>
+                  {bestSpotlight.key}
+                </div>
+                <div className="text-[12px] text-ink-muted mt-1.5 leading-relaxed">
+                  Highest reach-weighted engagement among spotlight categories — <span className="font-semibold text-ink-700">{bestSpotlight.avg_engagement_rate.toFixed(2)}%</span> across {bestSpotlight.count} post{bestSpotlight.count === 1 ? "" : "s"}.
+                </div>
+              </div>
             )}
             {bestTone && (
-              <li>
-                <span>Write in a </span>
-                <span className="font-semibold" style={{ color: canonicalColor("tone", bestTone.key) }}>{bestTone.key}</span>
-                <span> tone — {bestTone.avg_engagement_rate.toFixed(2)}% ER across {bestTone.count} post{bestTone.count === 1 ? "" : "s"}. Tone is the caption's register (Educational vs Urgent / FOMO, etc.), independent of the hook line.</span>
-              </li>
+              <div
+                className="relative rounded-xl bg-ink-paper border border-ink-100 p-4 overflow-hidden"
+                style={{ borderLeftWidth: 4, borderLeftColor: canonicalColor("tone", bestTone.key) }}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span
+                    className="inline-flex items-center justify-center w-6 h-6 rounded-md text-white"
+                    style={{ backgroundColor: canonicalColor("tone", bestTone.key) }}
+                    aria-hidden="true"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                  </span>
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-500">Caption tone</div>
+                </div>
+                <div className="text-[15px] font-semibold leading-snug" style={{ color: canonicalColor("tone", bestTone.key) }}>
+                  {bestTone.key}
+                </div>
+                <div className="text-[12px] text-ink-muted mt-1.5 leading-relaxed">
+                  <span className="font-semibold text-ink-700">{bestTone.avg_engagement_rate.toFixed(2)}%</span> ER across {bestTone.count} post{bestTone.count === 1 ? "" : "s"}. Tone is the caption's overall register (Educational vs Urgent / FOMO) — independent of the hook.
+                </div>
+              </div>
             )}
-          </ul>
-        </Card>
+          </div>
+        </section>
       )}
 
       <div className="grid lg:grid-cols-2 gap-4 mb-6">
