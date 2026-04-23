@@ -44,6 +44,12 @@ export type Post = {
   // language verdict. Enum: "bangla" | "english" | "mixed" | "unknown".
   // Empty string on pre-v2.5 rows.
   caption_primary_language?: string;
+  // Sprint P6 chunk 7 (2026-04-23, DYN-03): hook-fatigue flag + reason,
+  // computed deterministically by the pipeline against Priors_HookType.
+  // False / "" on pre-DYN-03 rows (annotator ran in-memory since Sprint
+  // P4 but the fields were only persisted to the sheet starting now).
+  hook_fatigue_flag?: boolean;
+  hook_fatigue_reason?: string;
 };
 
 export type DailyMetric = {

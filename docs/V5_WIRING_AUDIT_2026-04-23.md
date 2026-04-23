@@ -77,6 +77,16 @@ excluded from the wiring rubric by design.
   prompts, but `/engagement`'s hook effectiveness chart could
   annotate fatigued hooks and currently cannot. **Fix: one-line
   reader addition.**
+  - **Post-audit correction (2026-04-23):** the "one-line reader
+    addition" premise was incomplete. `annotate_hook_fatigue`
+    mutates the classification dict in memory (main.py:332), but
+    `write_classifications` in `src/sheets.py` only serialized 17
+    of the 19 populated fields — the sheet didn't have these
+    columns at all. Fix was cross-repo lockstep: sheet schema
+    extended APPEND-only to 19 cols (Hook Fatigue Flag + Hook
+    Fatigue Reason) and dashboard reader + Post type both added.
+    Pre-fix historical rows read false / "" on the dashboard.
+    Shipped in the same session as this audit.
 - **SEA-01..05** (academic_calendar.yaml active_events) — writer:
   `src/academic_calendar.py` + `config/exams.yaml`. Used server-side
   for priors bucketing and diagnosis prompts. Dashboard surfaces

@@ -1,5 +1,32 @@
 # Learnings
 
+## 2026-04-23 — "Wired writer" can still mean the sheet drops the field on the floor
+
+The v5 wiring audit flagged DYN-03 (hook_fatigue_flag +
+hook_fatigue_reason) as a "one-line dashboard reader fix". The writer
+reference in the audit pointed at `classify.py:216,2574` — where
+`annotate_hook_fatigue` mutates the classification dict in memory.
+Looked fine. But when I opened `sheets.py` to confirm the column
+headers, `write_classifications` only serialized 17 of the 19
+populated dict keys. The annotator ran, mutated the dict, and the
+sheet writer just… didn't have those two positional slots in its
+header list.
+
+The fix was cross-repo (sheet schema bump APPEND-only to 19 cols +
+dashboard reader), not one-line. Takeaway: when auditing whether a
+field reaches the UI, `grep` for the **column header string** in the
+sheet writer, not the Python attribute name. `hook_fatigue_flag` got
+hits in `classify.py` / `main.py`; `"Hook Fatigue Flag"` got zero
+hits anywhere until this commit added it. The header list in
+`write_classifications` is the actual writer — everything upstream
+is just in-memory chatter.
+
+Corollary for future audits: any "wired but orphan" or "silent drop"
+entry should cite both the Python field key AND the exact column
+header string the sheet carries. If the second one doesn't exist,
+the write never happens regardless of how many callers set the
+attribute.
+
 ## 2026-04-23 — Don't trust naive ISO strings from cross-process writers
 
 The dashboard reads `Analysis_Log.last_run_at` (and several similar columns)

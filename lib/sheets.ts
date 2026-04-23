@@ -150,6 +150,12 @@ export async function getPosts(): Promise<Post[]> {
       // that need a non-empty bucket should coerce to "unknown".
       caption_primary_language:
         (c["Caption Primary Language"] as string) || "",
+      // Sprint P6 chunk 7 (2026-04-23, DYN-03): hook-fatigue flag +
+      // reason. v5 wiring audit caught these were mutated in memory
+      // but never serialized; fix is cross-repo lockstep (sheets.py +
+      // here). Pre-fix rows read false / "".
+      hook_fatigue_flag: toBool(c["Hook Fatigue Flag"]),
+      hook_fatigue_reason: (c["Hook Fatigue Reason"] as string) || "",
     };
   });
 }

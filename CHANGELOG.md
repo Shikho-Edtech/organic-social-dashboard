@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-04-23 — Sprint P6 chunk 7: v5 wiring audit + DYN-03 hook-fatigue cross-repo fix
+
+- New `docs/V5_WIRING_AUDIT_2026-04-23.md`: sample-based audit of the 167-
+  item QualityPlan v5 against the live repos. Sections for wired end-to-
+  end, wired-but-orphan (STR-01..14, OSL-04/07/08, PL-05..09/13), missing-
+  link (DYN-03, SEA-01..05, DYN-01), and internal-only. Summary calls out
+  four gaps in priority order and tracks them as open items.
+- DYN-03 fix (cross-repo lockstep): `lib/types.ts` + `lib/sheets.ts`
+  getPosts() merge now read `Hook Fatigue Flag` + `Hook Fatigue Reason`.
+  Pipeline side extended `write_classifications` headers 17 → 19 cols
+  APPEND-only (separate pipeline commit). Audit originally flagged this
+  as a "one-line reader addition" — turned out the sheet writer was
+  dropping the fields on the floor too, so the fix was both sides.
+  Post-audit correction appended to the doc.
+
+QA: typecheck clean, brand audit 292/292, build green. Pre-fix rows
+read false / "" on the reader, as intended.
+
 ## 2026-04-23 — Sprint P6 declutter 4/N: PostReference component + /reels readability + /explore reorder
 
 - New `components/PostReference.tsx`: truncated caption preview → hover/tap
