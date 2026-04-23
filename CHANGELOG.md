@@ -1,5 +1,44 @@
 # Changelog
 
+## 2026-04-23 — Sprint P5: /strategy hypothesis-to-slot reverse view
+
+The /plan page asks "what ships this week?" — slot cards tagged with a
+hypothesis ID. The /strategy page now answers the reverse: "my weekly
+hypothesis is H. Which slots on the calendar actually serve it?"
+
+Implementation — `app/strategy/page.tsx`:
+
+- **Data fan-out** now pulls `getCalendar()`, `getLatestStrategy()`, and
+  `getPlanNarrative()` alongside the existing diagnosis + run-status
+  fetches. All parallel; no serial hops.
+- **`groupCalendarByHypothesis`** groups live slots by `hypothesis_id`,
+  aggregates `forecast_reach_ci_native.mid` per bucket, and sorts by
+  numeric ID (h0, h1, h2…) falling back to lexical.
+- **New section** "Calendar coverage by hypothesis" renders between
+  Top/Under performers and Watch-outs. One `<details>` card per
+  hypothesis. Primary bucket (the one PlanNarrative tags as the week's
+  arc driver) opens by default, gets the strategy's full
+  `strategic_hypothesis` prose, and wears a coral "Primary" badge.
+  Secondary buckets render ID-only (pipeline serializes IDs, not
+  per-ID text — future iteration).
+- **Slot row** per bucket: short weekday+date, BDT time, format chip
+  (ink-100), pillar chip (canonical pillar color at 12% alpha), hook
+  line. Mobile-first stacking via `flex-col sm:flex-row`.
+- **Empty-safe**: the whole section hides when no slot carries a
+  `hypothesis_id` (schema v1 sheet, or pipeline skipped arc tagging
+  this week). No misleading "Unassigned" bucket.
+- **Archival mode** suppresses the section — archival view is a
+  DIAGNOSIS snapshot, calendar coverage reflects live state.
+
+Brand: all new classes are Shikho v1.0 tokens (`text-ink-*`,
+`bg-brand-shikho-indigo/*`, `text-brand-shikho-coral`, canonical
+pillar colors from `lib/colors.ts`). Audit: 306/306 baseline, no
+regressions.
+
+Ties off the calendar-slot ↔ strategy loop. A reader can now trace
+any hypothesis bet from weekly verdict → hypothesis ID → the slots
+that carry it, then jump to /plan to see slot detail.
+
 ## 2026-04-23 — Sprint P4 iter 7: /plan surfaces schema v2 fields (hypothesis, native CI, risk flags)
 
 Three additions to `app/plan/page.tsx` make the schema v2 evidence

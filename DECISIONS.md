@@ -1,5 +1,44 @@
 # Decisions
 
+## 2026-04-23 — /strategy reverse view: secondary hypotheses show ID only, not text
+
+The hypothesis-to-slot reverse view on /strategy shows a hypothesis
+card per distinct `hypothesis_id` in the live calendar. The PRIMARY
+hypothesis (the one `PlanNarrative.hypothesis_id` tags as the arc
+driver) carries the strategy sheet's `strategic_hypothesis` prose.
+Secondary hypotheses (h1, h2, …) show their ID badge but no
+descriptive text.
+
+Why no text for secondaries: the pipeline's `Strategy` tab stores a
+SINGLE `strategic_hypothesis` string — the primary only. Secondary
+hypothesis text lives inside the calendar JSON's per-slot `rationale`
+field, not in a hypothesis-id-keyed lookup. Surfacing text per
+secondary would require either (a) a new pipeline writer that emits
+`{h1: "text", h2: "text"}` into Strategy, or (b) extracting-and-
+deduplicating rationales at render time — both more work than this
+iteration wanted.
+
+For now: the slot list under each secondary bucket carries its own
+evidence (format, pillar, hook line), which is enough for the reader
+to infer what the hypothesis is about. A later iteration can add a
+richer `strategy.hypotheses[]` array and light up the secondary
+descriptions in-place. Schema-extension point, not a blocker.
+
+## 2026-04-23 — /strategy reverse view suppressed in archival mode
+
+Archival mode on /strategy (`?archived=YYYY-MM-DD`) is a DIAGNOSIS
+snapshot — it shows the verdict, findings, top/under performers, and
+watch-outs as they were at that week's pipeline run. But the calendar
+on the sheet is always live (Content_Calendar is upsert-by-week). So
+rendering the hypothesis-to-slot section inside an archival view
+would pair an archived diagnosis with the CURRENT week's slots — an
+honest-but-confusing split.
+
+Choice: suppress the reverse view section entirely when `isArchival`
+is true. Users viewing an archive get a clean diagnosis snapshot
+without the mismatch; if they want slot coverage, a single click on
+the "← Live" link in the ArchivalLine takes them to the live view.
+
 ## 2026-04-23 — Content_Calendar schema v2 reader: defensive JSON parse, not strict
 
 The pipeline serializes `forecast_reach_ci_native` + `risk_flags` as
