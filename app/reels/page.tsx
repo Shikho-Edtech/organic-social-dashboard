@@ -7,6 +7,7 @@ import { Card, ChartCard } from "@/components/Card";
 import KpiCard from "@/components/KpiCard";
 import BarChartBase from "@/components/BarChart";
 import TrendChart from "@/components/TrendChart";
+import PostReference from "@/components/PostReference";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -250,7 +251,8 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
       return {
         id: r.post_id,
         date: dateStr,
-        caption: previewMessage(p?.message || "", 60),
+        captionFull: (p?.message || "").replace(/\s+/g, " ").trim(),
+        permalink: p?.permalink_url || "",
         pillar: p?.content_pillar || "—",
         plays,
         replays,
@@ -433,7 +435,9 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
                     }`}
                   >
                     <td className="px-4 py-3 text-slate-500 whitespace-nowrap tabular-nums">{row.date}</td>
-                    <td className="px-4 py-3 text-slate-800 max-w-[360px] truncate" title={row.caption}>{row.caption}</td>
+                    <td className="px-4 py-3 text-slate-800 max-w-[360px]">
+                      <PostReference caption={row.captionFull} permalinkUrl={row.permalink} maxChars={60} className="max-w-full" />
+                    </td>
                     <td className="px-4 py-3">
                       <span
                         className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium text-white"
@@ -473,8 +477,8 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
                   {row.pillar}
                 </span>
               </div>
-              <div className="text-sm text-slate-800 line-clamp-2 mb-2" title={row.caption}>
-                {row.caption}
+              <div className="text-sm text-slate-800 mb-2">
+                <PostReference caption={row.captionFull} permalinkUrl={row.permalink} maxChars={90} className="w-full" />
               </div>
               <div className="grid grid-cols-3 gap-x-2 gap-y-2 text-xs">
                 <div>

@@ -5,6 +5,7 @@ import { computeKpis, filterPosts, dailyReach, groupStats, bdt, reach, engagemen
 import { Card, ChartCard } from "@/components/Card";
 import TrendChart from "@/components/TrendChart";
 import BarChartBase from "@/components/BarChart";
+import PostReference from "@/components/PostReference";
 import { canonicalColor, type ColorField } from "@/lib/colors";
 
 type Props = { posts: Post[]; daily: DailyMetric[] };
@@ -214,9 +215,44 @@ export default function ExploreClient({ posts }: Props) {
         </Card>
       ) : (
         <>
-          {/* Promoted: Top Posts (was last, now first output). Workbench
-              users scan posts to find winners — put them right under the
-              filter controls, not after two charts. */}
+          {/* Sprint P6 chunk 5 (2026-04-23): reverted Batch 3b's Top-Posts-first
+              reorder. User feedback is that Performance-by-X and Reach-Over-Time
+              give the instant "does this filter make sense?" read, and the
+              post list is the deep-dive after. Chart cards sit under the
+              filter controls; Top Posts drops to the bottom of the scroll. */}
+          <div className="mb-6">
+            <ChartCard
+              title={`Performance by ${groupByLabel}`}
+              kind="ai"
+              subtitle="Total unique reach by segment"
+              caption={`Each bar is the sum of unique reach for posts in that ${groupByLabel.toLowerCase()} segment. Percentage shown is share of total reach across segments shown.`}
+            >
+              <BarChartBase
+                data={grouped.slice(0, 12).map((g) => ({
+                  label: g.key || "Unknown",
+                  value: g.total_reach,
+                  color: canonicalColor(colorFieldFor(groupByDim), g.key),
+                }))}
+                horizontal
+                height={Math.max(200, Math.min(12, grouped.length) * 34)}
+                metricName="Reach"
+                valueAxisLabel="Unique reach"
+                showPercent
+              />
+            </ChartCard>
+          </div>
+
+          <div className="mb-6">
+            <ChartCard
+              title="Reach Over Time"
+              kind="observed"
+              subtitle="Daily unique reach for the current filter set"
+              caption="Trend of daily unique reach for the posts matching your filters. Gaps indicate days with no qualifying posts."
+            >
+              <TrendChart data={trend} metricName="Reach" valueAxisLabel="Unique reach" />
+            </ChartCard>
+          </div>
+
           <Card className="mb-6">
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4">
               <div>
@@ -254,7 +290,9 @@ export default function ExploreClient({ posts }: Props) {
                     <span className="text-slate-300 mx-1.5">·</span>
                     <span>{(p.shares || 0).toLocaleString()} share{p.shares === 1 ? "" : "s"}</span>
                   </div>
-                  <div className="text-xs text-slate-600 mt-1 line-clamp-2">{p.message.slice(0, 200)}</div>
+                  <div className="text-xs text-slate-600 mt-1">
+                    <PostReference caption={p.message} permalinkUrl={p.permalink_url} maxChars={160} className="w-full" />
+                  </div>
                   <div className="text-[11px] text-slate-500 mt-1.5 flex flex-wrap items-center gap-x-1.5">
                     <span className="text-brand-shikho-pink font-medium">{p.content_pillar || "—"}</span>
                     <span>·</span>
@@ -304,39 +342,6 @@ export default function ExploreClient({ posts }: Props) {
               </div>
             )}
           </Card>
-
-          <div className="mb-6">
-            <ChartCard
-              title="Reach Over Time"
-              kind="observed"
-              subtitle="Daily unique reach for the current filter set"
-              caption="Trend of daily unique reach for the posts matching your filters. Gaps indicate days with no qualifying posts."
-            >
-              <TrendChart data={trend} metricName="Reach" valueAxisLabel="Unique reach" />
-            </ChartCard>
-          </div>
-
-          <div className="mb-6">
-            <ChartCard
-              title={`Performance by ${groupByLabel}`}
-              kind="ai"
-              subtitle="Total unique reach by segment"
-              caption={`Each bar is the sum of unique reach for posts in that ${groupByLabel.toLowerCase()} segment. Percentage shown is share of total reach across segments shown.`}
-            >
-              <BarChartBase
-                data={grouped.slice(0, 12).map((g) => ({
-                  label: g.key || "Unknown",
-                  value: g.total_reach,
-                  color: canonicalColor(colorFieldFor(groupByDim), g.key),
-                }))}
-                horizontal
-                height={Math.max(200, Math.min(12, grouped.length) * 34)}
-                metricName="Reach"
-                valueAxisLabel="Unique reach"
-                showPercent
-              />
-            </ChartCard>
-          </div>
         </>
       )}
     </div>
