@@ -826,6 +826,66 @@ export async function getStrategyByWeek(
 }
 
 /**
+ * PLN-07: dashboard-side reader for the Plan_Narrative tab.
+ *
+ * The pipeline (PLN-06) writes a single row per week holding the weekly
+ * narrative arc + aggregate forecast + hypothesis list + risk/contingency
+ * counts. Dashboard reads that row so the Plan page can show a
+ * "This Week's Plan" card without re-aggregating per render.
+ *
+ * Empty-safe: returns null when the tab doesn't exist yet (e.g. first
+ * week before the pipeline has run PLN-06), or when every row is blank.
+ * Matches by `Week Ending`; falls back to the newest (last) row when no
+ * explicit week is requested.
+ */
+export interface PlanNarrative {
+  week_ending: string;
+  storyline: string;
+  hypothesis_id: string;
+  cited_priors_row: string;
+  hypothesis_list: string;
+  forecast_summary: string;
+  risk_flag_count: number;
+  contingency_count: number;
+  generated_at: string;
+}
+
+function planNarrativeFromRow(r: Record<string, any>): PlanNarrative {
+  return {
+    week_ending: String(r["Week Ending"] || "").trim(),
+    storyline: String(r["Narrative Storyline"] || "").trim(),
+    hypothesis_id: String(r["Narrative Hypothesis ID"] || "").trim(),
+    cited_priors_row: String(r["Narrative Cited Priors Row"] || "").trim(),
+    hypothesis_list: String(r["Hypothesis List"] || "").trim(),
+    forecast_summary: String(r["Forecast Summary"] || "").trim(),
+    risk_flag_count: toNumber(r["Risk Flag Count"]),
+    contingency_count: toNumber(r["Contingency Count"]),
+    generated_at: String(r["Generated At"] || "").trim(),
+  };
+}
+
+export async function getPlanNarrative(
+  weekEnding?: string,
+): Promise<PlanNarrative | null> {
+  const rows = await readTab("Plan_Narrative");
+  const objects = rowsToObjects(rows);
+  if (objects.length === 0) return null;
+  if (weekEnding) {
+    const match = objects.find(
+      (r) => String(r["Week Ending"] || "").trim() === weekEnding.trim(),
+    );
+    return match ? planNarrativeFromRow(match) : null;
+  }
+  // Default: newest row (append-mostly, upsert-by-week; the last row is
+  // the most-recently-written week).
+  const row = objects[objects.length - 1];
+  const parsed = planNarrativeFromRow(row);
+  // Guard against a row that's structurally present but completely blank.
+  if (!parsed.week_ending && !parsed.storyline) return null;
+  return parsed;
+}
+
+/**
  * List all archived strategy runs (week_ending + short headline) for an
  * archive picker. Newest-first. Honest about blank weeks — a row without
  * a `Week Ending` is filtered out.

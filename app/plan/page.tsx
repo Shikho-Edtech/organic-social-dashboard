@@ -1,10 +1,11 @@
 // Plan view — Content Calendar
-import { getCalendar, getCalendarByRunId, getRunStatus, computeStaleness, getStageEngine } from "@/lib/sheets";
+import { getCalendar, getCalendarByRunId, getRunStatus, computeStaleness, getStageEngine, getPlanNarrative } from "@/lib/sheets";
 import { Card } from "@/components/Card";
 import PageHeader from "@/components/PageHeader";
 import StalenessBanner from "@/components/StalenessBanner";
 import AIDisabledEmptyState from "@/components/AIDisabledEmptyState";
 import ArchivalLine from "@/components/ArchivalLine";
+import PlanNarrativeCard from "@/components/PlanNarrativeCard";
 import { STAGES } from "@/lib/stages";
 
 export const dynamic = "force-dynamic";
@@ -84,11 +85,15 @@ export default async function PlanPage({ searchParams }: { searchParams: Record<
   const archivedParam = typeof searchParams?.archived === "string" ? searchParams.archived : "";
   const isArchival = Boolean(archivedParam);
 
-  const [liveCalendar, archivedCalendar, runStatus, calendarEngine] = await Promise.all([
+  const [liveCalendar, archivedCalendar, runStatus, calendarEngine, planNarrative] = await Promise.all([
     isArchival ? Promise.resolve([] as Awaited<ReturnType<typeof getCalendar>>) : getCalendar(),
     isArchival ? getCalendarByRunId(archivedParam) : Promise.resolve([] as Awaited<ReturnType<typeof getCalendar>>),
     getRunStatus(),
     getStageEngine("calendar"),
+    // PLN-07: read the week-level narrative summary the pipeline (PLN-06)
+    // writes on every successful calendar generation. Skipped in archival
+    // mode since we don't have week-indexed narrative archival yet.
+    isArchival ? Promise.resolve(null) : getPlanNarrative(),
   ]);
   const calendar = isArchival ? archivedCalendar : liveCalendar;
   const staleness = computeStaleness("calendar", runStatus);
@@ -170,6 +175,13 @@ export default async function PlanPage({ searchParams }: { searchParams: Record<
           <p className="text-slate-700 font-medium">No calendar generated yet</p>
           <p className="text-slate-500 text-sm mt-2">The next weekly pipeline run will populate next week&apos;s plan.</p>
         </Card>
+      )}
+
+      {/* PLN-07: week-level narrative summary sits above the per-day
+          cards. Hidden in archival mode (narrative archive doesn't
+          exist yet) and hidden when there are no slots to frame. */}
+      {!isArchival && calendar.length > 0 && (
+        <PlanNarrativeCard narrative={planNarrative} />
       )}
 
       <div className="space-y-3">
