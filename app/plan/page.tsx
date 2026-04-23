@@ -6,6 +6,7 @@ import StalenessBanner from "@/components/StalenessBanner";
 import AIDisabledEmptyState from "@/components/AIDisabledEmptyState";
 import ArchivalLine from "@/components/ArchivalLine";
 import PlanNarrativeCard from "@/components/PlanNarrativeCard";
+import AcademicContextStrip from "@/components/AcademicContextStrip";
 import { STAGES } from "@/lib/stages";
 
 export const dynamic = "force-dynamic";
@@ -137,6 +138,7 @@ export default async function PlanPage({ searchParams }: { searchParams: Record<
           aiDisabled
           hasData={calendar.length > 0}
         />
+        <AcademicContextStrip />
         <PageHeader
           title="Plan"
           subtitle="Next week's content calendar — AI generation is off"
@@ -178,6 +180,7 @@ export default async function PlanPage({ searchParams }: { searchParams: Record<
           hasData={calendar.length > 0}
         />
       )}
+      <AcademicContextStrip />
       <PageHeader
         title="Plan"
         subtitle={isArchival

@@ -8,6 +8,7 @@ import BarChartBase from "@/components/BarChart";
 import StalenessBanner from "@/components/StalenessBanner";
 import AIDisabledEmptyState from "@/components/AIDisabledEmptyState";
 import ArchivalLine from "@/components/ArchivalLine";
+import AcademicContextStrip from "@/components/AcademicContextStrip";
 import { STAGES } from "@/lib/stages";
 import { canonicalColor } from "@/lib/colors";
 
@@ -196,6 +197,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
           aiDisabled
           hasData={!!diagnosis}
         />
+        <AcademicContextStrip />
         <PageHeader
           title="Strategy"
           subtitle="Claude's diagnosis and recommended actions"
@@ -249,6 +251,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
           hasData={!!diagnosis}
         />
       )}
+      <AcademicContextStrip />
       <PageHeader
         title="Strategy"
         subtitle={isArchival

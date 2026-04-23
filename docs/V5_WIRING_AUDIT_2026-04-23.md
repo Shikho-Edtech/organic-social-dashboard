@@ -102,6 +102,18 @@ excluded from the wiring rubric by design.
   `active_events` list, no exam countdown, no season-bucket label.
   Partial surface. **Fix: add a "SEA context" strip to /strategy
   and /plan that renders the current season + next exam window.**
+  - **Post-audit fix (2026-04-23):** shipped as a static mirror.
+    `lib/exams.ts` mirrors `facebook-pipeline/config/exams.yaml`
+    (HSC 2026-05-01, SSC 2026-06-15) with
+    `EXAM_PROXIMITY_DAYS = 14` matching the pipeline's AMEND scorer.
+    `components/AcademicContextStrip.tsx` renders a thin strip
+    above the PageHeader on `/plan` and `/strategy` with a season
+    pill (Exam / Regular) + next-exam countdown. Hidden when no
+    future exam is known. No cross-repo sheet change — the
+    dashboard only needs the macro signal. Promotion to an
+    `Academic_Context` tab is documented as a graduation path in
+    DECISIONS (2026-04-23 SEA entry). Shipped in the same session
+    as this audit.
 - **DYN-01** (WoW significance grounding) — validator-enforced,
   surfaces through diagnosis.headline prose. Flows through, but not
   distinguishable from v4 prose on the UI. Acceptable — the
@@ -140,8 +152,8 @@ Four wiring gaps worth addressing, in priority order:
 
 ## Open items tracked
 
-- Hook fatigue reader addition (DYN-03)
-- Outcome_Log reader + UI (OSL-04)
-- Calendar Quality Score reader (OSL-07)
-- Academic calendar UI surface (SEA-01..05)
+- ~~Hook fatigue reader addition (DYN-03)~~ — shipped 2026-04-23
+- ~~Outcome_Log reader + UI (OSL-04)~~ — shipped 2026-04-23
+- Calendar Quality Score reader (OSL-07) — deferred pending Strategy UI
+- ~~Academic calendar UI surface (SEA-01..05)~~ — shipped 2026-04-23
 - Strategy tab UI — product decision pending (STR-01..14)

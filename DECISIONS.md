@@ -1,5 +1,32 @@
 # Decisions
 
+## 2026-04-23 — SEA academic context: static mirror on the dashboard, not a cross-repo tab
+
+The audit's SEA-01..05 gap had two plausible shapes: (a) persist a
+full `Academic_Context` sheet tab from the pipeline and read it on
+the dashboard, or (b) mirror the small `exams.yaml` constant on the
+dashboard as static TypeScript. Picked (b).
+
+**Why:** the dashboard only needs the macro signal — "are we in exam
+season?" and "how many days until the next exam?" The full ~300-event
+calendar is server-side grounding for priors bucketing and diagnosis
+prompts; surfacing the whole thing on the dashboard would duplicate
+state for no operator benefit. Two entries (HSC, SSC) change maybe
+once a year; the lockstep cost is trivial compared to building,
+persisting, and reading a new tab.
+
+**Why 14-day threshold:** matches the pipeline's AMEND scorer exactly
+(`EXAM_PROXIMITY_DAYS = 14`). Keeping the dashboard's "exam season"
+pill and /outcomes' exam-confounded verdict pinned to the same
+definition means operators don't see one page claim "exam season"
+while another claims "regular."
+
+**Graduation path:** when the Knowledge team's Google Sheet academic
+calendar starts changing mid-season or operators want the event
+list, promote to a `Academic_Context` tab written by the pipeline.
+Until then, the static mirror is the pragmatic path. Header comment
+in `lib/exams.ts` calls this out so the next person doesn't wonder.
+
 ## 2026-04-23 — /outcomes is its own page, not a strip on /plan
 
 The v5 audit called out two plausible homes for the Outcome_Log

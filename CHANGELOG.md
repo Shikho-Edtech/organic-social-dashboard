@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-04-23 — SEA-01..05 academic context strip on /plan and /strategy
+
+Audit gap #3 closed. New `components/AcademicContextStrip.tsx` renders
+a thin strip above PageHeader on `/plan` and `/strategy` with the
+macro exam signal: season pill (Exam season → Shikho sunrise; Regular
+season → Shikho indigo) + next-exam countdown (`HSC 2026 · in 8 days`).
+Hidden when no future exam is known.
+
+Static mirror of `facebook-pipeline/config/exams.yaml` lives at
+`lib/exams.ts` (HSC 2026-05-01, SSC 2026-06-15) with
+`EXAM_PROXIMITY_DAYS = 14` matching the pipeline's AMEND scorer.
+`currentSeason()`, `nextExam()`, `daysUntilExam()` all read from
+there. Why static over a full cross-repo persistence: the dashboard
+only needs the macro signal — the full ~300-event calendar stays
+pipeline-side. Trade-off documented in the file header; when the
+Knowledge team's sheet changes, update both files in lockstep.
+
+Brand audit: 292/292 (no regressions). Build green. Mobile layout:
+`flex-col sm:flex-row`, pill flex-shrink-0.
+
 ## 2026-04-23 — OSL-04 Outcome_Log reader + new /outcomes page (v5 audit follow-up)
 
 Audit gap #2 closed. New `/outcomes` page surfaces the pipeline's
