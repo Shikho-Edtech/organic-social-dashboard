@@ -466,20 +466,34 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
             sampleSize={`${matrixFormats.length} format${matrixFormats.length === 1 ? "" : "s"} × 24 hours, n = ${inRange.length} post${inRange.length === 1 ? "" : "s"}`}
             caption="Reels at 8pm behave nothing like Carousels at 8pm. Find the dark cells per format, not just overall."
           >
+            {/* Sprint P6: hour axis narrowed to 10..23 (BDT) per user
+                feedback — Shikho's posting window is daytime/evening,
+                so compressing 24→14 columns roughly doubles cell width
+                at 360px without losing any realistically-populated
+                cell. Labels in 24hr every 2h ("10 12 14 16 18 20 22").
+                Bumped alpha floor 0.08 → 0.22 and low-n reducer 0.35 →
+                0.55 so the table reads noticeably darker end-to-end —
+                prior pass was so faint that the format-vs-format shape
+                comparison required squinting. Cell height 20px → 22px
+                for the same reason (more ink per row). */}
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr>
-                    <th className="text-left font-semibold text-ink-400 px-2 py-1.5 whitespace-nowrap">Format</th>
-                    {Array.from({ length: 24 }, (_, h) => (
-                      <th
-                        key={h}
-                        className="text-center font-semibold text-ink-400 px-0.5 py-1.5 tabular-nums"
-                        title={`${h}:00 BDT`}
-                      >
-                        {h % 3 === 0 ? h : ""}
-                      </th>
-                    ))}
+                    <th className="text-left font-semibold text-ink-500 px-2 py-1.5 whitespace-nowrap">Format</th>
+                    {Array.from({ length: 14 }, (_, i) => {
+                      const h = 10 + i;
+                      const showLabel = h % 2 === 0;
+                      return (
+                        <th
+                          key={h}
+                          className="text-center font-semibold text-ink-500 px-0.5 py-1.5 tabular-nums"
+                          title={`${h.toString().padStart(2, "0")}:00 BDT`}
+                        >
+                          {showLabel ? h.toString().padStart(2, "0") : ""}
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 <tbody>
@@ -493,25 +507,28 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
                           {f}
                         </span>
                       </td>
-                      {Array.from({ length: 24 }, (_, h) => {
+                      {Array.from({ length: 14 }, (_, i) => {
+                        const h = 10 + i;
                         const cell = fhMatrix[f][h];
                         const n = cell?.n ?? 0;
                         const mean = cell?.mean ?? 0;
                         const intensity = matrixMax > 0 ? Math.min(1, mean / matrixMax) : 0;
-                        // Dim cells with n<MATRIX_MIN_N; hide completely empty ones.
                         const isReliable = n >= MATRIX_MIN_N;
-                        const alpha = n === 0 ? 0 : isReliable ? intensity : intensity * 0.35;
+                        // Darker by default (floor 0.22) + less-aggressive dimming
+                        // for low-n cells (0.55 vs 0.35) so the format-vs-format
+                        // pattern reads at a glance.
+                        const alpha = n === 0 ? 0 : isReliable ? intensity : intensity * 0.55;
                         const bg = n === 0
                           ? "transparent"
-                          : `rgba(48, 64, 144, ${Math.max(0.08, alpha)})`;
+                          : `rgba(48, 64, 144, ${Math.max(0.22, alpha)})`;
                         return (
                           <td
                             key={h}
                             className="px-0 py-0.5 text-center"
-                            title={n === 0 ? `${f} @ ${h}:00 — no posts` : `${f} @ ${h}:00 — mean reach ${Math.round(mean).toLocaleString()} over ${n} post${n === 1 ? "" : "s"}${isReliable ? "" : " (low-n, dimmed)"}`}
+                            title={n === 0 ? `${f} @ ${h.toString().padStart(2, "0")}:00 — no posts` : `${f} @ ${h.toString().padStart(2, "0")}:00 — mean reach ${Math.round(mean).toLocaleString()} over ${n} post${n === 1 ? "" : "s"}${isReliable ? "" : " (low-n, dimmed)"}`}
                           >
                             <div
-                              className="mx-0.5 h-5 rounded-xs"
+                              className="mx-0.5 h-[22px] rounded-xs"
                               style={{ backgroundColor: bg, border: n === 0 ? "1px dashed #E6E8F0" : "none" }}
                             />
                           </td>
@@ -521,12 +538,14 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
                   ))}
                 </tbody>
               </table>
-              <div className="mt-2 flex items-center gap-3 text-[11px] text-ink-400">
+              <div className="mt-2 flex items-center gap-3 text-[11px] text-ink-500">
                 <span>Darker = more reach</span>
                 <span>·</span>
                 <span>Dashed outline = no posts in that cell</span>
                 <span>·</span>
                 <span>Faded fill = fewer than {MATRIX_MIN_N} posts (low confidence)</span>
+                <span>·</span>
+                <span>BDT 10:00\u201324:00</span>
               </div>
             </div>
           </ChartCard>

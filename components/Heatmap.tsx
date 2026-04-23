@@ -72,11 +72,24 @@ function interpolate(t: number, a: [number, number, number], b: [number, number,
   return `rgb(${r}, ${g}, ${bl})`;
 }
 
+// Sprint P6: switched from 12hr "3pm"/"9am" to 24hr "15:00"/"09:00" per
+// user feedback ("all time markers across the dashboard should be 24hr
+// format not 12hr am/pm"). Kept as `formatHour` so call sites don't need
+// a rename; the returned string is zero-padded 24hr ("HH:00").
 function formatHour(h: number): string {
-  const suffix = h >= 12 ? "pm" : "am";
-  const display = h === 0 ? 12 : h > 12 ? h - 12 : h;
-  return `${display}${suffix}`;
+  return `${h.toString().padStart(2, "0")}:00`;
 }
+
+// Sprint P6: the dashboard shows hours 10..23 only per user feedback
+// ("time axis should be from 10:00am to 24:00 for bd time"). Shikho's
+// posting window is daytime/evening — compressing the grid from 24 to
+// 14 columns roughly doubles cell width at 360px width, which makes
+// the heatmap readable without a horizontal scrollbar. Data for hours
+// 0..9 is still computed (caller-side aggregation is untouched) so
+// a later UI can surface it if needed; it just isn't rendered here.
+const HOUR_MIN = 10;
+const HOUR_MAX = 23; // inclusive (last rendered hour is 23:00, label edge "24")
+const HOUR_SPAN = HOUR_MAX - HOUR_MIN + 1; // 14 columns
 
 export default function Heatmap({
   cells,
@@ -115,38 +128,37 @@ export default function Heatmap({
   const minRgb = hexToRgb(minColor);
   const maxRgb = hexToRgb(maxColor);
 
-  // Ticks on the hour axis every 3 hours so 360px stays readable.
-  // Show the am/pm suffix — prior pass stripped it thinking "3" was
-  // unambiguous, but 3am vs 3pm matters when you're picking a publish slot.
-  // Uses the compact "3a"/"3p" form so the 24-column row still fits on mobile.
-  const hourTicks = [0, 3, 6, 9, 12, 15, 18, 21];
-  const compactHour = (h: number): string => {
-    const suffix = h >= 12 ? "p" : "a";
-    const display = h === 0 ? 12 : h > 12 ? h - 12 : h;
-    return `${display}${suffix}`;
-  };
+  // Sprint P6: ticks every 2 hours across the 10..23 window so the
+  // reader sees "10 · 12 · 14 · 16 · 18 · 20 · 22" across the header —
+  // every other cell labeled, in 24hr compact form ("12", "14"). The
+  // previous compact-am/pm format ("3p") is gone dashboard-wide.
+  const hourTicks = [10, 12, 14, 16, 18, 20, 22];
+  const compactHour = (h: number): string => h.toString();
 
   return (
     <div ref={rootRef} className="relative">
-      {/* Grid: day-label gutter + 24 hour columns. `minmax(0, 1fr)` so
-          cells don't overflow at narrow widths. */}
+      {/* Grid: day-label gutter + HOUR_SPAN (14) hour columns covering
+          10:00..23:00. `minmax(0, 1fr)` so cells don't overflow at
+          narrow widths. */}
       <div
         className="grid gap-[2px]"
-        style={{ gridTemplateColumns: "auto repeat(24, minmax(0, 1fr))" }}
+        style={{ gridTemplateColumns: `auto repeat(${HOUR_SPAN}, minmax(0, 1fr))` }}
       >
         {/* Empty corner */}
         <div />
-        {/* Hour axis (top) — compact 12h with a/p suffix so the reader
-            can distinguish a 6am publish from a 6pm one at a glance. */}
-        {Array.from({ length: 24 }, (_, h) => (
-          <div
-            key={`h-${h}`}
-            className="text-[10px] text-slate-400 text-center tabular-nums"
-            aria-hidden="true"
-          >
-            {hourTicks.includes(h) ? compactHour(h) : ""}
-          </div>
-        ))}
+        {/* Hour axis (top) — 24hr compact labels every 2 hours. */}
+        {Array.from({ length: HOUR_SPAN }, (_, i) => {
+          const h = HOUR_MIN + i;
+          return (
+            <div
+              key={`h-${h}`}
+              className="text-[10px] text-slate-400 text-center tabular-nums"
+              aria-hidden="true"
+            >
+              {hourTicks.includes(h) ? compactHour(h) : ""}
+            </div>
+          );
+        })}
 
         {/* Day rows */}
         {DAY_NAMES.map((day, d) => (
@@ -155,7 +167,8 @@ export default function Heatmap({
               <span className="hidden sm:inline">{day}</span>
               <span className="sm:hidden">{DAY_NAMES_SHORT[d]}</span>
             </div>
-            {Array.from({ length: 24 }, (_, h) => {
+            {Array.from({ length: HOUR_SPAN }, (_, i) => {
+              const h = HOUR_MIN + i;
               const cell = cellMap.get(`${d}-${h}`) || { day: d, hour: h, value: 0, n: 0, totalReach: 0 };
               // Render every non-zero cell at its full color mapped from
               // value, but blend toward the low-end color by an opacity

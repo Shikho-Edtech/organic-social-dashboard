@@ -146,11 +146,10 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
   // screen reader). Formatted with localeString / fixed precision so
   // the table renders as human-readable text rather than raw floats.
   const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const formatHour12 = (h: number) => {
-    const suffix = h >= 12 ? "pm" : "am";
-    const display = h === 0 ? 12 : h > 12 ? h - 12 : h;
-    return `${display}${suffix}`;
-  };
+  // Sprint P6: 24hr across the dashboard. Previously rendered "3pm"/"9am"
+  // in the accessible "View data" tables; now "15:00"/"09:00" to match
+  // the heatmap axis and Shikho BDT convention.
+  const formatHour24 = (h: number) => `${h.toString().padStart(2, "0")}:00`;
   const nonEmptyCells = erCells
     .map((c, i) => ({ er: c, reach: reachCells[i] }))
     .filter((pair) => pair.er.n > 0)
@@ -159,7 +158,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
     columns: ["Day", "Hour", "Posts", "Eng Rate", "Total Reach"],
     rows: nonEmptyCells.map(({ er }) => [
       DAY_LABELS[er.day],
-      formatHour12(er.hour),
+      formatHour24(er.hour),
       er.n,
       `${er.value.toFixed(2)}%`,
       Math.round(er.totalReach),
@@ -171,7 +170,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
       .sort((a, b) => b.reach.value - a.reach.value)
       .map(({ reach }) => [
         DAY_LABELS[reach.day],
-        formatHour12(reach.hour),
+        formatHour24(reach.hour),
         reach.n,
         Math.round(reach.value),
         Math.round(reach.totalReach),
