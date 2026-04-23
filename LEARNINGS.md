@@ -1,5 +1,29 @@
 # Learnings
 
+## 2026-04-23 — Don't trust naive ISO strings from cross-process writers
+
+The dashboard reads `Analysis_Log.last_run_at` (and several similar columns)
+as ISO strings from Google Sheets. It then does the right thing: parses
+with `new Date(...)`, formats with `toLocaleString(..., { timeZone:
+"Asia/Dhaka" })`. That's correct — **provided the string has a timezone
+marker**.
+
+The pipeline was writing naive `datetime.now().isoformat()` strings. No
+offset, no `Z`. On the dashboard side, `new Date("2026-04-23T14:35:00")`
+in Node (UTC runtime) parses as UTC, not BDT. The `toLocaleString` then
+adds +6h, and users see 20:35 when the pipeline actually ran at 14:35.
+
+The fix lived on the pipeline side (switch to `datetime.now(timezone.utc)
+.isoformat()` — pipeline commit 0b70da8). But the dashboard-side takeaway
+is: **a timestamp without a tz marker is a bug, not data**. If a future
+reader needs one of these columns and the string has no offset, treat the
+writer as broken — don't paper over it with ad-hoc `+6:00` assumptions in
+the reader. The reader's job is to trust the offset.
+
+Class-of-bug marker for future readers: if a "last X at" value displays 6h
+off (or any whole-number hours matching a real tz delta), check the writer
+before debugging the reader.
+
 ## 2026-04-23 — New UI additions slip slate-* through even with brand audit baseline
 
 Added three schema-v2 surfacings to `/plan`. First pass used

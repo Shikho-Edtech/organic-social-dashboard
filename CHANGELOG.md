@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-04-23 — Sprint P6 declutter 3/N: 24hr time, BDT 10-23 window, darker engagement table
+
+- `components/Heatmap.tsx`: grid compressed from 24 cols to 14 (hours 10-23).
+  Overnight dead zone (00:00-09:00) hid real activity behind empty columns.
+  Hour labels switched to 24hr zero-padded (10:00 / 12:00 / 14:00 / ...).
+  Ticks every 2h.
+- `app/timing/page.tsx`: `formatHour12` → `formatHour24`. Winner callouts
+  now read "Best hour: 19:00" instead of "Best hour: 7 PM" — matches the
+  24hr time markers the user asked for globally.
+- `app/engagement/page.tsx` Format × Hour table: mirrors the Heatmap
+  (14 cols, 24hr labels, "BDT 10:00–24:00" legend annotation). Alpha floor
+  bumped 0.08 → 0.22 and the low-n reducer 0.35 → 0.55 so weak cells are
+  visible without squinting. Cell height 20px → 22px for touch targets.
+- Fix-on-touch: `text-ink-400` → `text-ink-500` on an engagement label.
+
+Paired with pipeline commit 0b70da8 (UTC-aware timestamps across sheets.py):
+old rows still display the ghost +6h, new rows from the next pipeline run
+will show the real BD wall-clock everywhere the dashboard reads them.
+
+QA: typecheck clean, brand audit 292/292, build green.
+
 ## 2026-04-23 — Sprint P6 declutter 2/N: /overview + /trends cleanup, readable week labels
 
 - /overview: removed AI cost banner + virality/north-star/cadence KPI strip.
