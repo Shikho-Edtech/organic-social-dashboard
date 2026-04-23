@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-04-23 — Sprint P6 declutter 1/N: /strategy + /plan cleanup
+
+Post-P5 feedback pass. Users flagged that Sprint P5's "Calendar coverage by
+hypothesis" section duplicated what Plan already shows, the Weekly Verdict
+hero was a 2-part split with a bolded incomplete first line, PlanNarrativeCard's
+4-stat grid was clutter, and the StalenessBanner was firing for AI artifacts
+after fresh Meta runs because the pipeline had crashed at write_run_log.
+
+- StalenessBanner: component-local gate — suppress banner when Meta fetch is
+  ≤7d fresh (unless AI explicitly disabled). `daysBetweenNow` helper. The
+  underlying `computeStaleness` still runs for programmatic callers.
+- /strategy: reverted P5 Calendar-coverage-by-hypothesis section — imports,
+  helpers, types, fetches, and the ~110-line render block. -335 lines net.
+- /strategy: Weekly Verdict flattened to indigo chip + week-ending label +
+  single `diagnosis.headline` paragraph. Exam alert still renders as coral
+  callout. Killed the splitHeadline + line-clamp disclosure.
+- /strategy: added inline TOFU/MOFU/BOFU explainer below funnel grid.
+- /plan PlanNarrativeCard: stripped 4-stat grid + priors footer + hypothesis
+  pill. Storyline paragraph only. SummaryStat helper deleted.
+
+QA: typecheck clean, brand audit 301/306, build green.
+
 ## 2026-04-23 — Sprint P5: /strategy hypothesis-to-slot reverse view
 
 The /plan page asks "what ships this week?" — slot cards tagged with a

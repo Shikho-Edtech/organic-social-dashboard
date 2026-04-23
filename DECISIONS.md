@@ -1,5 +1,60 @@
 # Decisions
 
+## 2026-04-23 — StalenessBanner gates on Meta-fetch freshness, not just artifact age
+
+Sprint P5 shipped a Calendar-coverage-by-hypothesis view on /strategy. On
+first live viewing, users flagged it as clutter (duplicates /plan's job)
+AND noticed the "AI calendar never succeeded" banner firing on pages that
+had just run. Diagnosis: pipeline crashed at `write_run_log` (the final
+write in `write_all`), so `Analysis_Log.last_successful_calendar_at` never
+got stamped even though the calendar itself wrote successfully. Pipeline
+fix: wrap `write_run_log` in try/except (commit 3ee710c).
+
+Dashboard-side decision: even with the pipeline wrap, users don't care
+about subtle AI-artifact age within a fresh Meta pull window. If the raw
+Meta data is ≤7d old, the analysis layered on top is definitionally fresh
+enough. Added a component-local gate in `StalenessBanner.tsx`:
+
+```ts
+const metaAgeDays = runStatus?.last_run_at ? daysBetweenNow(...) : -1;
+const metaFresh = metaAgeDays >= 0 && metaAgeDays <= 7;
+if (!aiDisabled && metaFresh) return null;
+```
+
+The underlying `computeStaleness()` in `lib/sheets.ts` still runs — it
+feeds programmatic consumers and the `aiDisabled` mode still forces the
+banner through. The gate is pure UX: don't nag when the user is obviously
+seeing fresh data.
+
+Tradeoff: if the AI layer has been broken for >7d while Meta still runs
+fresh, we'd miss showing the banner until the 8th day. Acceptable —
+the pipeline itself prints warnings when AI stages fail, and the
+aiDisabled env flag path is preserved for the explicit-disable case.
+
+## 2026-04-23 — Revert /strategy Calendar-coverage-by-hypothesis (Sprint P5)
+
+Shipped the section a day ago. User feedback on first live view: the
+/plan page already shows this week's calendar with slot cards and
+hypothesis tags. Re-rendering it grouped by hypothesis on /strategy
+was "cluttering" — strategy should stay at the arc-level, not drill
+into per-slot ops.
+
+Kept: Plan_Narrative schema, Content_Calendar v2 columns (Hypothesis
+ID, Forecast Reach CI, Risk Flags), `getPlanNarrative()` reader,
+`PlanNarrativeCard`. These feed /plan and are valid for future
+programmatic use (e.g., pipeline-side retro comparing predicted vs
+actual per-hypothesis reach).
+
+Killed: /strategy imports of getCalendar/getLatestStrategy/getPlanNarrative
+in that file, the `groupCalendarByHypothesis` helper, HypothesisBucket
+type, the render block. 335 lines net deletion.
+
+Takeaway: when a new view answers a question that feels adjacent to an
+existing view's question, probe harder whether users actually need the
+second angle or whether they'll see it as redundant. For /strategy, the
+answer is "strategy = weekly arc narrative; plan = slot-level ops." Keep
+them on separate altitudes.
+
 ## 2026-04-23 — /strategy reverse view: secondary hypotheses show ID only, not text
 
 The hypothesis-to-slot reverse view on /strategy shows a hypothesis
