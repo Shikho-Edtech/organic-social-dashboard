@@ -1,5 +1,31 @@
 # Decisions
 
+## 2026-04-23 — /outcomes is its own page, not a strip on /plan
+
+The v5 audit called out two plausible homes for the Outcome_Log
+surface: tacked onto /plan, or a new /outcomes page. Picked the new
+page.
+
+**Why:** /plan is forward-looking — "this is next week's calendar."
+Putting retrospective grading on the same page muddles the mental
+model ("is the Hit pill I'm seeing about THIS row or last week's
+same-pillar row?"). A separate page cleanly frames the three phases:
+/strategy (what we decided — currently rolled back), /plan (what we
+plan to ship next), /outcomes (what happened to last week's plan).
+
+**Why no StalenessBanner:** the scorer is deterministic
+(score_slot_outcome is a pure function). CLAUDE.md explicitly gates
+the banner on Claude-powered artifacts. The page still shows
+`Generated At` in the header so operators can see when grading last
+ran, without the banner's alarmist framing.
+
+**Why client-side rollup:** `computeOutcomeRollup` in lib/sheets.ts
+mirrors the pipeline's `compute_calendar_quality_score` so the page
+renders correctly even when OSL-07 (Calendar Quality Score in
+Strategy_Log) hasn't been persisted. When OSL-07 ships, we can swap
+to the persisted JSON without changing the UI — the shapes are the
+same, the rollup function is just the canonical fallback.
+
 ## 2026-04-23 — StalenessBanner gates on Meta-fetch freshness, not just artifact age
 
 Sprint P5 shipped a Calendar-coverage-by-hypothesis view on /strategy. On

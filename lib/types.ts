@@ -218,3 +218,66 @@ export interface StrategyEntry {
   validation_attempts: number; // STR-08 — 1 = clean first try, >1 = recovered via feedback retry
   adherence_summary: AdherenceSummaryCompact | null; // STR-09 — null when no prior strategy to grade
 }
+
+// ─── Sprint P6 chunk 7 (OSL-04) — Outcome_Log reader ───
+//
+// Pipeline writer: facebook-pipeline/src/sheets.py::write_outcome_log (17 cols).
+// Emitted during the weekly run for every slot in the current calendar, so a
+// forward-looking calendar produces mostly `verdict="no-data"` rows until
+// actuals arrive on subsequent runs. Upsert key on the pipeline side is
+// "{week_ending}|{day}|{slot_index}" so re-runs update in place rather than
+// duplicating.
+//
+// Verdict enum (from score_slot_outcome):
+//   hit | exceeded | missed | no-data | unavailable | inconclusive-exam-confounded
+// The first three are "graded", no-data/unavailable are pre-actuals or
+// missing-forecast, exam-confounded is zero-weighted (excluded from hit rate).
+
+export type OutcomeVerdict =
+  | "hit"
+  | "exceeded"
+  | "missed"
+  | "no-data"
+  | "unavailable"
+  | "inconclusive-exam-confounded"
+  | "";
+
+export interface OutcomeLogEntry {
+  outcome_key: string;         // "{week}|{day}|{slot_index}" — composite
+  week_ending: string;
+  day: string;                 // "Monday" | "Tuesday" | ...
+  date: string;                // ISO "YYYY-MM-DD" (may be empty on pre-Day-2G rows)
+  slot_index: number;
+  hypothesis_id: string;       // "h0" | "h1" | "h2" | ...
+  pillar: string;
+  format: string;
+  forecast_low: number | null;
+  forecast_mid: number | null;
+  forecast_high: number | null;
+  actual_reach: number | null;
+  score: number | null;        // normalized score from score_slot_outcome
+  verdict: OutcomeVerdict;
+  // AMEND (exam-adjusted forecast): when the scorer applied a season prior
+  // tilt to the forecast mid because the slot date was within 14 days of an
+  // exam. False + null when not applied.
+  exam_adjusted_used: boolean;
+  exam_adjusted_mid: number | null;
+  generated_at: string;
+}
+
+// Aggregated rollup across a set of outcome rows (typically one week).
+// Shape mirrors compute_calendar_quality_score on the pipeline side but is
+// computed client-side on the dashboard to stay usable when the pipeline
+// hasn't ingested new outcomes yet.
+export interface OutcomeRollup {
+  week_ending: string;
+  slot_count: number;
+  graded_count: number;        // hit + exceeded + missed
+  hit_count: number;           // hit + exceeded
+  missed_count: number;
+  confounded_count: number;
+  no_data_count: number;
+  hit_rate: number | null;     // hit_count / graded_count, null when graded=0
+  mean_score: number | null;
+  grade: string;               // "A" | "B" | "C" | "D" | "F" | "ungraded"
+}

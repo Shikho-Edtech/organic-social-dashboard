@@ -14,6 +14,9 @@ import type {
   StrategyAbandonCriterion,
   AdherenceSummaryCompact,
   StrategyVerdictCounts,
+  OutcomeLogEntry,
+  OutcomeRollup,
+  OutcomeVerdict,
 } from "./types";
 import { canonicalizeEntity } from "./entities";
 
@@ -961,4 +964,200 @@ export async function listStrategyArchive(): Promise<
     }))
     .filter((r) => r.week_ending)
     .reverse();
+}
+
+// ─── Sprint P6 chunk 7 (OSL-04) — Outcome_Log reader ───
+//
+// Pipeline writer: facebook-pipeline/src/sheets.py::write_outcome_log (17 cols).
+// The reader is tolerant of missing cells because the sheet upserts by
+// composite key "{week}|{day}|{slot}", so forward-looking calendars land as
+// verdict="no-data" rows that fill in over subsequent runs.
+//
+// Deterministic stage (score_slot_outcome is pure), so no StalenessBanner is
+// required per CLAUDE.md — staleness is a Claude-powered-artifact concern.
+// The page still shows Generated At inline so operators know when it ran.
+
+function _numOrNull(v: any): number | null {
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(v);
+  return isNaN(n) ? null : n;
+}
+
+function outcomeLogFromRow(row: Record<string, any>): OutcomeLogEntry {
+  return {
+    outcome_key: String(row["Outcome Key"] || ""),
+    week_ending: String(row["Week Ending"] || ""),
+    day: String(row["Day"] || ""),
+    date: String(row["Date"] || ""),
+    slot_index: toNumber(row["Slot Index"]),
+    hypothesis_id: String(row["Hypothesis ID"] || ""),
+    pillar: String(row["Pillar"] || ""),
+    format: String(row["Format"] || ""),
+    forecast_low: _numOrNull(row["Forecast Low"]),
+    forecast_mid: _numOrNull(row["Forecast Mid"]),
+    forecast_high: _numOrNull(row["Forecast High"]),
+    actual_reach: _numOrNull(row["Actual Reach"]),
+    score: _numOrNull(row["Score"]),
+    verdict: String(row["Verdict"] || "") as OutcomeVerdict,
+    exam_adjusted_used: toBool(row["Exam Adjusted Used"]),
+    exam_adjusted_mid: _numOrNull(row["Exam Adjusted Mid"]),
+    generated_at: String(row["Generated At"] || ""),
+  };
+}
+
+/**
+ * Read every Outcome_Log row. Newest-week-first ordering so callers can
+ * `groupBy(week_ending)` and take the first group as the latest. Returns
+ * empty array when the tab doesn't exist yet (OSL-04 pre-shipping) or is
+ * header-only.
+ */
+export async function getOutcomeLog(): Promise<OutcomeLogEntry[]> {
+  const rows = await readTab("Outcome_Log");
+  const objects = rowsToObjects(rows);
+  return objects
+    .filter((r) => r["Outcome Key"] || r["Week Ending"])
+    .map(outcomeLogFromRow)
+    // Newest week first, stable within a week (day + slot_index ascending).
+    // String compare on ISO-like "YYYY-MM-DD" works lexicographically.
+    .sort((a, b) => {
+      if (a.week_ending !== b.week_ending) {
+        return b.week_ending.localeCompare(a.week_ending);
+      }
+      const dayOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+      const da = dayOrder.indexOf(a.day);
+      const db = dayOrder.indexOf(b.day);
+      if (da !== db) return da - db;
+      return a.slot_index - b.slot_index;
+    });
+}
+
+/**
+ * Outcomes for a single week. Empty array when the week has no rows.
+ * Week string matches the pipeline's ISO "YYYY-MM-DD" week_ending.
+ */
+export async function getOutcomeLogByWeek(
+  weekEnding: string,
+): Promise<OutcomeLogEntry[]> {
+  const all = await getOutcomeLog();
+  return all.filter((r) => r.week_ending === weekEnding);
+}
+
+/**
+ * Latest week that has at least one non-no-data row (i.e. a week whose
+ * actuals have started landing). Returns null when no such week exists
+ * yet — useful to render an honest "waiting for actuals" empty state on
+ * the /outcomes page rather than showing a full calendar of no-data rows.
+ */
+export async function getLatestGradedOutcomeWeek(): Promise<string | null> {
+  const all = await getOutcomeLog();
+  for (const row of all) {
+    if (
+      row.verdict &&
+      row.verdict !== "no-data" &&
+      row.verdict !== "unavailable"
+    ) {
+      return row.week_ending;
+    }
+  }
+  return null;
+}
+
+/**
+ * List every distinct week_ending present in Outcome_Log, newest-first.
+ * Empty array when the tab is empty. Useful for a week picker on /outcomes.
+ */
+export async function listOutcomeWeeks(): Promise<string[]> {
+  const all = await getOutcomeLog();
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const r of all) {
+    if (r.week_ending && !seen.has(r.week_ending)) {
+      seen.add(r.week_ending);
+      out.push(r.week_ending);
+    }
+  }
+  return out;
+}
+
+/**
+ * Compute the week rollup client-side. Mirrors the pipeline's
+ * `compute_calendar_quality_score` (classify.py) so /outcomes can render
+ * honest totals even when Calendar Quality Score hasn't been persisted to
+ * Strategy_Log yet (OSL-07 is orphan pending strategy UI return).
+ *
+ * Grade bands follow the pipeline's convention:
+ *   A ≥ 0.75, B ≥ 0.60, C ≥ 0.45, D ≥ 0.30, else F
+ * "ungraded" when graded_count == 0 (all slots no-data / unavailable).
+ */
+export function computeOutcomeRollup(
+  rows: OutcomeLogEntry[],
+  weekEnding = "",
+): OutcomeRollup {
+  const shell: OutcomeRollup = {
+    week_ending: weekEnding || (rows[0]?.week_ending ?? ""),
+    slot_count: 0,
+    graded_count: 0,
+    hit_count: 0,
+    missed_count: 0,
+    confounded_count: 0,
+    no_data_count: 0,
+    hit_rate: null,
+    mean_score: null,
+    grade: "ungraded",
+  };
+  if (!rows || rows.length === 0) return shell;
+
+  let slotCount = 0;
+  let graded = 0;
+  let hits = 0;
+  let missed = 0;
+  let confounded = 0;
+  let noData = 0;
+  let scoreSum = 0;
+  let scoreN = 0;
+
+  for (const r of rows) {
+    slotCount += 1;
+    const v = r.verdict;
+    if (v === "hit" || v === "exceeded") {
+      hits += 1;
+      graded += 1;
+    } else if (v === "missed") {
+      missed += 1;
+      graded += 1;
+    } else if (v === "inconclusive-exam-confounded") {
+      confounded += 1;
+    } else {
+      // "" | "no-data" | "unavailable" — counted in slot_count only
+      noData += 1;
+    }
+    if (r.score !== null && (v === "hit" || v === "exceeded" || v === "missed")) {
+      scoreSum += r.score;
+      scoreN += 1;
+    }
+  }
+
+  const hitRate = graded > 0 ? hits / graded : null;
+  const meanScore = scoreN > 0 ? scoreSum / scoreN : null;
+  let grade = "ungraded";
+  if (hitRate !== null) {
+    if (hitRate >= 0.75) grade = "A";
+    else if (hitRate >= 0.6) grade = "B";
+    else if (hitRate >= 0.45) grade = "C";
+    else if (hitRate >= 0.3) grade = "D";
+    else grade = "F";
+  }
+
+  return {
+    week_ending: shell.week_ending,
+    slot_count: slotCount,
+    graded_count: graded,
+    hit_count: hits,
+    missed_count: missed,
+    confounded_count: confounded,
+    no_data_count: noData,
+    hit_rate: hitRate,
+    mean_score: meanScore,
+    grade,
+  };
 }

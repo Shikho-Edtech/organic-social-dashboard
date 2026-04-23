@@ -56,6 +56,14 @@ excluded from the wiring rubric by design.
 - **OSL-04** (Outcome_Log tab) — writer: `write_outcome_log`. No
   `getOutcomeLog` reader. Flagged as next task in pipeline CHANGELOG
   line 310.
+  - **Post-audit fix (2026-04-23):** `lib/sheets.ts` now ships
+    `getOutcomeLog` + `getOutcomeLogByWeek` +
+    `getLatestGradedOutcomeWeek` + `listOutcomeWeeks` +
+    `computeOutcomeRollup`. New `/outcomes` page surfaces last week's
+    plan slot-by-slot with verdict pills, per-day disclosures, and a
+    hero showing hit rate / grade / mean score. Week picker when
+    multiple weeks exist. Honest empty state when Outcome_Log has
+    nothing yet.
 - **OSL-08** (Hook_Library) — writer: `write_hook_library`. Zero
   dashboard references. Pipeline-internal by design (feeds the
   calendar + classifier prompts).

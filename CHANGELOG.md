@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-04-23 — OSL-04 Outcome_Log reader + new /outcomes page (v5 audit follow-up)
+
+Audit gap #2 closed. New `/outcomes` page surfaces the pipeline's
+Outcome_Log tab — per-slot verdict for last week's plan. Hero card:
+hit count / hit rate / grade letter (A–F) / mean score / breakdown
+strip. Per-day disclosures with a desktop table + mobile stacked
+layout. Week picker when Outcome_Log has more than one week. Verdict
+pills: Hit (emerald), Exceeded (deeper emerald), Missed (rose),
+Pending (ink), Exam confounded (amber). Empty state calls out that
+the next weekly run populates the page.
+
+New `lib/sheets.ts` readers: `getOutcomeLog`, `getOutcomeLogByWeek`,
+`getLatestGradedOutcomeWeek`, `listOutcomeWeeks`,
+`computeOutcomeRollup`. Client-side rollup mirrors the pipeline's
+`compute_calendar_quality_score` (A≥0.75, B≥0.60, C≥0.45, D≥0.30,
+F<0.30, ungraded when graded_count=0) so the page renders honest
+totals even when OSL-07 Calendar Quality Score isn't persisted yet.
+
+Nav.tsx gains "Outcomes" between "Plan" and "Explore" — retrospective
+view sits next to the forward-looking plan. No StalenessBanner: the
+scorer is deterministic (not Claude-powered) per CLAUDE.md.
+
+QA: typecheck clean, brand audit 292/292, build green. New route
+2.1 kB / 96.4 kB first-load. Mobile layout stress-tested at 360px
+(table → cards), exam-adjusted forecast gets its own amber annotation.
+
 ## 2026-04-23 — Sprint P6 chunk 7: v5 wiring audit + DYN-03 hook-fatigue cross-repo fix
 
 - New `docs/V5_WIRING_AUDIT_2026-04-23.md`: sample-based audit of the 167-

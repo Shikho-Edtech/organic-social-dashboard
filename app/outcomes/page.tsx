@@ -1,0 +1,516 @@
+// Outcomes view — last week's plan, graded
+//
+// Sprint P6 chunk 7 (2026-04-23, OSL-04 follow-up): surfaces the pipeline's
+// Outcome_Log tab. Every slot in last week's calendar gets a row: what the
+// forecast was (mid + CI), what actually happened (reach), a verdict pill
+// (hit / exceeded / missed / no-data / exam-confounded), and the score.
+//
+// Default week: latest week that has at least one graded row (hit / exceeded
+// / missed). Falls back to the latest week with any rows, then to an empty
+// state. Query param `?week=YYYY-MM-DD` picks a specific week.
+//
+// Deterministic stage on the pipeline side (score_slot_outcome is pure), so
+// no StalenessBanner — staleness is a Claude-powered-artifact concern per
+// CLAUDE.md. Generated At is still shown inline so operators can see when
+// the grading last ran.
+
+import {
+  getOutcomeLog,
+  getOutcomeLogByWeek,
+  getLatestGradedOutcomeWeek,
+  listOutcomeWeeks,
+  computeOutcomeRollup,
+} from "@/lib/sheets";
+import type { OutcomeLogEntry, OutcomeVerdict } from "@/lib/types";
+import { Card } from "@/components/Card";
+import PageHeader from "@/components/PageHeader";
+import Link from "next/link";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 300;
+
+type SearchParams = { week?: string | string[] };
+
+function firstString(v: string | string[] | undefined): string {
+  return Array.isArray(v) ? v[0] ?? "" : v ?? "";
+}
+
+// Verdict pill colour + label. Uses Shikho v1.0 tokens — no slate/gray
+// legacy classes. Confounded verdict gets a muted amber band so it reads
+// as "zero-weighted observation" rather than failure or success.
+const verdictStyle: Record<
+  OutcomeVerdict,
+  { label: string; bg: string; text: string; ring: string }
+> = {
+  hit: {
+    label: "Hit",
+    bg: "bg-emerald-50",
+    text: "text-emerald-700",
+    ring: "ring-emerald-200",
+  },
+  exceeded: {
+    label: "Exceeded",
+    bg: "bg-emerald-100",
+    text: "text-emerald-800",
+    ring: "ring-emerald-300",
+  },
+  missed: {
+    label: "Missed",
+    bg: "bg-rose-50",
+    text: "text-rose-700",
+    ring: "ring-rose-200",
+  },
+  "no-data": {
+    label: "Pending",
+    bg: "bg-ink-50",
+    text: "text-ink-muted",
+    ring: "ring-ink-100",
+  },
+  unavailable: {
+    label: "Unavailable",
+    bg: "bg-ink-50",
+    text: "text-ink-muted",
+    ring: "ring-ink-100",
+  },
+  "inconclusive-exam-confounded": {
+    label: "Exam confounded",
+    bg: "bg-amber-50",
+    text: "text-amber-800",
+    ring: "ring-amber-200",
+  },
+  "": {
+    label: "—",
+    bg: "bg-ink-50",
+    text: "text-ink-muted",
+    ring: "ring-ink-100",
+  },
+};
+
+// Letter grade -> panel accent. Matches diagnosis verdict colour families
+// already in use on /strategy so the visual vocabulary is consistent.
+const gradeAccent: Record<string, string> = {
+  A: "text-emerald-700",
+  B: "text-emerald-600",
+  C: "text-amber-600",
+  D: "text-rose-600",
+  F: "text-rose-700",
+  ungraded: "text-ink-muted",
+};
+
+function fmtNum(n: number | null, digits = 0): string {
+  if (n === null || n === undefined) return "—";
+  return n.toLocaleString("en-US", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+}
+
+function fmtPct(n: number | null, digits = 0): string {
+  if (n === null || n === undefined) return "—";
+  return `${(n * 100).toFixed(digits)}%`;
+}
+
+function fmtBDT(iso: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleString("en-GB", {
+    timeZone: "Asia/Dhaka",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+const DAY_ORDER = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
+
+export default async function OutcomesPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
+  const requestedWeek = firstString(searchParams.week).trim();
+
+  // Resolve which week to show: explicit param > latest graded > latest any
+  const [allWeeks, latestGraded] = await Promise.all([
+    listOutcomeWeeks(),
+    getLatestGradedOutcomeWeek(),
+  ]);
+  const activeWeek =
+    (requestedWeek && allWeeks.includes(requestedWeek) && requestedWeek) ||
+    latestGraded ||
+    allWeeks[0] ||
+    "";
+
+  const rows = activeWeek ? await getOutcomeLogByWeek(activeWeek) : [];
+  const rollup = computeOutcomeRollup(rows, activeWeek);
+  const generatedAt = rows[0]?.generated_at || "";
+
+  // Group by day for stacked presentation (mirrors /plan's per-day cards)
+  const byDay: Record<string, OutcomeLogEntry[]> = {};
+  for (const r of rows) {
+    const key = r.day || "Unknown";
+    (byDay[key] ||= []).push(r);
+  }
+  const orderedDays = DAY_ORDER.filter((d) => byDay[d]);
+  if (byDay["Unknown"]) orderedDays.push("Unknown");
+
+  return (
+    <div>
+      <PageHeader
+        title="Outcomes"
+        subtitle="Last week's plan, graded slot by slot"
+        dateLabel={
+          generatedAt
+            ? `Last graded ${fmtBDT(generatedAt)}`
+            : "Awaiting first weekly grading run"
+        }
+        showPicker={false}
+      />
+
+      {allWeeks.length === 0 && (
+        <Card className="text-center py-12">
+          <p className="text-ink-primary font-medium">
+            No outcomes recorded yet
+          </p>
+          <p className="text-ink-muted text-sm mt-2">
+            The next weekly pipeline run will score each slot in last week&apos;s
+            calendar and populate this page.
+          </p>
+        </Card>
+      )}
+
+      {activeWeek && rows.length > 0 && (
+        <>
+          {/* Week picker (only when there's more than one week to pick) */}
+          {allWeeks.length > 1 && (
+            <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
+              <span className="text-ink-muted">Week ending:</span>
+              {allWeeks.map((wk) => {
+                const active = wk === activeWeek;
+                return (
+                  <Link
+                    key={wk}
+                    href={`/outcomes?week=${wk}`}
+                    className={`px-2.5 py-1 rounded-md border text-xs font-medium transition-colors ${
+                      active
+                        ? "bg-brand-shikho-indigo text-white border-brand-shikho-indigo"
+                        : "bg-ink-paper text-ink-secondary border-ink-100 hover:border-brand-shikho-indigo hover:text-brand-shikho-indigo"
+                    }`}
+                  >
+                    {wk}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Rollup card — the "so what" answer up top */}
+          <Card className="mb-5">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-wider text-ink-muted font-semibold">
+                  Week ending {activeWeek}
+                </p>
+                <h2 className="text-xl sm:text-2xl font-bold text-ink-primary mt-1 break-words leading-tight">
+                  {rollup.hit_count} of {rollup.graded_count} slots beat their
+                  forecast
+                </h2>
+                <p className="text-sm text-ink-secondary mt-1">
+                  {rollup.no_data_count > 0
+                    ? `${rollup.no_data_count} slot${
+                        rollup.no_data_count === 1 ? "" : "s"
+                      } still awaiting actuals`
+                    : "All scheduled slots have landed"}
+                  {rollup.confounded_count > 0 &&
+                    `, ${rollup.confounded_count} excluded for exam confound`}
+                  .
+                </p>
+              </div>
+              <div className="flex items-center gap-5 sm:gap-6">
+                <div className="text-center">
+                  <div
+                    className={`text-4xl sm:text-5xl font-black leading-none ${
+                      gradeAccent[rollup.grade] ?? "text-ink-muted"
+                    }`}
+                  >
+                    {rollup.grade === "ungraded" ? "—" : rollup.grade}
+                  </div>
+                  <div className="text-[11px] uppercase tracking-wider text-ink-muted font-semibold mt-1">
+                    Grade
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl sm:text-3xl font-bold text-ink-primary tabular-nums leading-none">
+                    {fmtPct(rollup.hit_rate)}
+                  </div>
+                  <div className="text-[11px] uppercase tracking-wider text-ink-muted font-semibold mt-1">
+                    Hit rate
+                  </div>
+                </div>
+                <div className="text-center hidden sm:block">
+                  <div className="text-2xl sm:text-3xl font-bold text-ink-primary tabular-nums leading-none">
+                    {fmtNum(rollup.mean_score, 2)}
+                  </div>
+                  <div className="text-[11px] uppercase tracking-wider text-ink-muted font-semibold mt-1">
+                    Mean score
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Breakdown strip — compact counts across all verdicts */}
+            <div className="mt-4 pt-4 border-t border-ink-100 grid grid-cols-2 sm:grid-cols-5 gap-3">
+              <Breakdown label="Hits" value={rollup.hit_count} tone="emerald" />
+              <Breakdown label="Missed" value={rollup.missed_count} tone="rose" />
+              <Breakdown
+                label="Pending"
+                value={rollup.no_data_count}
+                tone="ink"
+              />
+              <Breakdown
+                label="Exam-confound"
+                value={rollup.confounded_count}
+                tone="amber"
+              />
+              <Breakdown label="Total" value={rollup.slot_count} tone="indigo" />
+            </div>
+          </Card>
+
+          {/* Per-day stacked cards */}
+          <div className="space-y-3">
+            {orderedDays.map((day) => {
+              const slots = byDay[day];
+              return (
+                <details
+                  key={day}
+                  open
+                  className="group bg-ink-paper border border-ink-100 rounded-xl overflow-hidden"
+                >
+                  <summary className="list-none cursor-pointer px-4 sm:px-5 py-3 border-b border-ink-100 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="flex-shrink-0 text-ink-muted transition-transform group-open:rotate-180"
+                        aria-hidden="true"
+                      >
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                      </svg>
+                      <span className="font-semibold text-ink-primary">
+                        {day}
+                      </span>
+                      {slots[0]?.date && (
+                        <span className="text-xs text-ink-muted">
+                          {slots[0].date}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs text-ink-muted tabular-nums">
+                      {slots.length} slot{slots.length === 1 ? "" : "s"}
+                    </div>
+                  </summary>
+
+                  {/* Desktop: table. Mobile: stacked cards. Both inside
+                      overflow-x-auto per mobile checklist rule 6. */}
+                  <div className="overflow-x-auto">
+                    <table className="hidden sm:table w-full text-sm">
+                      <thead className="bg-ink-50 text-ink-muted">
+                        <tr className="text-left">
+                          <th className="px-4 py-2 font-medium text-[11px] uppercase tracking-wider">
+                            Pillar
+                          </th>
+                          <th className="px-4 py-2 font-medium text-[11px] uppercase tracking-wider">
+                            Format
+                          </th>
+                          <th className="px-4 py-2 font-medium text-[11px] uppercase tracking-wider text-right">
+                            Forecast
+                          </th>
+                          <th className="px-4 py-2 font-medium text-[11px] uppercase tracking-wider text-right">
+                            Actual
+                          </th>
+                          <th className="px-4 py-2 font-medium text-[11px] uppercase tracking-wider text-right">
+                            Score
+                          </th>
+                          <th className="px-4 py-2 font-medium text-[11px] uppercase tracking-wider">
+                            Verdict
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {slots.map((s) => (
+                          <tr
+                            key={s.outcome_key}
+                            className="border-t border-ink-100"
+                          >
+                            <td className="px-4 py-2 text-ink-primary">
+                              {s.pillar || "—"}
+                              {s.hypothesis_id && (
+                                <span className="ml-1.5 text-[11px] text-ink-muted font-mono">
+                                  {s.hypothesis_id}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-2 text-ink-primary">
+                              {s.format || "—"}
+                            </td>
+                            <td className="px-4 py-2 text-right tabular-nums text-ink-primary">
+                              {fmtNum(s.forecast_mid)}
+                              {s.forecast_low !== null &&
+                                s.forecast_high !== null && (
+                                  <div className="text-[11px] text-ink-muted">
+                                    {fmtNum(s.forecast_low)}–
+                                    {fmtNum(s.forecast_high)}
+                                  </div>
+                                )}
+                            </td>
+                            <td className="px-4 py-2 text-right tabular-nums text-ink-primary font-semibold">
+                              {fmtNum(s.actual_reach)}
+                            </td>
+                            <td className="px-4 py-2 text-right tabular-nums text-ink-secondary">
+                              {fmtNum(s.score, 2)}
+                            </td>
+                            <td className="px-4 py-2">
+                              <VerdictPill verdict={s.verdict} />
+                              {s.exam_adjusted_used && (
+                                <div className="mt-1 text-[10px] uppercase tracking-wider text-amber-700">
+                                  Exam-adjusted
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+
+                    {/* Mobile stacked layout */}
+                    <ul className="sm:hidden divide-y divide-ink-100">
+                      {slots.map((s) => (
+                        <li key={s.outcome_key} className="px-4 py-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="text-sm font-semibold text-ink-primary break-words">
+                                {s.pillar || "—"}
+                                {s.hypothesis_id && (
+                                  <span className="ml-1.5 text-[11px] text-ink-muted font-mono">
+                                    {s.hypothesis_id}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-xs text-ink-muted mt-0.5">
+                                {s.format || "—"}
+                              </div>
+                            </div>
+                            <VerdictPill verdict={s.verdict} />
+                          </div>
+                          <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+                            <div>
+                              <div className="text-ink-muted text-[10px] uppercase tracking-wider">
+                                Forecast
+                              </div>
+                              <div className="tabular-nums text-ink-primary">
+                                {fmtNum(s.forecast_mid)}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-ink-muted text-[10px] uppercase tracking-wider">
+                                Actual
+                              </div>
+                              <div className="tabular-nums text-ink-primary font-semibold">
+                                {fmtNum(s.actual_reach)}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-ink-muted text-[10px] uppercase tracking-wider">
+                                Score
+                              </div>
+                              <div className="tabular-nums text-ink-primary">
+                                {fmtNum(s.score, 2)}
+                              </div>
+                            </div>
+                          </div>
+                          {s.exam_adjusted_used && (
+                            <div className="mt-1.5 text-[10px] uppercase tracking-wider text-amber-700">
+                              Exam-adjusted forecast
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </details>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {/* Footer note — explains exam-confound semantics without bloating
+          the hero. Kept short; full methodology lives in DECISIONS.md. */}
+      {rows.length > 0 && (
+        <p className="mt-6 text-[11px] text-ink-muted leading-relaxed">
+          Hit rate = (hit + exceeded) ÷ (hit + exceeded + missed).
+          Exam-confounded slots are excluded from the rate because an active
+          exam window distorts organic reach unpredictably. Pending slots have
+          not yet published or Meta insights have not caught up.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function VerdictPill({ verdict }: { verdict: OutcomeVerdict }) {
+  const style = verdictStyle[verdict] ?? verdictStyle[""];
+  return (
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold ring-1 ring-inset ${style.bg} ${style.text} ${style.ring}`}
+    >
+      {style.label}
+    </span>
+  );
+}
+
+function Breakdown({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: "emerald" | "rose" | "amber" | "ink" | "indigo";
+}) {
+  const toneClass = {
+    emerald: "text-emerald-700",
+    rose: "text-rose-700",
+    amber: "text-amber-700",
+    ink: "text-ink-muted",
+    indigo: "text-brand-shikho-indigo",
+  }[tone];
+  return (
+    <div>
+      <div className={`text-xl sm:text-2xl font-bold tabular-nums ${toneClass}`}>
+        {value}
+      </div>
+      <div className="text-[11px] uppercase tracking-wider text-ink-muted font-semibold">
+        {label}
+      </div>
+    </div>
+  );
+}
