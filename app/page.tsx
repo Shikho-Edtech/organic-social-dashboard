@@ -1,5 +1,5 @@
-import { getPosts, getDailyMetrics, getRunStatus, getCostSummary, AI_WEEKLY_BUDGET_USD } from "@/lib/sheets";
-import { filterPosts, computeKpis, dailyReach, groupStats, wowDelta, virality, northStarScore, cadenceGaps, reach as postReach } from "@/lib/aggregate";
+import { getPosts, getDailyMetrics, getRunStatus } from "@/lib/sheets";
+import { filterPosts, computeKpis, dailyReach, groupStats, wowDelta } from "@/lib/aggregate";
 import { resolveRange } from "@/lib/daterange";
 import PageHeader from "@/components/PageHeader";
 import KpiCard from "@/components/KpiCard";
@@ -15,11 +15,10 @@ export const revalidate = 300;
 export default async function OverviewPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   const range = resolveRange(searchParams);
 
-  const [posts, daily, runStatus, cost] = await Promise.all([
+  const [posts, daily, runStatus] = await Promise.all([
     getPosts(),
     getDailyMetrics(),
     getRunStatus(),
-    getCostSummary(),
   ]);
   const inRange = filterPosts(posts, { start: range.start, end: range.end });
   const kpis = computeKpis(inRange);
@@ -47,44 +46,12 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
   // Weekly reach trend
   const trend = dailyReach(inRange).map((d) => ({ date: d.date.slice(5), value: d.reach }));
 
-  // Bucket E items 33 + 42 + 37: reach-weighted virality + north-star, and
-  // cadence-gap stats. Reach-weighting (Σ shares ÷ Σ reach) avoids the mean-
-  // of-ratios trap where a 5-reach-3-share post swamps the rate. North-star
-  // is averaged the same way so both KPIs are on the same footing.
-  const totalShares = inRange.reduce((s, p) => s + (p.shares || 0), 0);
-  const totalReach = inRange.reduce((s, p) => s + postReach(p), 0);
-  const viralityPct = totalReach > 0 ? (totalShares / totalReach) * 100 : 0;
-  const prevTotalShares = prevRange.reduce((s, p) => s + (p.shares || 0), 0);
-  const prevTotalReach = prevRange.reduce((s, p) => s + postReach(p), 0);
-  const prevViralityPct = prevTotalReach > 0 ? (prevTotalShares / prevTotalReach) * 100 : 0;
-  const viralityDelta = wowDelta(viralityPct, prevViralityPct).pct;
-
-  // North-star: per-post score, then posts-weighted average (mean of the
-  // per-post scores). Using the simple mean — not reach-weighted — because
-  // north-star already normalizes to reach at the per-post level.
-  const nsScores = inRange.map((p) => northStarScore(p));
-  const avgNorthStar = nsScores.length
-    ? nsScores.reduce((s, x) => s + x, 0) / nsScores.length
-    : 0;
-  const prevNsScores = prevRange.map((p) => northStarScore(p));
-  const prevAvgNorthStar = prevNsScores.length
-    ? prevNsScores.reduce((s, x) => s + x, 0) / prevNsScores.length
-    : 0;
-  const northStarDelta = wowDelta(avgNorthStar, prevAvgNorthStar).pct;
-
-  // Cadence gap: hours between consecutive posts. `avg` is the mean gap;
-  // `min` / `max` bound the posting rhythm. When there's <2 posts there's
-  // no gap to compute — show "—" in the sublabel.
-  const gaps = cadenceGaps(inRange);
-  const avgGap = gaps.length ? gaps.reduce((s, x) => s + x, 0) / gaps.length : 0;
-  const minGap = gaps.length ? Math.min(...gaps) : 0;
-  const maxGap = gaps.length ? Math.max(...gaps) : 0;
-  const fmtHours = (h: number) => {
-    if (!isFinite(h) || h <= 0) return "—";
-    if (h < 1) return `${Math.round(h * 60)}m`;
-    if (h < 48) return `${h.toFixed(1)}h`;
-    return `${(h / 24).toFixed(1)}d`;
-  };
+  // Sprint P6: dropped the Virality / North-Star / Cadence strip and the
+  // AI cost banner. Virality + north-star were second-order signals that
+  // nobody opened Overview to read; cadence-gap was informational but
+  // never drove a decision. AI cost belongs on an internal ops dashboard,
+  // not the KPI overview. Helpers (virality, northStarScore, cadenceGaps,
+  // reach) still live in lib/aggregate for other surfaces.
 
   // Format distribution
   const formatStats = groupStats(inRange, "format");
@@ -129,90 +96,6 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
     <div>
       <PageHeader title="Overview" subtitle="Key performance at a glance" dateLabel={range.label} lastScrapedAt={runStatus.last_run_at} />
 
-      {/* Bucket G item 58: AI cost vs weekly budget.
-          Shikho-coral when over 80%, bold red when over 100%.
-          When tracked=false (pipeline hasn't shipped Cost USD column yet),
-          shows the commitment so the budget is visible — the bar lights up
-          automatically once cost capture lands. Mobile-first: single column
-          on narrow screens, row on sm+. */}
-      {(() => {
-        const over100 = cost.pct_of_budget > 100;
-        const over80 = cost.pct_of_budget > 80;
-        const barPct = Math.max(0, Math.min(100, cost.pct_of_budget));
-        // Bar + amount color: red > 100%, coral > 80%, indigo otherwise.
-        const amountColor = over100
-          ? "text-brand-red"
-          : over80
-            ? "text-brand-shikho-coral"
-            : "text-brand-shikho-indigo";
-        const amountWeight = over100 ? "font-extrabold" : "font-semibold";
-        const barColor = over100
-          ? "bg-brand-red"
-          : over80
-            ? "bg-brand-shikho-coral"
-            : "bg-brand-shikho-indigo";
-        const borderColor = over100
-          ? "border-brand-red/50"
-          : over80
-            ? "border-brand-shikho-coral/50"
-            : "border-ink-100";
-        return (
-          <div
-            role="status"
-            aria-live="polite"
-            className={`mb-6 rounded-md border ${borderColor} bg-ink-paper px-4 py-3 shadow-xs`}
-          >
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-              <div className="min-w-0">
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">
-                  AI cost this week
-                </div>
-                <div className="mt-1 flex items-baseline gap-2 flex-wrap">
-                  <div className={`text-xl sm:text-2xl ${amountWeight} ${amountColor} break-words leading-tight tabular-nums`}>
-                    ${cost.this_week.toFixed(2)}
-                  </div>
-                  <div className="text-sm text-ink-500 tabular-nums">
-                    of ${cost.budget.toFixed(2)} budget
-                  </div>
-                  <div className="text-xs text-ink-400 tabular-nums">
-                    ({cost.pct_of_budget.toFixed(1)}%)
-                  </div>
-                </div>
-                <div className="mt-1 text-xs text-ink-500 tabular-nums">
-                  Last week: ${cost.last_week.toFixed(2)}
-                  {!cost.tracked && (
-                    <span className="ml-2 text-ink-400">
-                      · per-run cost tracking not yet wired
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="sm:w-48 md:w-56 max-w-full">
-                <div
-                  className="h-2 w-full rounded-full bg-ink-100 overflow-hidden"
-                  aria-hidden="true"
-                >
-                  <div
-                    className={`h-full ${barColor} transition-all duration-base ease-shikho-out`}
-                    style={{ width: `${barPct}%` }}
-                  />
-                </div>
-                {over100 && (
-                  <div className="mt-1 text-xs font-semibold text-brand-red">
-                    Over budget — cap further AI runs this week
-                  </div>
-                )}
-                {!over100 && over80 && (
-                  <div className="mt-1 text-xs font-semibold text-brand-shikho-coral">
-                    Approaching budget ceiling
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
       {/* KPIs — canonical template caps at 5 cards (Batch 3d, #19). Dropped
           "Interactions" because Engagement Rate is the same signal normalized
           — raw count encourages the wrong read (a reach-up/rate-down period
@@ -224,36 +107,6 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
         <KpiCard label="Engagement Rate" value={kpis.avg_engagement_rate.toFixed(2) + "%"} delta={engDelta} sublabel="vs prev · reach-weighted" />
         <KpiCard label="Avg Reach/Post" value={kpis.avg_reach_per_post} />
         <KpiCard label="Followers" value={currentFollowers} sublabel={`${netFollowers >= 0 ? "+" : ""}${netFollowers.toLocaleString()} in range`} />
-      </div>
-
-      {/* Bucket E (items 33, 37, 42): virality / cadence / north-star strip.
-          Sits below the primary KPIs because these are derived / second-order
-          signals — if the primary strip is healthy, this strip is the next
-          question you ask. Virality is the single most predictive organic-
-          growth ratio; north-star is the one-number team metric; cadence
-          surfaces under- or over-posting that's invisible on the others. */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
-        <KpiCard
-          label="Virality Coefficient"
-          value={viralityPct.toFixed(2) + "%"}
-          delta={viralityDelta}
-          sublabel="shares ÷ reach · vs prev"
-        />
-        <KpiCard
-          label="North-Star Score"
-          value={(avgNorthStar * 100).toFixed(2) + "%"}
-          delta={northStarDelta}
-          sublabel="(shares×1.5 + saves) ÷ reach"
-        />
-        <KpiCard
-          label="Avg Cadence Gap"
-          value={fmtHours(avgGap)}
-          sublabel={
-            gaps.length
-              ? `min ${fmtHours(minGap)} · max ${fmtHours(maxGap)} · ${gaps.length + 1} posts`
-              : "need 2+ posts"
-          }
-        />
       </div>
 
       {/* Primary chart: reach trend */}
@@ -307,7 +160,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
           caption="Which pillars gained ground this period, which lost it. Lean into the risers, diagnose the fallers before next week's plan."
         >
           {risers.length + fallers.length === 0 ? (
-            <div className="py-8 text-center text-sm text-slate-500">
+            <div className="py-8 text-center text-sm text-ink-500">
               Not enough pillars clear the 5k-reach threshold in either period to rank movers. Widen the date range.
             </div>
           ) : (
@@ -325,7 +178,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
                           >
                             {m.key}
                           </div>
-                          <div className="text-[11px] text-slate-500 tabular-nums">
+                          <div className="text-[11px] text-ink-500 tabular-nums">
                             {m.current.toLocaleString()} reach (was {m.previous.toLocaleString()})
                           </div>
                         </div>
@@ -350,7 +203,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
                           >
                             {m.key}
                           </div>
-                          <div className="text-[11px] text-slate-500 tabular-nums">
+                          <div className="text-[11px] text-ink-500 tabular-nums">
                             {m.current.toLocaleString()} reach (was {m.previous.toLocaleString()})
                           </div>
                         </div>

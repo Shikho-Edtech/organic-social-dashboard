@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-21T12:53:39.158Z",
+  "generated": "2026-04-23T10:54:55.989Z",
   "note": "Grandfathered baseline. Audit fails only on NEW violations beyond these counts. Regenerate after a cleanup pass to ratchet the expectation down.",
   "spec": "organic-social-dashboard/docs/BRAND.md",
   "counts": {
@@ -18,9 +18,6 @@
     "organic-social-dashboard/app/login/page.tsx": {
       "slate-class": 7
     },
-    "organic-social-dashboard/app/page.tsx": {
-      "slate-class": 3
-    },
     "organic-social-dashboard/app/plan/page.tsx": {
       "slate-class": 28
     },
@@ -28,13 +25,10 @@
       "slate-class": 30
     },
     "organic-social-dashboard/app/strategy/page.tsx": {
-      "slate-class": 36
+      "slate-class": 31
     },
     "organic-social-dashboard/app/timing/page.tsx": {
       "slate-class": 12
-    },
-    "organic-social-dashboard/app/trends/page.tsx": {
-      "slate-class": 6
     },
     "organic-social-dashboard/components/AIDisabledEmptyState.tsx": {
       "slate-class": 11
