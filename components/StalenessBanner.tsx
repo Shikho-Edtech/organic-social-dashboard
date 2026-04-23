@@ -58,6 +58,18 @@ export default function StalenessBanner({
    */
   hasData?: boolean;
 }) {
+  // Sprint P6 UX: the banner is only useful when the UNDERLYING DATA is
+  // stale. If Meta was scraped within the last 7 days, the whole
+  // pipeline is considered fresh enough — AI artifact age is noise that
+  // confuses users ("never succeeded" when a successful run just
+  // happened but crashed before write_run_log could stamp the row).
+  // Only surface the banner in two cases:
+  //   (a) ai-disabled mode — operator intent, always show
+  //   (b) Meta fetch is >7 days old — real staleness worth alerting on
+  const metaAgeDays = runStatus?.last_run_at ? daysBetweenNow(runStatus.last_run_at) : -1;
+  const metaFresh = metaAgeDays >= 0 && metaAgeDays <= 7;
+  if (!aiDisabled && metaFresh) return null;
+
   const mode: BannerMode = aiDisabled
     ? "ai-disabled"
     : info.severity === "ok"
@@ -387,6 +399,13 @@ function formatShortDateTime(iso: string): string {
     month: "short", day: "numeric",
     hour: "2-digit", minute: "2-digit", hour12: false,
   });
+}
+
+function daysBetweenNow(iso: string): number {
+  if (!iso) return -1;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return -1;
+  return Math.floor((Date.now() - d.getTime()) / 86400000);
 }
 
 function formatAgo(iso: string): string {

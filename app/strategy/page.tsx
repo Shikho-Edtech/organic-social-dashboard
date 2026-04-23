@@ -1,4 +1,4 @@
-import { getPosts, getLatestDiagnosis, getDiagnosisByWeek, getRunStatus, computeStaleness, getStageEngine, getCalendar, getLatestStrategy, getPlanNarrative } from "@/lib/sheets";
+import { getPosts, getLatestDiagnosis, getDiagnosisByWeek, getRunStatus, computeStaleness, getStageEngine } from "@/lib/sheets";
 import { filterPosts, groupStats } from "@/lib/aggregate";
 import { minPostsForRange } from "@/lib/stats";
 import { resolveRange, rangeDays as computeRangeDays } from "@/lib/daterange";
@@ -10,7 +10,6 @@ import AIDisabledEmptyState from "@/components/AIDisabledEmptyState";
 import ArchivalLine from "@/components/ArchivalLine";
 import { STAGES } from "@/lib/stages";
 import { canonicalColor } from "@/lib/colors";
-import type { CalendarSlot } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -96,65 +95,6 @@ function extractWeekEnding(iso: string): string {
   return sunday.toISOString().slice(0, 10);
 }
 
-// Day 2W (Sprint P5): hypothesis-to-slot reverse view.
-//
-// The forward view — "what ships this week" — lives on /plan: each slot
-// carries its `hypothesis_id` as a pill. But when a user is reading the
-// weekly strategy on /strategy, the reverse question is more useful:
-// "my plan bets on hypothesis H. Which slots on the calendar actually
-// serve it?" Group the calendar by hypothesis_id and render one card
-// per hypothesis with its slots listed underneath.
-//
-// Primary hypothesis = the one flagged by PlanNarrative.hypothesis_id
-// (the narrative arc's headline hypothesis). It gets the full text from
-// the Strategy tab's `strategic_hypothesis`. Secondary hypotheses show
-// ID only — the pipeline only serializes a comma-list of IDs, not text
-// per ID (yet).
-//
-// Empty-safe: if no slot has a hypothesis_id (schema v1 sheet, or
-// pipeline didn't emit arc-tagged slots this week), the whole section
-// hides rather than showing a confusing "Unassigned" bucket.
-type HypothesisBucket = {
-  id: string;
-  slots: CalendarSlot[];
-  reach_mid_sum: number | null;   // aggregate of native CI mid when present
-  forecast_slot_count: number;    // # slots in bucket that had a native CI
-};
-
-function groupCalendarByHypothesis(calendar: CalendarSlot[]): HypothesisBucket[] {
-  const buckets = new Map<string, HypothesisBucket>();
-  for (const slot of calendar) {
-    const id = (slot.hypothesis_id || "").trim();
-    if (!id) continue;
-    let b = buckets.get(id);
-    if (!b) {
-      b = { id, slots: [], reach_mid_sum: null, forecast_slot_count: 0 };
-      buckets.set(id, b);
-    }
-    b.slots.push(slot);
-    const ci = slot.forecast_reach_ci_native;
-    if (ci && typeof ci.mid === "number" && ci.source !== "unavailable") {
-      b.reach_mid_sum = (b.reach_mid_sum ?? 0) + ci.mid;
-      b.forecast_slot_count += 1;
-    }
-  }
-  // Sort: "h0" / "h1" / ... order when numeric, else lexical. Primary
-  // placement is up to the caller — we just deliver a deterministic order.
-  return [...buckets.values()].sort((a, b) => {
-    const na = parseInt(a.id.replace(/\D/g, ""), 10);
-    const nb = parseInt(b.id.replace(/\D/g, ""), 10);
-    if (Number.isFinite(na) && Number.isFinite(nb) && na !== nb) return na - nb;
-    return a.id.localeCompare(b.id);
-  });
-}
-
-function formatShortDate(iso: string): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-}
-
 function HeadlineWithMetrics({ text, metricClass }: { text: string; metricClass: string }) {
   const segments = extractMetrics(text);
   return (
@@ -179,19 +119,12 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
   const archivedParam = typeof searchParams.archived === "string" ? searchParams.archived : "";
   const isArchival = Boolean(archivedParam);
 
-  const [posts, liveDiagnosis, archivedDiagnosis, runStatus, diagnosisEngine, calendar, strategy, planNarrative] = await Promise.all([
+  const [posts, liveDiagnosis, archivedDiagnosis, runStatus, diagnosisEngine] = await Promise.all([
     getPosts(),
     isArchival ? Promise.resolve(null) : getLatestDiagnosis(),
     isArchival ? getDiagnosisByWeek(archivedParam) : Promise.resolve(null),
     getRunStatus(),
     getStageEngine("diagnosis"),
-    // Sprint P5: reverse view needs calendar + strategy + narrative. In
-    // archival mode we still pull the LIVE calendar — the archive is a
-    // diagnosis snapshot, not a full-system snapshot. Users viewing
-    // archives see live slot coverage alongside the archived verdict.
-    getCalendar(),
-    getLatestStrategy(),
-    getPlanNarrative(),
   ]);
   const diagnosis = isArchival ? archivedDiagnosis : liveDiagnosis;
   const staleness = computeStaleness("diagnosis", runStatus);
@@ -233,16 +166,6 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
   const watchOuts: string[] = diagnosis?.watch_outs || [];
 
   const verdictSplit = splitHeadline(diagnosis?.headline || "");
-
-  // Sprint P5: hypothesis buckets from the live calendar. Primary ID is
-  // whichever the PlanNarrative row tagged as the week's arc driver. If
-  // every bucket ends up empty (no slot carried a hypothesis_id), the
-  // section will hide rather than show a misleading "All Unassigned"
-  // state.
-  const hypothesisBuckets = groupCalendarByHypothesis(calendar);
-  const primaryHypothesisId = (planNarrative?.hypothesis_id || "").trim();
-  const strategicHypothesisText = (strategy?.strategic_hypothesis || "").trim();
-  const hasHypothesisCoverage = hypothesisBuckets.length > 0;
 
   // Archival vs live copy: the page header subtitle + banner suppression.
   // When viewing an archive, the banner is replaced by the persistent slate
@@ -337,75 +260,49 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
         lastScrapedAt={runStatus.last_run_at}
       />
 
-      {/* Weekly verdict — hero. Big gradient block, headline reads as the
-          single most important sentence on the page. Click anywhere on the
-          card to reveal the full sentence + calendar alert. The mobile
-          `line-clamp-1` on the headline keeps the hero from occupying the
-          entire first screen on a phone; tapping opens the full text. */}
+      {/* Sprint P6: Weekly verdict — clean readable statement.
+          Previous version used a splitHeadline helper that chopped the
+          verdict on the first ";" or "." and hid the body behind a
+          disclosure. The result: users saw a bold, incomplete line and
+          had to click to read the rest. That was design posturing over
+          readability.
+          New version: one paragraph, no splitting, calendar alert
+          rendered inline below if present. Eyebrow pill retained so the
+          section is still identifiable. */}
       {diagnosis?.headline && (
-        <details className="group mb-6">
-          <summary className="list-none cursor-pointer">
-            <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-brand-shikho-pink/10 via-brand-shikho-orange/5 to-brand-shikho-indigo/10 hover:border-brand-shikho-pink/40 hover:shadow-md transition-all">
-              {/* Decorative gradient bloom in the corner — subtle, adds depth */}
-              <div aria-hidden className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-brand-shikho-pink/10 blur-3xl" />
-              <div aria-hidden className="absolute -bottom-16 -left-16 w-56 h-56 rounded-full bg-brand-shikho-indigo/10 blur-3xl" />
-              <div className="relative flex">
-                <div className="w-1.5 bg-gradient-to-b from-brand-shikho-pink via-brand-shikho-orange to-brand-shikho-indigo" />
-                <div className="flex-1 p-5 sm:p-7">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-slate-900 text-white">
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                      </svg>
-                      Weekly verdict
-                    </span>
-                    <span className="text-[11px] text-slate-600">{diagnosis.week_ending ? `week ending ${diagnosis.week_ending}` : "latest weekly run"}</span>
-                  </div>
-                  <div className="text-2xl lg:text-4xl text-slate-900 font-bold mt-4 leading-tight tracking-tight line-clamp-1 group-open:line-clamp-none">
-                    <HeadlineWithMetrics text={verdictSplit.head} metricClass="text-brand-shikho-pink" />
-                  </div>
-                  {verdictSplit.body && (
-                    <div className="mt-4 text-sm sm:text-[15px] text-slate-700 leading-relaxed hidden group-open:block">
-                      {verdictSplit.body}
-                    </div>
-                  )}
-                  {diagnosis.exam_alert && (
-                    <div className="mt-4 hidden group-open:flex items-start gap-2 bg-brand-purple/5 border border-brand-purple/20 rounded-md p-3">
-                      <span className="flex-shrink-0 mt-0.5 text-brand-purple">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                          <line x1="16" y1="2" x2="16" y2="6"></line>
-                          <line x1="8" y1="2" x2="8" y2="6"></line>
-                          <line x1="3" y1="10" x2="21" y2="10"></line>
-                        </svg>
-                      </span>
-                      <div className="text-xs text-brand-purple leading-relaxed">
-                        <span className="font-semibold uppercase tracking-wider text-[11px]">Calendar alert · </span>
-                        {diagnosis.exam_alert}
-                      </div>
-                    </div>
-                  )}
-                  {/* Explicit CTA so users know the card is expandable. Text
-                      flips when open. Chevron is the standard down→up on
-                      open pattern used across the rest of the dashboard. */}
-                  {(verdictSplit.body || diagnosis.exam_alert) && (
-                    <div className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-brand-shikho-indigo group-hover:text-brand-shikho-blue">
-                      <span className="group-open:hidden">Read full verdict</span>
-                      <span className="hidden group-open:inline">Collapse</span>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-open:rotate-180">
-                        <polyline points="6 9 12 15 18 9"></polyline>
-                      </svg>
-                    </div>
-                  )}
-                </div>
+        <div className="mb-6 rounded-xl border border-ink-100 bg-ink-paper p-4 sm:p-5">
+          <div className="flex items-center gap-2 flex-wrap mb-3">
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-brand-shikho-indigo text-white">
+              Weekly verdict
+            </span>
+            <span className="text-[11px] text-ink-muted">
+              {diagnosis.week_ending ? `week ending ${diagnosis.week_ending}` : "latest weekly run"}
+            </span>
+          </div>
+          <p className="text-[15px] sm:text-base text-ink-800 leading-relaxed">
+            {diagnosis.headline}
+          </p>
+          {diagnosis.exam_alert && (
+            <div className="mt-3 flex items-start gap-2 bg-brand-shikho-coral/5 border border-brand-shikho-coral/20 rounded-md p-3">
+              <span className="flex-shrink-0 mt-0.5 text-brand-shikho-coral">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+              </span>
+              <div className="text-xs text-brand-shikho-coral leading-relaxed">
+                <span className="font-semibold uppercase tracking-wider text-[11px]">Calendar alert · </span>
+                {diagnosis.exam_alert}
               </div>
             </div>
-          </summary>
-        </details>
+          )}
+        </div>
       )}
 
       {/* Funnel distribution */}
-      <div className="grid lg:grid-cols-2 gap-4 mb-6">
+      <div className="grid lg:grid-cols-2 gap-4 mb-2">
         <ChartCard
           title="Funnel Distribution"
           kind="ai"
@@ -426,6 +323,14 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
         >
           <BarChartBase data={funnelEng} valueFormat="percent" metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Funnel stage" />
         </ChartCard>
+      </div>
+      {/* Sprint P6: inline explainer so users don't have to open the
+          ChartCard tooltip to learn what TOFU/MOFU/BOFU mean. */}
+      <div className="mb-6 text-[12px] text-ink-muted leading-relaxed px-1">
+        <span className="font-semibold text-ink-700">How funnel stages are assigned:</span>{" "}
+        <span className="text-brand-cyan font-semibold">TOFU</span> (top-of-funnel) covers awareness and education — explainers, free lessons, thought leadership.{" "}
+        <span className="text-brand-shikho-indigo font-semibold">MOFU</span> (middle) covers consideration and social proof — demos, student stories, course highlights.{" "}
+        <span className="text-brand-shikho-coral font-semibold">BOFU</span> (bottom) covers direct conversion — price, discount, enrollment deadline, last-call posts. Classification is done by the weekly AI pass on each post's hook and body.
       </div>
 
       {/* Key findings */}
@@ -616,118 +521,6 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
           </div>
         </div>
       </div>
-
-      {/* Sprint P5 — Hypothesis-to-slot reverse view.
-          Forward question (/plan): "what ships on Monday?" → slot cards
-          with hypothesis_id pill.
-          Reverse question (here): "my strategic hypothesis is H. Which
-          slots on the calendar actually serve it?" → hypothesis cards
-          with slot list.
-          Renders only when at least one slot carries a hypothesis_id
-          (schema v2 adoption gate). Primary bucket expanded by default,
-          others collapsed. */}
-      {hasHypothesisCoverage && !isArchival && (
-        <div className="mb-6">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-5 h-5 rounded-full bg-brand-shikho-indigo/15 text-brand-shikho-indigo flex items-center justify-center">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
-              </svg>
-            </div>
-            <h3 className="text-base font-semibold text-ink-800">Calendar coverage by hypothesis</h3>
-            <span className="text-[11px] text-ink-muted uppercase tracking-wider">{hypothesisBuckets.length} hypothesis{hypothesisBuckets.length === 1 ? "" : "es"} · {hypothesisBuckets.reduce((n, b) => n + b.slots.length, 0)} slots</span>
-          </div>
-          <div className="grid md:grid-cols-2 gap-3">
-            {hypothesisBuckets.map((bucket) => {
-              const isPrimary = primaryHypothesisId !== "" && bucket.id === primaryHypothesisId;
-              const accentBg = isPrimary ? "bg-brand-shikho-indigo/5" : "bg-ink-paper";
-              const accentBorder = isPrimary ? "border-brand-shikho-indigo/30" : "border-ink-100";
-              const accentChip = isPrimary ? "bg-brand-shikho-indigo/15 text-brand-shikho-indigo" : "bg-ink-100 text-ink-700";
-              return (
-                <details
-                  key={bucket.id}
-                  open={isPrimary}
-                  className={`group ${accentBg} border ${accentBorder} rounded-xl overflow-hidden transition-colors hover:border-brand-shikho-indigo/40`}
-                >
-                  <summary className="list-none cursor-pointer p-4">
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full ${accentChip}`}>
-                          {bucket.id}
-                        </span>
-                        {isPrimary && (
-                          <span className="inline-flex items-center text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-brand-shikho-coral/15 text-brand-shikho-coral">
-                            Primary
-                          </span>
-                        )}
-                        <span className="text-[11px] text-ink-muted uppercase tracking-wider">
-                          {bucket.slots.length} slot{bucket.slots.length === 1 ? "" : "s"}
-                        </span>
-                      </div>
-                      {bucket.forecast_slot_count > 0 && bucket.reach_mid_sum !== null && (
-                        <span className="text-[11px] text-ink-muted">
-                          <span className="text-ink-700 font-semibold">
-                            {Math.round(bucket.reach_mid_sum).toLocaleString()}
-                          </span>{" "}
-                          forecast reach · {bucket.forecast_slot_count}/{bucket.slots.length} with CI
-                        </span>
-                      )}
-                    </div>
-                    {isPrimary && strategicHypothesisText && (
-                      <div className="mt-3 text-sm text-ink-800 leading-snug">
-                        {strategicHypothesisText}
-                      </div>
-                    )}
-                    <div className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-brand-shikho-indigo group-hover:text-brand-shikho-coral">
-                      <span className="group-open:hidden">View slots</span>
-                      <span className="hidden group-open:inline">Hide slots</span>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-open:rotate-180">
-                        <polyline points="6 9 12 15 18 9"></polyline>
-                      </svg>
-                    </div>
-                  </summary>
-                  <div className="px-4 pb-4 space-y-2">
-                    {bucket.slots.map((slot, si) => {
-                      const dateLabel = formatShortDate(String(slot.date || ""));
-                      const pillarColor = canonicalColor("pillar", String(slot.pillar || ""));
-                      return (
-                        <div key={si} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 border-t border-ink-100 pt-2 first:border-t-0 first:pt-0">
-                          <div className="flex items-baseline gap-2 sm:w-40 sm:flex-shrink-0">
-                            <span className="text-xs font-semibold text-ink-800">{dateLabel || "—"}</span>
-                            {slot.time_bdt && (
-                              <span className="text-[11px] text-ink-muted">{slot.time_bdt}</span>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
-                            {slot.format && (
-                              <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-ink-100 text-ink-700">
-                                {slot.format}
-                              </span>
-                            )}
-                            {slot.pillar && (
-                              <span
-                                className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
-                                style={{ backgroundColor: `${pillarColor}1f`, color: pillarColor }}
-                              >
-                                {slot.pillar}
-                              </span>
-                            )}
-                            {slot.hook_line && (
-                              <span className="text-xs text-ink-700 truncate min-w-0">
-                                {slot.hook_line}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </details>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* Watch-outs */}
       {watchOuts.length > 0 && (

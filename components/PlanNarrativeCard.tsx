@@ -38,93 +38,30 @@ export default function PlanNarrativeCard({ narrative }: Props) {
     );
   }
 
-  const {
-    storyline, hypothesis_id, cited_priors_row, hypothesis_list,
-    forecast_summary, risk_flag_count, contingency_count,
-  } = narrative;
+  const { storyline } = narrative;
 
+  // Sprint P6: stripped the 4-stat grid (forecast, hypotheses, risk
+  // flags, contingencies) + priors-row footer + hypothesis-ID pill.
+  // Users saw them as clutter — the storyline paragraph alone answers
+  // "what is the plan betting on this week?" The stripped fields
+  // remain in Plan_Narrative for future programmatic use.
   return (
     <Card className="mb-4 border-l-4 border-l-brand-shikho-indigo">
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-base font-semibold text-ink-primary">
-              This Week&apos;s Plan
-            </h2>
-            {hypothesis_id && (
-              <span
-                className="text-[11px] font-semibold uppercase tracking-wider text-brand-shikho-indigo bg-brand-shikho-indigo/10 px-2 py-0.5 rounded"
-                aria-label={`Hypothesis id ${hypothesis_id}`}
-              >
-                {hypothesis_id}
-              </span>
-            )}
-          </div>
-          {storyline ? (
-            <p className="text-sm text-ink-primary leading-relaxed break-words">
-              {storyline}
-            </p>
-          ) : (
-            <p className="text-sm text-ink-muted italic">
-              Narrative storyline missing — calendar may have been generated
-              with an older prompt version.
-            </p>
-          )}
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <SummaryStat
-            label="Forecast"
-            value={forecast_summary || "n/a"}
-          />
-          <SummaryStat
-            label="Hypotheses"
-            value={hypothesis_list || "—"}
-          />
-          <SummaryStat
-            label="Risk flags"
-            value={String(risk_flag_count)}
-            numeric
-          />
-          <SummaryStat
-            label="Contingencies"
-            value={String(contingency_count)}
-            numeric
-          />
-        </div>
-
-        {cited_priors_row && (
-          <p className="text-xs text-ink-muted break-words">
-            <span className="font-semibold">Priors row cited: </span>
-            <code className="text-[11px] bg-ink-100/50 px-1 py-0.5 rounded">
-              {cited_priors_row}
-            </code>
+      <div className="flex flex-col gap-2">
+        <h2 className="text-base font-semibold text-ink-primary">
+          This Week&apos;s Plan
+        </h2>
+        {storyline ? (
+          <p className="text-sm text-ink-primary leading-relaxed break-words">
+            {storyline}
+          </p>
+        ) : (
+          <p className="text-sm text-ink-muted italic">
+            Narrative storyline missing — calendar may have been generated
+            with an older prompt version.
           </p>
         )}
       </div>
     </Card>
-  );
-}
-
-function SummaryStat({
-  label, value, numeric,
-}: {
-  label: string; value: string; numeric?: boolean;
-}) {
-  return (
-    <div className="flex flex-col gap-1 min-w-0">
-      <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-        {label}
-      </span>
-      <span
-        className={
-          numeric
-            ? "text-xl sm:text-2xl font-bold text-ink-primary tabular-nums leading-tight"
-            : "text-xs sm:text-sm text-ink-primary break-words leading-snug"
-        }
-      >
-        {value}
-      </span>
-    </div>
   );
 }
