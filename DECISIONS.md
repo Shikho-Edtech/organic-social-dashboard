@@ -1,5 +1,55 @@
 # Decisions
 
+## 2026-04-23 — Reels top-10: custom TopReelList over Recharts for clickable captions
+
+Needed full-caption hover + permalink affordance on the Bangla captions
+labelling Top 10 Reels by Plays / Watch Time / Followers Gained. The
+existing BarChartBase renders labels via Recharts `YAxis`, which
+emits SVG `<text>` nodes — they can't host a React popover or anchor
+tag cleanly (pointer events and portaling into SVG coord space get
+messy).
+
+**Options considered:**
+
+1. Custom tick component rendering `<foreignObject>` with an HTML
+   `<PostReference>` inside. Works in theory, but foreignObject in
+   SVG has well-documented sizing/clipping bugs across browsers, and
+   Recharts layout assumes tick width is static.
+2. Keep the chart, stack the PostReference chips underneath as a
+   parallel list. Duplicates the data; users see captions twice.
+3. Replace the chart with an HTML list (`<ol>` + rank badge +
+   PostReference + CSS-flex proportional bar + value). Drops the
+   Recharts dependency on these three charts, keeps the visual
+   ranking bar via flex width percentage.
+
+Picked (3). The bar was ornamental anyway — the rank and the
+numeric value carry the signal; the bar is a nice-to-have. Keeping
+the bar via CSS flex preserves the at-a-glance proportion. BarChartBase
+still renders the Retention Funnel + Avg Retention Curve where labels
+are short English strings and no interactivity is needed.
+
+**Rule of thumb for future charts:** if the Y-axis labels are
+user-generated content (captions, post titles, free-text), don't use
+Recharts — HTML lists or tables handle the interactivity better.
+Recharts is for numeric/categorical axes, not text-as-identifier.
+
+## 2026-04-23 — Timing heatmaps: fixed-height cells over aspect-square
+
+Heatmap cells were `aspect-square min-h-[18px]`. On desktop at
+1280px+ the grid has 24 hour columns × 7 day rows; aspect-square
+produced ~80px cells × 7 rows ≈ 560px+ of vertical space per heatmap,
+pushing the second heatmap off the first-viewport-fold on 1080p
+screens.
+
+**Fix:** `h-[20px] sm:h-[22px] lg:h-[26px] min-h-[18px] w-full`.
+The grid is now uniformly short; color intensity still carries
+the signal and the two grids sit above each other in one viewport.
+
+Trade-off: the cells are rectangular now, not square. No operator
+has ever said "I need these cells to be square" — the information is
+in the color, not the shape. Preferred scannability over geometric
+purity.
+
 ## 2026-04-23 — SEA academic context: static mirror on the dashboard, not a cross-repo tab
 
 The audit's SEA-01..05 gap had two plausible shapes: (a) persist a

@@ -1,5 +1,43 @@
 # Changelog
 
+## 2026-04-23 — P6 polish: 7 live-dashboard corrections (funnel migration, clickable post refs, compressed heatmaps, recommended redesign)
+
+Seven user corrections from a live-screenshot review, all shipped in one pass:
+
+1. **Funnel charts back on Engagement.** Funnel Distribution +
+   Funnel Engagement + the TOFU/MOFU/BOFU inline explainer moved
+   from `/strategy` → `/engagement`. Strategy is now Claude verdicts
+   only, no raw aggregates — aligns with the page's "what does AI
+   think" framing.
+2. **Reels top-10 captions are clickable.** Swapped BarChartBase →
+   new inline `TopReelList` (ol/li + CSS-flex proportional bar) on
+   Plays / Watch Time / Followers Gained charts. Recharts YAxis renders
+   labels as SVG `<text>` which can't host React popovers; HTML list
+   items can. Bar visualization preserved via proportional flex width.
+3. **Strategy top/under performers carry source post chips.** Each
+   disclosure now renders PostReference per `source_post_ids` (pipeline
+   already emits this on every performer row). Hover/tap shows full
+   caption + permalink icon.
+4. **Post-ID audit.** Swept every page for bare post_id mentions in
+   UI copy — none found. Explore already uses PostReference; Outcomes
+   doesn't reference posts directly. Diagnosis JSON stays internal.
+5. **Timing heatmaps compressed.** Both ER·Day×Hour and
+   Avg Reach·Day×Hour grids were `aspect-square` → produced ~80px
+   cells × 7 rows, pushing the grid past one viewport height on
+   desktop. Switched to fixed `h-[20px] sm:h-[22px] lg:h-[26px]` cells;
+   grid now fits in one glance.
+6. **Engagement "Recommended this period" redesign.** Plain `<ul>` →
+   4-card grid (Lead format × pillar, Opening hook, Feature spotlight,
+   Caption tone) with colored left border, icon, eyebrow label,
+   colored winner value, and meta line. Scannable now.
+7. **Copy polish.** Cleaned up dateLabel strings on Strategy after
+   funnel charts moved; tightened section intros.
+
+Brand audit caught 4 new slate-* violations I introduced in the
+Strategy Source posts blocks (`text-slate-500`, `text-slate-700`).
+Fixed to `text-ink-muted` / `text-ink-secondary` before commit.
+Baseline ratcheted 292 → 291.
+
 ## 2026-04-23 — SEA-01..05 academic context strip on /plan and /strategy
 
 Audit gap #3 closed. New `components/AcademicContextStrip.tsx` renders

@@ -1,5 +1,72 @@
 # Learnings
 
+## 2026-04-23 — Recharts axis labels can't host React popovers (use HTML list when labels are content)
+
+When a chart's Y-axis labels are user-generated text (captions, post
+titles, free-form strings) **and** you need click/hover affordances
+on them (full-caption tooltip, outbound permalink), Recharts is the
+wrong tool. YAxis tick labels render as SVG `<text>` nodes inside
+the chart's `<svg>`. You can't mount a React popover there cleanly:
+pointer event propagation through SVG is quirky, foreignObject has
+cross-browser sizing bugs, and Recharts' layout math assumes static
+tick widths.
+
+**What I tried:** keeping BarChartBase and stacking PostReference
+chips underneath as a parallel list. Felt redundant — users saw the
+caption in the chart AND in the list below. Dropped.
+
+**What worked:** replace the chart with an HTML `<ol>` of ranked
+rows (rank badge + PostReference + CSS-flex proportional bar + value).
+The flex-width percentage reproduces the bar-chart-ordering at-a-glance
+signal; the HTML rows let PostReference mount cleanly with hover +
+tap popover.
+
+**Rule going forward:** if Y-axis labels are content (identifiers,
+not categories), skip Recharts. Use a `<ol>`/`<table>` with a
+proportional CSS bar. Recharts is for numeric axes and short
+categorical labels where interactivity on the label itself isn't
+needed. Already applied to `app/reels/page.tsx` Top 10 by Plays,
+Watch Time, Followers Gained.
+
+## 2026-04-23 — aspect-square heatmap cells explode vertically at desktop widths
+
+Used `aspect-square min-h-[18px]` on Heatmap.tsx cells. At mobile
+(360-414px) cells were ~12-15px — fine. At desktop 1280px+ the
+container width divided by 25 columns (label + 24 hours) yielded
+~50px per cell, so aspect-square made each row ~50-80px tall, and
+7 rows × 2 heatmaps pushed the second grid well past the fold.
+
+**The screenshot feedback was "too extended vertically, not even
+visible in computer window"** — classic aspect-square-on-wide-grid
+failure mode. Fixed to breakpoint-driven heights: `h-[20px]
+sm:h-[22px] lg:h-[26px] min-h-[18px] w-full`. Grids are compact and
+scannable in one glance at every breakpoint now.
+
+**Rule:** aspect-square is right for small grids where cell size
+scales with container. For wide grids (24+ columns), the aspect
+ratio amplifies container width into cell height — clamp with fixed
+heights instead.
+
+## 2026-04-23 — brand:audit catches slate-* regressions I almost shipped
+
+Added `text-slate-500` and `text-slate-700` in the Strategy Source
+posts blocks without thinking — muscle memory from other projects.
+Brand audit flagged it immediately: "1 new violation type(s) beyond
+baseline (295 total, baseline 292)". The 4 new violations were in
+lines I added that session; the audit correctly didn't flag the 31
+grandfathered ones in the same file.
+
+**The ratchet worked exactly as designed:** grandfathered violations
+stay invisible, but any new slate-* / gray-* / zinc-* in a line I
+touched this session blocks the commit. Fixed to `text-ink-muted` /
+`text-ink-secondary` and the audit went 292 → 291 (actually cleaned
+up a bit, not just stayed flat), then ratcheted the baseline down
+via `--write-baseline` so the next regression check is tighter.
+
+**Rule:** run `npm run brand:audit` AS PART OF the pre-commit dance,
+not after committing. It catches new regressions cheaply and gives
+the "clean up on touch" opportunity before diff review.
+
 ## 2026-04-23 — "Wired writer" can still mean the sheet drops the field on the floor
 
 The v5 wiring audit flagged DYN-03 (hook_fatigue_flag +
