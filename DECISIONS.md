@@ -1,5 +1,24 @@
 # Decisions
 
+## 2026-04-23 — Content_Calendar schema v2 reader: defensive JSON parse, not strict
+
+The pipeline serializes `forecast_reach_ci_native` + `risk_flags` as
+JSON strings inside single Content_Calendar cells. Two options for the
+dashboard reader:
+
+(a) Strict — `JSON.parse` throws, propagate to /plan as an error.
+(b) Defensive — try/catch around parse, bad cells degrade to
+    `undefined`, page still renders.
+
+Picked (b). The sheet is human-editable (the whole point of using
+Sheets instead of a DB), so a hand-fixed typo in the JSON cell should
+not take down /plan. Same philosophy as the existing `calendarFromRows`
+fallbacks (`r["Featured Entity"] || "None"`, `r["Hook Line"] || r["Brief"]`).
+A validator on the pipeline side already rejects structurally-invalid
+payloads BEFORE write, so production sheets shouldn't hit the
+degrade path — it exists to tolerate manual edits, not to hide
+pipeline bugs.
+
 ## 2026-04-21 — Bucket E item 42: north-star score is a deliberate one-time historical break
 
 The north-star score ships as `(saves + shares × 1.5) ÷ reach`. This is

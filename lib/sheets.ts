@@ -480,6 +480,53 @@ export function computeStaleness(
 
 // ─── Content calendar ───
 
+/**
+ * Sprint P4 schema v2 helpers: the pipeline serializes
+ * forecast_reach_ci_native + risk_flags as JSON strings into the
+ * Content_Calendar tab so dashboard, report.py, and Outcome_Log all
+ * read the same evidence payload. Parse defensively — older rows
+ * (pre-schema-v2) won't have the columns at all and malformed JSON
+ * from a hand-edited sheet should degrade to "no data" rather than
+ * crash the /plan page.
+ */
+function parseCI(raw: unknown): CalendarSlot["forecast_reach_ci_native"] {
+  if (typeof raw !== "string" || raw.trim() === "") return undefined;
+  try {
+    const obj = JSON.parse(raw);
+    if (obj && typeof obj === "object"
+        && typeof obj.low === "number"
+        && typeof obj.mid === "number"
+        && typeof obj.high === "number"
+        && typeof obj.source === "string") {
+      return { low: obj.low, mid: obj.mid, high: obj.high, source: obj.source };
+    }
+  } catch {
+    // silent: stale/malformed cells fall through to undefined
+  }
+  return undefined;
+}
+
+function parseRiskFlags(raw: unknown): CalendarSlot["risk_flags"] {
+  if (typeof raw !== "string" || raw.trim() === "") return undefined;
+  try {
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return undefined;
+    const flags = arr.filter(
+      (e) => e && typeof e === "object"
+          && typeof e.category === "string"
+          && typeof e.detail === "string"
+          && typeof e.mitigation === "string",
+    ).map((e) => ({
+      category: e.category,
+      detail: e.detail,
+      mitigation: e.mitigation,
+    }));
+    return flags.length ? flags : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function calendarFromRows(rows: Record<string, any>[]): CalendarSlot[] {
   return rows.map((r) => ({
     day: r["Day"],
@@ -500,6 +547,11 @@ function calendarFromRows(rows: Record<string, any>[]): CalendarSlot[] {
     rationale: r["Rationale"],
     expected_reach: r["Expected Reach"] || "",
     success_metric: r["Success Metric"] || "",
+    // Schema v2 additions. All optional; undefined when the column is
+    // absent (older sheets) or the cell contains malformed JSON.
+    hypothesis_id: String(r["Hypothesis ID"] || "").trim() || undefined,
+    forecast_reach_ci_native: parseCI(r["Forecast Reach CI"]),
+    risk_flags: parseRiskFlags(r["Risk Flags"]),
   }));
 }
 

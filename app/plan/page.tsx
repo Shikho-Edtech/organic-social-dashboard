@@ -77,6 +77,24 @@ function slotIsToday(slotDate: string | undefined, todayKey: string): boolean {
   return iso === todayKey;
 }
 
+// Sprint P4 wiring (2026-04-23): compact human-readable string for the
+// native forecast CI. "unavailable" source is a legitimate cold-start
+// outcome (no matching priors row); returns null so callers fall back
+// to the AI-provided `expected_reach` range instead of showing a
+// meaningless 0-0 display.
+function formatNativeCI(ci: {
+  low: number; mid: number; high: number; source: string;
+} | undefined): string | null {
+  if (!ci || ci.source === "unavailable") return null;
+  const fmt = (n: number) => {
+    if (!Number.isFinite(n) || n < 0) return "?";
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+    return String(Math.round(n));
+  };
+  return `${fmt(ci.low)}–${fmt(ci.mid)}–${fmt(ci.high)}`;
+}
+
 export default async function PlanPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   // Step 3 archival mode: `?archived=<run-id>` switches the page into a
   // read-only view against a specific past Content_Calendar snapshot. Until
@@ -322,6 +340,21 @@ export default async function PlanPage({ searchParams }: { searchParams: Record<
                                 <span className="text-slate-600 font-medium">{slot.funnel_stage}</span>
                               </>
                             )}
+                            {/* Sprint P4 schema v2: hypothesis_id pill.
+                                Links this slot to the strategy's weekly
+                                hypothesis set. h0/h1/h2/... Renders only
+                                when present; pre-schema-v2 rows skip it. */}
+                            {slot.hypothesis_id && (
+                              <>
+                                <span className="text-ink-200">·</span>
+                                <span
+                                  className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider bg-brand-shikho-indigo/10 text-brand-shikho-indigo rounded px-1.5 py-0.5"
+                                  title="Strategy hypothesis this slot serves"
+                                >
+                                  {slot.hypothesis_id}
+                                </span>
+                              </>
+                            )}
                           </div>
                           {/* Hook */}
                           <div className="text-[15px] text-slate-800 font-medium leading-snug">{slot.hook_line}</div>
@@ -343,22 +376,85 @@ export default async function PlanPage({ searchParams }: { searchParams: Record<
                             )}
                           </div>
 
-                          {/* Expected + Success metric — inline chips */}
-                          {(slot.expected_reach || slot.success_metric) && (
-                            <div className="flex flex-wrap gap-2 mt-3">
-                              {slot.expected_reach && (
-                                <span className="inline-flex items-center gap-1 text-[11px] bg-brand-cyan/10 text-brand-cyan rounded-md px-2 py-1">
-                                  <span className="font-semibold">Target:</span>
-                                  <span>{slot.expected_reach}</span>
-                                </span>
-                              )}
-                              {slot.success_metric && (
-                                <span className="inline-flex items-center gap-1 text-[11px] bg-brand-green/10 text-brand-green rounded-md px-2 py-1">
-                                  <span className="font-semibold">Success:</span>
-                                  <span>{slot.success_metric}</span>
-                                </span>
-                              )}
-                            </div>
+                          {/* Expected + Success metric — inline chips.
+                              Sprint P4 schema v2: when a native forecast CI
+                              is available (stamped by
+                              enrich_calendar_with_forecasts), the Target
+                              chip widens to show low/mid/high + source so
+                              the operator can see the evidence behind the
+                              range. Absent CI or source="unavailable" falls
+                              back to the AI's free-form expected_reach. */}
+                          {(() => {
+                            const nativeRange = formatNativeCI(slot.forecast_reach_ci_native);
+                            const ciSource = slot.forecast_reach_ci_native?.source;
+                            const showTarget = Boolean(nativeRange || slot.expected_reach);
+                            if (!showTarget && !slot.success_metric) return null;
+                            return (
+                              <div className="flex flex-wrap gap-2 mt-3">
+                                {showTarget && (
+                                  <span
+                                    className="inline-flex items-center gap-1 text-[11px] bg-brand-cyan/10 text-brand-cyan rounded-md px-2 py-1"
+                                    title={ciSource ? `Forecast source: ${ciSource}` : undefined}
+                                  >
+                                    <span className="font-semibold">Reach:</span>
+                                    <span>{nativeRange || slot.expected_reach}</span>
+                                    {nativeRange && ciSource && (
+                                      <span className="text-brand-cyan/70 ml-0.5">· {ciSource}</span>
+                                    )}
+                                  </span>
+                                )}
+                                {slot.success_metric && (
+                                  <span className="inline-flex items-center gap-1 text-[11px] bg-brand-green/10 text-brand-green rounded-md px-2 py-1">
+                                    <span className="font-semibold">Success:</span>
+                                    <span>{slot.success_metric}</span>
+                                  </span>
+                                )}
+                                {/* Sprint P4 schema v2: risk flag count pill.
+                                    Detail lives inside the disclosure below
+                                    so the chip stays compact. */}
+                                {slot.risk_flags && slot.risk_flags.length > 0 && (
+                                  <span className="inline-flex items-center gap-1 text-[11px] bg-brand-shikho-coral/10 text-brand-shikho-coral rounded-md px-2 py-1">
+                                    <span className="font-semibold">Risks:</span>
+                                    <span>{slot.risk_flags.length}</span>
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                          {/* Sprint P4 schema v2: risks disclosure. Same
+                              disclosure pattern as "Why this post" below —
+                              down-chevron flips 180° on open. Renders only
+                              when the slot carries at least one risk flag. */}
+                          {slot.risk_flags && slot.risk_flags.length > 0 && (
+                            <details className="group/rf mt-3">
+                              <summary className="list-none cursor-pointer inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-brand-shikho-coral hover:text-brand-shikho-coral/80">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-open/rf:rotate-180">
+                                  <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                                Risks &amp; mitigations ({slot.risk_flags.length})
+                              </summary>
+                              <div className="mt-2 space-y-2">
+                                {slot.risk_flags.map((rf, rfi) => (
+                                  <div
+                                    key={rfi}
+                                    className="text-xs bg-brand-shikho-coral/5 border border-brand-shikho-coral/20 rounded-md p-3 leading-relaxed"
+                                  >
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="text-[10px] font-bold uppercase tracking-wider text-brand-shikho-coral">
+                                        {rf.category}
+                                      </span>
+                                    </div>
+                                    <div className="text-ink-700">
+                                      <span className="font-semibold">Risk:</span> {rf.detail}
+                                    </div>
+                                    <div className="text-ink-500 mt-1">
+                                      <span className="font-semibold">Mitigation:</span> {rf.mitigation}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </details>
                           )}
 
                           {/* Rationale disclosure — same chevron pattern as

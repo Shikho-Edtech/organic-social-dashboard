@@ -1,5 +1,47 @@
 # Changelog
 
+## 2026-04-23 — Sprint P4 iter 7: /plan surfaces schema v2 fields (hypothesis, native CI, risk flags)
+
+Three additions to `app/plan/page.tsx` make the schema v2 evidence
+visible to operators reviewing next week's calendar:
+
+- **Hypothesis ID pill** (meta row, right of funnel stage): small
+  indigo chip like "h1" linking the slot to the strategy's weekly
+  hypothesis set. Tooltip: "Strategy hypothesis this slot serves."
+- **Native forecast CI** (Target chip upgrade): when
+  `forecast_reach_ci_native` is present with a non-"unavailable"
+  source, the Target chip widens from the free-text AI range (e.g.
+  "8k–12k reach") to `low–mid–high · source` (e.g. "4.2k–7.1k–9.8k
+  · pillar×format"). Falls back to the AI range when the CI is
+  unavailable (cold start).
+- **Risks & mitigations disclosure**: coral chip showing the count
+  next to Target/Success, plus a collapsible section below with each
+  `{category, detail, mitigation}` entry in a coral-tinted card.
+
+All three render only when the field is present — pre-schema-v2 rows
+(calendars written before today) display exactly as before. New
+helper `formatNativeCI` handles "unavailable" source gracefully
+(returns null → caller falls back to AI range). Tokens: the coral
+semantic for risks comes from `brand-shikho-coral` (warning/critical
+role per BRAND.md). Build green, tsc clean, brand audit 0
+regressions beyond baseline.
+
+## 2026-04-23 — Sprint P4 iter 6: Content_Calendar schema v2 reader (cross-repo, in lockstep)
+
+`CalendarSlot` gains three optional fields in `lib/types.ts`:
+`hypothesis_id` (string), `forecast_reach_ci_native` (typed
+`{low, mid, high, source}`), and `risk_flags` (array of typed
+`{category, detail, mitigation}`).
+
+`lib/sheets.ts::calendarFromRows` reads the new columns. Defensive
+JSON parsing via two new helpers (`parseCI`, `parseRiskFlags`) —
+stale rows without the columns, or malformed cells from hand edits,
+degrade to `undefined` instead of crashing /plan. No UI changes in
+this commit: the fields flow through the reader and are available
+for `/plan` + `/strategy` pages to consume in a follow-up. Paired
+with pipeline commit (same date) that ships the writer side. Build
+green, tsc clean.
+
 ## 2026-04-22 — Sprint N3 P2: STR-12 runCostSummary reads Strategy Cost USD
 
 Widened the cost-column candidate list in `runCostSummary` to include

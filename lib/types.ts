@@ -93,6 +93,24 @@ export type Diagnosis = {
   full_diagnosis: any;
 };
 
+// Sprint P4 wiring (2026-04-23): per-slot native forecast stamped by
+// enrich_calendar_with_forecasts. source="unavailable" is a legitimate
+// cold-start outcome; low/mid/high are all 0 in that case.
+export type ForecastReachCI = {
+  low: number;
+  mid: number;
+  high: number;
+  source: string;
+};
+
+// Sprint P4 wiring (2026-04-23): per-slot risk flag. Always has all
+// three fields non-empty (validator rejects otherwise).
+export type SlotRiskFlag = {
+  category: string;
+  detail: string;
+  mitigation: string;
+};
+
 export type CalendarSlot = {
   day: string;
   date: string;
@@ -112,6 +130,12 @@ export type CalendarSlot = {
   rationale: string;
   expected_reach: string;
   success_metric: string;
+  // Sprint P4 schema v2 — the three evidence columns. All optional so
+  // rows written before schema v2 (or slots where the stamping step
+  // was skipped) still parse cleanly.
+  hypothesis_id?: string;               // "h0" | "h1" | "h2" | ...
+  forecast_reach_ci_native?: ForecastReachCI;
+  risk_flags?: SlotRiskFlag[];
 };
 
 export type DateRange = { start: Date; end: Date };

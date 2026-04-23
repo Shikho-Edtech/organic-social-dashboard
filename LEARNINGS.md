@@ -1,5 +1,27 @@
 # Learnings
 
+## 2026-04-23 — New UI additions slip slate-* through even with brand audit baseline
+
+Added three schema-v2 surfacings to `/plan`. First pass used
+`text-slate-300` for a middot separator matching the surrounding
+visual pattern. Audit caught it on the next pass:
+"+1 slate-* Tailwind class (was 28, now 29)."
+
+Two takeaways:
+
+1. The ratchet baseline is asymmetric on purpose — grandfathered
+   violations in the same file don't shield new additions from being
+   flagged. "Was 28" is the budget; any increase fails. Good.
+2. Muscle memory kicks in when copy-patterning off nearby code. When
+   the surrounding lines all read `text-slate-*`, the reflex is to
+   match rather than look up the token. The fix is a mechanical
+   replace (`text-slate-300` → `text-ink-200`), but the habit is the
+   real fix.
+
+Rule of thumb: before committing any UI change, grep the diff itself
+for `slate-\|gray-\|zinc-` — faster than waiting for the audit. If
+the grep is empty, the audit will pass.
+
 ## 2026-04-21 — Palette discipline needs a scriptable audit, or the palette drifts
 
 The Shikho v1.0 rollout did a wide remap across three surfaces, then I claimed
