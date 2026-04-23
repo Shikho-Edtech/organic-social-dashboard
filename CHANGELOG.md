@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-04-23 — Sprint P6 declutter 4/N: PostReference component + /reels readability + /explore reorder
+
+- New `components/PostReference.tsx`: truncated caption preview → hover/tap
+  popover with the full caption → click-through to the Facebook permalink.
+  Keyboard-accessible external-link button, outside-click and Escape
+  dismissal. Falls back to a plain preview when `permalink_url` is empty
+  (pre-Apr-2026 rows).
+- /reels table: caption column threads the full message + permalink into
+  `PostReference`. Mobile card list same treatment at 90-char cap.
+- /explore: reverted Batch 3b's Top-Posts-first order. Perf-by-X + Reach-
+  Over-Time charts now sit right under the filter controls ("does this
+  segment make sense?" read first), Top Posts drops to the bottom of the
+  scroll for the deep-dive. Top Posts list captions also use
+  `PostReference` now instead of a hard 200-char truncation.
+
+QA: typecheck clean, brand audit 292/292, build green.
+
 ## 2026-04-23 — Sprint P6 declutter 3/N: 24hr time, BDT 10-23 window, darker engagement table
 
 - `components/Heatmap.tsx`: grid compressed from 24 cols to 14 (hours 10-23).
