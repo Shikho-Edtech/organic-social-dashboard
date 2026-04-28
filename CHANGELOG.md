@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-04-28 — PostReference hover-gap fix + iconOnly mode on Strategy performer headlines
+
+Two issues caught during a screenshot review of `/strategy`:
+
+**Hover popover dismissed mid-mouse-traverse.** Classic hover-card bug:
+the popover sat at `top-full mt-1` (4px gap), and moving the mouse from
+trigger to popover fired `mouseleave` on the trigger before `mouseenter`
+on the popover, killing the open state. Fix: 180ms `setTimeout`-based
+close + `onMouseEnter/Leave` on the popover itself that cancel/reschedule
+the close. Radix HoverCard pattern. Universal benefit — every
+PostReference instance (Reels top-10, Strategy Source posts, Explore
+table) inherits the fix.
+
+**No primary-post link in performer headlines.** Top/Under performer
+cards on `/strategy` had Source posts in the expanded view but the
+closed headline gave no clickable affordance to jump to the post.
+Added `iconOnly` prop to PostReference (20px external-link icon +
+hover popover, no inline caption text), wired into both Top/Under
+summary rows. Click → Facebook in new tab; doesn't toggle the
+disclosure (e.stopPropagation).
+
+Parked as follow-up: Key Findings + Watch-outs are flat string arrays
+in the diagnosis JSON; per-entry post linking needs a pipeline-side
+change in `findings.py` to emit `source_post_ids` per item.
+
 ## 2026-04-23 — P6 polish: 7 live-dashboard corrections (funnel migration, clickable post refs, compressed heatmaps, recommended redesign)
 
 Seven user corrections from a live-screenshot review, all shipped in one pass:

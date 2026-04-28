@@ -1,5 +1,70 @@
 # Learnings
 
+## 2026-04-28 — Hover popovers with a visible gap need a setTimeout-close + popover-side handlers
+
+Symptom: user moves mouse from trigger toward popover to click "Open
+on Facebook"; popover disappears before the mouse arrives. Reported
+on `/strategy` PostReference but applies to every popover the
+codebase has shipped with this pattern.
+
+**Root cause:** popover at `top-full mt-1` (4px gap from trigger).
+The mouse traverse fires `mouseleave` on the trigger before
+`mouseenter` on the popover. `setOpen(false)` runs synchronously,
+the popover unmounts, the mouse never reaches it.
+
+**Fix that works (Radix HoverCard pattern):**
+1. Close on a `setTimeout` (~180ms) instead of synchronously.
+2. Cancel that timeout on `mouseenter` of the popover (so hovering
+   the popover keeps it open) and re-schedule on the popover's
+   `mouseleave` (so leaving the popover closes it normally).
+3. Clear the timer on unmount to avoid stray state updates.
+
+```tsx
+const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+const cancelClose = () => { if (closeTimer.current) { clearTimeout(closeTimer.current); closeTimer.current = null; } };
+const scheduleClose = () => { cancelClose(); closeTimer.current = setTimeout(() => setOpen(false), 180); };
+useEffect(() => () => cancelClose(), []);
+
+// trigger
+onMouseEnter={() => { cancelClose(); setOpen(true); }}
+onMouseLeave={scheduleClose}
+
+// popover
+onMouseEnter={cancelClose}
+onMouseLeave={scheduleClose}
+```
+
+**What didn't work:** removing the `mt-1` (zero gap eliminates the
+traverse). It works on desktop but causes the popover to overlap
+the trigger — readability suffers, and a touch-tap-to-toggle UX
+gets confused because the popover area now covers the trigger area.
+The timeout pattern is the right answer; keep the visual gap.
+
+**Rule going forward:** any new popover/hover-card we add MUST have
+the timeout-close pattern. Don't ship `setOpen(false)` synchronously
+in `onMouseLeave`. Add it to `components/InfoTooltip.tsx` next time
+that file is touched.
+
+## 2026-04-28 — Disclosure summaries can host independently-clickable affordances via stopPropagation
+
+Wanted to add a "view source post" icon link inside a `<summary>` row
+without it triggering the disclosure expand/collapse. Native
+`<details>` toggles on any click within `<summary>` by default, so a
+nested `<a>` inside the summary will both navigate AND expand the
+disclosure (jarring).
+
+**Fix:** `onClick={(e) => e.stopPropagation()}` on the inner anchor
+keeps the click from bubbling to the summary, while the `href` +
+`target="_blank"` still navigate. Tested: clicking the icon opens
+Facebook in a new tab; clicking the headline still expands the
+disclosure. Both flows preserved.
+
+**Note:** this works for clicks but not for keyboard activation —
+`Enter`/`Space` on the link does navigate but also toggles the
+disclosure when focus is on the summary. For keyboard users the
+focus order goes button → icon → chevron, so `Enter` on each lands
+correctly without overlap. Acceptable for now.
+
 ## 2026-04-23 — Recharts axis labels can't host React popovers (use HTML list when labels are content)
 
 When a chart's Y-axis labels are user-generated text (captions, post
