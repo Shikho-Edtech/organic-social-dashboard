@@ -1,5 +1,64 @@
 # Learnings
 
+## 2026-04-28 — `new Date()` and `getDay()` are runtime-timezone, not BDT — wrap them in bdtNow()
+
+Symptom: dashboard "Last 7 days" range-picked windows silently
+excluded posts created in the BDT 00:00–05:59 window of the
+start-of-range day. AI cost weekly bucket sometimes put runs in the
+wrong week. Both rooted in the same class of bug.
+
+**Root cause:** JS `new Date()` returns the runtime instant in the
+runtime's timezone. On Vercel prod that's UTC. `getDay()`, `getDate()`,
+`getMonth()`, `getHours()` etc. all read the runtime-local view of
+the Date. So `daysAgo(7).setHours(0,0,0,0)` produces "7 days ago at
+UTC midnight" — which is BDT 06:00 of that day. Posts created BDT
+00:00–05:59 of that day numerically precede the cutoff and get filtered
+out.
+
+The codebase already had `bdt(iso)` for converting UTC FB timestamps
+to BDT-as-local (strips the +06:00 offset, parses naive). But there
+was no equivalent for "now" — every caller used `new Date()` directly.
+
+**Fix:** added `bdtNow()` to lib/aggregate.ts. Same convention as
+`bdt(iso)`: returns a Date whose `getFullYear()` / `getMonth()` /
+`getDate()` / `getHours()` etc. return BDT wall-clock. Implementation:
+
+```typescript
+export function bdtNow(): Date {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Dhaka",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "00";
+  return new Date(
+    `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}:${get("second")}`
+  );
+}
+```
+
+The `en-CA` locale gives ISO-shaped date components and 24h time, so
+the stitched string is a valid naive ISO local-time literal that
+`new Date()` parses without applying any offset.
+
+**Rule going forward:** any time you reach for `new Date()` to build a
+"now" value that will be compared against a `bdt(iso)`-shifted Date,
+or used for calendar reasoning (week boundaries, month boundaries,
+day-of-week buckets), use `bdtNow()` instead. `new Date()` is fine
+for absolute-instant math (staleness diffs in milliseconds, "did this
+happen before that") because both sides are UTC instants.
+
+Don't use `Date.now()` either — same problem, returns the absolute
+UTC instant. Use bdtNow.
+
+**Where to use the existing helpers:**
+- `bdt(post.created_time)` — convert a single FB UTC timestamp to BDT-as-local
+- `bdtNow()` — current "now" in BDT-as-local
+- `dateStr(d)` — `YYYY-MM-DD` string from a (BDT-shifted) Date
+- `Intl.DateTimeFormat({ timeZone: "Asia/Dhaka" })` — for displayed strings to
+  the user (the `bdt*` helpers are for math, this is for rendering)
+
 ## 2026-04-28 — Hover popovers with a visible gap need a setTimeout-close + popover-side handlers
 
 Symptom: user moves mouse from trigger toward popover to click "Open

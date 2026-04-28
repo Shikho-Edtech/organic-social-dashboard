@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-04-28 — BDT wall-clock for daysAgo + AI cost weekly bucket (timezone audit)
+
+Sweep audit found three families of timezone drift:
+
+- **D1** `lib/daterange.ts daysAgo` + `resolveRange now` used `new Date()`
+  (UTC on Vercel) for the start of every "Last 7d / 30d / 90d / MTD / YTD"
+  range. Compared against `bdt(post.created_time)` (BDT-as-local), this
+  excluded posts created BDT 00:00–05:59 of the start day from every
+  range-aware page (Trends/Engagement/Timing/Reels/Strategy/Explore/Overview).
+- **D2** `lib/sheets.ts runCostSummary → _monday(d)` bucketed AI cost by
+  UTC Monday, not BDT Monday. Sunday 18:00–23:59 UTC runs (= BDT Mon
+  00:00–05:59) landed in the wrong week.
+- **D3** `startOfWeekBDT(d)` carried a latent `getDay()` issue if called
+  with a non-BDT-shifted Date. Not a bug today; documented the contract.
+
+Fix: new `bdtNow()` helper in `lib/aggregate.ts`. Returns a Date whose
+local-time methods reflect BDT wall-clock, regardless of runtime timezone
+(uses `Intl.DateTimeFormat({ timeZone: "Asia/Dhaka" })` and parses the
+parts as a naive local string — same trick as `bdt(iso)`). Both `daysAgo`
+helpers and `runCostSummary` now use it.
+
+D4 (outcomes page period sanity) audited, clean — reads pipeline-written
+week_ending which is already Mon-Sun BDT.
+
 ## 2026-04-28 — Strategy: clickable post link on every Key Finding + Watch-out (cross-repo)
 
 Closes the follow-up parked earlier today. `what_happened` and
