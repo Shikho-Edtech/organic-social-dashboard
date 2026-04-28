@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-04-28 — Strategy: clickable post link on every Key Finding + Watch-out (cross-repo)
+
+Closes the follow-up parked earlier today. `what_happened` and
+`watch_outs` previously rendered as bare strings on the dashboard with
+no per-entry post linkage. Three input shapes now collapse to
+`{text, source_post_ids}` via a normalizer:
+
+1. **legacy AI**: bare strings → `{text, source_post_ids: []}` (no link)
+2. **new AI**: `{text, source_post_ids}` → direct (active once pipeline
+   prompt v1.7 ships its first row)
+3. **native**: `{detail | summary, source_post_ids, ...}` → reads detail
+   for watchouts, summary for legacy what_happened
+
+When `source_post_ids[0]` resolves in `postById`, the headline gets an
+`iconOnly` PostReference (click → Facebook). When 2+ IDs back a finding,
+an expanded "Source posts (N)" list appears below the body text.
+
+Cross-repo lockstep: pipeline ships `DIAGNOSIS_PROMPT_VERSION = "v1.7"`
++ native engine updates same session. Backward compat means dashboard
+ships safe — no live regression while old cached rows remain.
+
 ## 2026-04-28 — PostReference hover-gap fix + iconOnly mode on Strategy performer headlines
 
 Two issues caught during a screenshot review of `/strategy`:

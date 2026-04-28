@@ -1,5 +1,51 @@
 # Decisions
 
+## 2026-04-28 — Cross-repo data shape evolution: dashboard normalizer over breaking schema change
+
+When evolving `what_happened` and `watch_outs` from bare strings to
+`{text, source_post_ids}` objects (so each Finding/Watch-out can carry
+a clickable post link), three real shapes existed in the wild:
+
+1. legacy AI path: `["headline; evidence", ...]`
+2. native engine: `[{summary, biggest_mover, top_format, source_post_ids}]`
+   for what_happened, `[{severity, type, pillar, detail, source_post_ids,
+   weeks_affected, ...}]` for watchouts
+3. new AI path (v1.7): `[{text, source_post_ids}]`
+
+Two paths to handle this:
+
+**A. Force one shape.** Update pipeline + writer + reader simultaneously
+to `{text, source_post_ids}`. Drop the other two shapes entirely. Risk:
+any cached row from before the cutover renders blank or errors.
+Migration would mean re-running every weekly run we have history on.
+
+**B. Dashboard normalizer.** Accept all three shapes at the read seam,
+collapse to one canonical shape with backward-compat fallbacks. Pipeline
+ships the new shape on next run, but old rows still render correctly
+because the normalizer reads `text || detail || summary` and treats bare
+strings as `{text: str, source_post_ids: []}`.
+
+Picked B. Reasons:
+- Backward compat is the entire point of cross-repo lockstep — never
+  ship a change that requires a sheet migration.
+- The normalizer is ~15 lines and lives next to the only consumer
+  (strategy page). One file, one diff, no platform risk.
+- Pipeline can iterate on the AI prompt independently — if v1.8
+  changes the shape again, the normalizer absorbs it.
+- Native and AI paths can coexist without converging — they ship
+  different fields, the normalizer reads what's there.
+
+The cost: a tiny shape-mismatch at write/read time. Acceptable in
+exchange for the migration immunity.
+
+**Pipeline-side polish guard.** When `polish_watchouts` started seeing
+the new `{text, source_post_ids}` AI shape, it would have re-paraphrased
+already-polished prose against empty severity/detail/weeks_affected
+fields. Discriminator: `severity` only exists on native dicts. The
+guard `if not all("severity" in w for w in watchouts): return watchouts`
+skips polish cleanly for both legacy bare strings (rejected upstream by
+the isinstance-dict check) and new AI dicts.
+
 ## 2026-04-23 — Reels top-10: custom TopReelList over Recharts for clickable captions
 
 Needed full-caption hover + permalink affordance on the Bangla captions
