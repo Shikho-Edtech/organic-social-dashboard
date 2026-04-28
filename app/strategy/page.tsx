@@ -399,9 +399,14 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
             {topPerformers.slice(0, 3).map((tp: any, i: number) => {
               const full = tp.metric_highlight || "";
               const { head, body } = splitHeadline(full);
-              const sourceIds: string[] = Array.isArray(tp.source_post_ids)
+              // AI path emits `post_id` (singular string); native path emits
+              // `source_post_ids` (array). Coerce both into a single string[].
+              // P6F 2026-04-28: this fallback was the missing link — without
+              // it AI-generated top performers had no clickable affordance
+              // because the dashboard only checked source_post_ids.
+              const sourceIds: string[] = Array.isArray(tp.source_post_ids) && tp.source_post_ids.length
                 ? tp.source_post_ids.slice(0, 5)
-                : [];
+                : (typeof tp.post_id === "string" && tp.post_id ? [tp.post_id] : []);
               const primarySrc = sourceIds.length > 0 ? postById.get(sourceIds[0]) : undefined;
               const hasDetail = Boolean(body || tp.why_it_worked || tp.replicable_elements || sourceIds.length);
               return (
@@ -500,9 +505,10 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
             {underperformers.slice(0, 3).map((up: any, i: number) => {
               const full = up.metric_highlight || "";
               const { head, body } = splitHeadline(full);
-              const sourceIds: string[] = Array.isArray(up.source_post_ids)
+              // Same AI-vs-native shape coercion as top performers above.
+              const sourceIds: string[] = Array.isArray(up.source_post_ids) && up.source_post_ids.length
                 ? up.source_post_ids.slice(0, 5)
-                : [];
+                : (typeof up.post_id === "string" && up.post_id ? [up.post_id] : []);
               const primarySrc = sourceIds.length > 0 ? postById.get(sourceIds[0]) : undefined;
               const hasDetail = Boolean(body || up.why_it_failed || up.lesson || sourceIds.length);
               return (
