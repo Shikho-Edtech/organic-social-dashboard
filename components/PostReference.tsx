@@ -50,9 +50,25 @@ export default function PostReference({
   iconLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [anchorRight, setAnchorRight] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const popoverId = useId();
+
+  // Bucket P6F (2026-04-28): viewport-aware anchoring. The popover is w-72
+  // (288px). Triggers near the right edge of the viewport — top/under
+  // performer headlines on the right column of /strategy, post-reference
+  // chips on /reels — pushed the popover off-screen so the caption was
+  // clipped and unreadable. On open, measure available right-side space;
+  // if the popover would overflow, anchor right-0 instead of left-0 so
+  // it grows leftward into available space.
+  useEffect(() => {
+    if (!open || !ref.current) return;
+    const POPOVER_WIDTH = 288 + 16; // w-72 + small safety margin
+    const rect = ref.current.getBoundingClientRect();
+    const spaceRight = window.innerWidth - rect.left;
+    setAnchorRight(spaceRight < POPOVER_WIDTH);
+  }, [open]);
 
   const clean = (caption || "").replace(/\s+/g, " ").trim();
   const full = clean || "(no caption)";
@@ -146,7 +162,7 @@ export default function PostReference({
             role="tooltip"
             onMouseEnter={cancelClose}
             onMouseLeave={scheduleClose}
-            className="absolute left-0 top-full mt-1 z-30 w-72 max-w-[calc(100vw-2rem)] rounded-lg bg-shikho-indigo-900 text-white text-[12px] leading-snug p-3 shadow-lg ring-1 ring-shikho-indigo-800 whitespace-normal break-words"
+            className={`absolute ${anchorRight ? "right-0" : "left-0"} top-full mt-1 z-30 w-72 max-w-[calc(100vw-2rem)] rounded-lg bg-shikho-indigo-900 text-white text-[12px] leading-snug p-3 shadow-lg ring-1 ring-shikho-indigo-800 whitespace-normal break-words`}
           >
             <span className="block">{full}</span>
             {hasLink && (

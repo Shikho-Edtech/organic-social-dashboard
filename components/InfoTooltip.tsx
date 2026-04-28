@@ -12,11 +12,45 @@ import { useState, useRef, useEffect, useId } from "react";
 // announced when they focus the (i) button, via aria-describedby
 // pointing to the open tooltip's id. Keyboard users can dismiss with
 // Escape without tabbing away.
+//
+// Bucket P6F (2026-04-28): two upgrades to match PostReference:
+//   1. setTimeout-based close (180ms) + popover-side mouse handlers so
+//      moving the cursor from the trigger toward the tooltip doesn't
+//      kill the open state mid-traverse. Same hover-gap pattern as
+//      PostReference. See LEARNINGS 2026-04-28.
+//   2. Viewport-aware anchoring: when the trigger sits near the right
+//      edge of the viewport, anchor the tooltip to the right of the
+//      trigger so it grows leftward instead of clipping off-screen.
 
 export default function InfoTooltip({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
+  const [anchorRight, setAnchorRight] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tooltipId = useId();
+
+  const cancelClose = () => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  };
+  const scheduleClose = () => {
+    cancelClose();
+    closeTimer.current = setTimeout(() => setOpen(false), 180);
+  };
+  useEffect(() => () => cancelClose(), []);
+
+  // Viewport-aware anchoring on open: w-64 (256px) tooltip; if the
+  // trigger sits within that distance of the viewport's right edge,
+  // anchor right-0 so the tooltip grows leftward.
+  useEffect(() => {
+    if (!open || !ref.current) return;
+    const TOOLTIP_WIDTH = 256 + 16; // w-64 + small safety margin
+    const rect = ref.current.getBoundingClientRect();
+    const spaceRight = window.innerWidth - rect.left;
+    setAnchorRight(spaceRight < TOOLTIP_WIDTH);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -38,8 +72,11 @@ export default function InfoTooltip({ text }: { text: string }) {
     <span
       ref={ref}
       className="relative inline-flex items-center translate-y-[3px]"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
+      onMouseEnter={() => {
+        cancelClose();
+        setOpen(true);
+      }}
+      onMouseLeave={scheduleClose}
     >
       <button
         type="button"
@@ -47,8 +84,11 @@ export default function InfoTooltip({ text }: { text: string }) {
           e.stopPropagation();
           setOpen((v) => !v);
         }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
+        onFocus={() => {
+          cancelClose();
+          setOpen(true);
+        }}
+        onBlur={scheduleClose}
         aria-label="What is this metric?"
         aria-expanded={open}
         aria-describedby={open ? tooltipId : undefined}
@@ -74,7 +114,9 @@ export default function InfoTooltip({ text }: { text: string }) {
         <span
           id={tooltipId}
           role="tooltip"
-          className="absolute left-5 top-0 z-20 w-64 max-w-[calc(100vw-3rem)] rounded-lg bg-shikho-indigo-900 text-white text-[11px] leading-snug p-2.5 shadow-lg ring-1 ring-shikho-indigo-800"
+          onMouseEnter={cancelClose}
+          onMouseLeave={scheduleClose}
+          className={`absolute ${anchorRight ? "right-5" : "left-5"} top-0 z-20 w-64 max-w-[calc(100vw-3rem)] rounded-lg bg-shikho-indigo-900 text-white text-[11px] leading-snug p-2.5 shadow-lg ring-1 ring-shikho-indigo-800`}
         >
           {text}
         </span>
