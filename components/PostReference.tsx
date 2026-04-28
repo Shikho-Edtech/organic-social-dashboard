@@ -13,7 +13,11 @@ import { useState, useRef, useEffect, useId } from "react";
  *
  * Behaviour:
  *   - Desktop: mouseenter opens the popover with the full caption + a
- *     "Open on Facebook" link; mouseleave closes it.
+ *     "Open on Facebook" link. Closing is timed (180ms) so a quick mouse
+ *     traverse from trigger to popover can cancel it — fixes the
+ *     "popover disappears before I can click it" bug. The popover itself
+ *     also carries onMouseEnter/Leave handlers so hovering the popover
+ *     keeps it open (Radix HoverCard pattern).
  *   - Touch: tap the preview to toggle the popover. Tap outside, press
  *     Escape, or tap the preview again to close.
  *   - The external-link icon is always rendered next to the preview when
@@ -24,27 +28,50 @@ import { useState, useRef, useEffect, useId } from "react";
  *     Permalink URL column — see lib/types.ts), the icon is omitted and
  *     the component renders as an inline preview with a hover/tap-reveal
  *     for the full caption only.
+ *   - `iconOnly` mode: render only the external-link icon + the hover
+ *     popover, no inline truncated caption. Used inside disclosure
+ *     summaries (Strategy performer headlines) where a full caption
+ *     preview would compete with the headline copy.
  */
 export default function PostReference({
   caption,
   permalinkUrl,
   maxChars = 60,
   className = "",
+  iconOnly = false,
+  iconLabel,
 }: {
   caption: string;
   permalinkUrl?: string;
   maxChars?: number;
   className?: string;
+  iconOnly?: boolean;
+  /** When iconOnly, the icon's accessible label. Defaults to "View source post on Facebook". */
+  iconLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const popoverId = useId();
 
   const clean = (caption || "").replace(/\s+/g, " ").trim();
   const full = clean || "(no caption)";
   const truncated = full.length > maxChars;
-  const preview = truncated ? full.slice(0, maxChars - 1) + "\u2026" : full;
+  const preview = truncated ? full.slice(0, maxChars - 1) + "…" : full;
   const hasLink = typeof permalinkUrl === "string" && permalinkUrl.length > 0;
+
+  // Hover-gap fix: cancel any pending close, clear timer on unmount.
+  const cancelClose = () => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  };
+  const scheduleClose = () => {
+    cancelClose();
+    closeTimer.current = setTimeout(() => setOpen(false), 180);
+  };
+  useEffect(() => () => cancelClose(), []);
 
   useEffect(() => {
     if (!open) return;
@@ -62,12 +89,106 @@ export default function PostReference({
     };
   }, [open]);
 
+  // Icon-only mode: render the external-link icon + popover, no caption span.
+  // Used in tight headline rows where the caption preview would visually
+  // compete with the surrounding copy.
+  if (iconOnly) {
+    if (!hasLink && !clean) return null;
+    return (
+      <span
+        ref={ref}
+        className={`relative inline-flex items-center ${className}`}
+        onMouseEnter={() => {
+          cancelClose();
+          setOpen(true);
+        }}
+        onMouseLeave={scheduleClose}
+      >
+        <a
+          href={hasLink ? permalinkUrl : undefined}
+          target={hasLink ? "_blank" : undefined}
+          rel={hasLink ? "noopener noreferrer" : undefined}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!hasLink) {
+              e.preventDefault();
+              setOpen((v) => !v);
+            }
+          }}
+          onFocus={() => {
+            cancelClose();
+            setOpen(true);
+          }}
+          onBlur={scheduleClose}
+          aria-label={iconLabel || (hasLink ? "View source post on Facebook" : "View source post caption")}
+          aria-describedby={open ? popoverId : undefined}
+          className="inline-flex items-center justify-center w-5 h-5 rounded-md text-ink-400 hover:text-brand-shikho-indigo hover:bg-shikho-indigo-50 transition-colors cursor-pointer"
+        >
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+        </a>
+        {open && (
+          <span
+            id={popoverId}
+            role="tooltip"
+            onMouseEnter={cancelClose}
+            onMouseLeave={scheduleClose}
+            className="absolute left-0 top-full mt-1 z-30 w-72 max-w-[calc(100vw-2rem)] rounded-lg bg-shikho-indigo-900 text-white text-[12px] leading-snug p-3 shadow-lg ring-1 ring-shikho-indigo-800 whitespace-normal break-words"
+          >
+            <span className="block">{full}</span>
+            {hasLink && (
+              <a
+                href={permalinkUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="mt-2 inline-flex items-center gap-1 text-[11px] text-shikho-indigo-200 hover:text-white underline underline-offset-2"
+              >
+                Open on Facebook
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <polyline points="15 3 21 3 21 9"></polyline>
+                  <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+              </a>
+            )}
+          </span>
+        )}
+      </span>
+    );
+  }
+
   return (
     <span
       ref={ref}
       className={`relative inline-flex items-center gap-1.5 min-w-0 ${className}`}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
+      onMouseEnter={() => {
+        cancelClose();
+        setOpen(true);
+      }}
+      onMouseLeave={scheduleClose}
     >
       <button
         type="button"
@@ -75,8 +196,11 @@ export default function PostReference({
           e.stopPropagation();
           setOpen((v) => !v);
         }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
+        onFocus={() => {
+          cancelClose();
+          setOpen(true);
+        }}
+        onBlur={scheduleClose}
         aria-label={truncated ? "Show full caption" : "Caption"}
         aria-expanded={truncated ? open : undefined}
         aria-describedby={open ? popoverId : undefined}
@@ -116,6 +240,8 @@ export default function PostReference({
         <span
           id={popoverId}
           role="tooltip"
+          onMouseEnter={cancelClose}
+          onMouseLeave={scheduleClose}
           className="absolute left-0 top-full mt-1 z-30 w-72 max-w-[calc(100vw-2rem)] rounded-lg bg-shikho-indigo-900 text-white text-[12px] leading-snug p-3 shadow-lg ring-1 ring-shikho-indigo-800 whitespace-normal break-words"
         >
           <span className="block">{full}</span>

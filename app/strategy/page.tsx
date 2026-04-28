@@ -339,6 +339,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
               const sourceIds: string[] = Array.isArray(tp.source_post_ids)
                 ? tp.source_post_ids.slice(0, 5)
                 : [];
+              const primarySrc = sourceIds.length > 0 ? postById.get(sourceIds[0]) : undefined;
               const hasDetail = Boolean(body || tp.why_it_worked || tp.replicable_elements || sourceIds.length);
               return (
                 <details key={i} className="group bg-white border border-slate-200 rounded-xl border-l-4 !border-l-brand-green overflow-hidden hover:border-brand-green/40 transition-colors">
@@ -350,6 +351,15 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
                       <div className="flex-1 min-w-0 text-sm text-slate-700 font-medium leading-snug line-clamp-1 group-open:line-clamp-none">
                         <HeadlineWithMetrics text={head} metricClass="text-brand-green" />
                       </div>
+                      {primarySrc && (
+                        <PostReference
+                          iconOnly
+                          caption={primarySrc.message || ""}
+                          permalinkUrl={primarySrc.permalink_url}
+                          iconLabel="View top-performer post on Facebook"
+                          className="flex-shrink-0"
+                        />
+                      )}
                       {hasDetail && (
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-slate-500 transition-transform group-open:rotate-180">
                           <polyline points="6 9 12 15 18 9"></polyline>
@@ -430,6 +440,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
               const sourceIds: string[] = Array.isArray(up.source_post_ids)
                 ? up.source_post_ids.slice(0, 5)
                 : [];
+              const primarySrc = sourceIds.length > 0 ? postById.get(sourceIds[0]) : undefined;
               const hasDetail = Boolean(body || up.why_it_failed || up.lesson || sourceIds.length);
               return (
                 <details key={i} className="group bg-white border border-slate-200 rounded-xl border-l-4 !border-l-brand-red overflow-hidden hover:border-brand-red/40 transition-colors">
@@ -441,6 +452,15 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
                       <div className="flex-1 min-w-0 text-sm text-slate-700 font-medium leading-snug line-clamp-1 group-open:line-clamp-none">
                         <HeadlineWithMetrics text={head} metricClass="text-brand-red" />
                       </div>
+                      {primarySrc && (
+                        <PostReference
+                          iconOnly
+                          caption={primarySrc.message || ""}
+                          permalinkUrl={primarySrc.permalink_url}
+                          iconLabel="View underperformer post on Facebook"
+                          className="flex-shrink-0"
+                        />
+                      )}
                       {hasDetail && (
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-slate-500 transition-transform group-open:rotate-180">
                           <polyline points="6 9 12 15 18 9"></polyline>
