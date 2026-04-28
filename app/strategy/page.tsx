@@ -108,6 +108,36 @@ function HeadlineWithMetrics({ text, metricClass }: { text: string; metricClass:
   );
 }
 
+// Bucket P6F (2026-04-28): what_happened + watch_outs item normalizer.
+// Cross-repo data shape evolution — three shapes exist in the wild:
+//   1. legacy AI path: list[str]                                    ("Live Class reach plummeted...")
+//   2. new AI path:    list[{text, source_post_ids}]                (post-prompt-v1.7)
+//   3. native path:    list[{detail | summary | text, source_post_ids, ...}]
+// All three normalize to {text, source_post_ids} with backward-compat
+// fallbacks. When source_post_ids[0] resolves in postById, the strategy
+// page renders an iconOnly PostReference next to the headline.
+type NormalizedFinding = { text: string; source_post_ids: string[] };
+
+function normalizeFinding(item: any): NormalizedFinding {
+  if (typeof item === "string") {
+    return { text: item, source_post_ids: [] };
+  }
+  if (item && typeof item === "object") {
+    // Field priority: text (new AI prompt) > detail (native watchouts)
+    // > summary (native legacy what_happened) > best-effort string coerce.
+    const text =
+      (typeof item.text === "string" && item.text) ||
+      (typeof item.detail === "string" && item.detail) ||
+      (typeof item.summary === "string" && item.summary) ||
+      "";
+    const ids = Array.isArray(item.source_post_ids)
+      ? item.source_post_ids.filter((x: any) => typeof x === "string" && x).slice(0, 5)
+      : [];
+    return { text, source_post_ids: ids };
+  }
+  return { text: "", source_post_ids: [] };
+}
+
 export default async function StrategyPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   const range = resolveRange(searchParams);
 
@@ -143,10 +173,13 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
     postById.set(p.id, { message: p.message, permalink_url: p.permalink_url });
   }
 
-  const whatHappened: string[] = diagnosis?.what_happened || [];
+  // Normalize what_happened + watch_outs to a uniform shape so the render
+  // path works against legacy list[str] rows AND new list[{text,
+  // source_post_ids}] rows once the pipeline ships its v1.7 prompt.
+  const whatHappened: NormalizedFinding[] = (diagnosis?.what_happened || []).map(normalizeFinding);
   const topPerformers = diagnosis?.top_performers || [];
   const underperformers = diagnosis?.underperformers || [];
-  const watchOuts: string[] = diagnosis?.watch_outs || [];
+  const watchOuts: NormalizedFinding[] = (diagnosis?.watch_outs || []).map(normalizeFinding);
 
   const verdictSplit = splitHeadline(diagnosis?.headline || "");
 
@@ -285,7 +318,10 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
           </div>
           <div className="grid md:grid-cols-2 gap-3">
             {whatHappened.map((item, i) => {
-              const { head, body } = splitHeadline(item);
+              const { head, body } = splitHeadline(item.text);
+              const primarySrc = item.source_post_ids.length > 0
+                ? postById.get(item.source_post_ids[0])
+                : undefined;
               const hasDetail = Boolean(body);
               return (
                 <details key={i} className="group bg-white border border-slate-200 rounded-xl hover:border-brand-cyan/40 transition-colors">
@@ -297,6 +333,15 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
                       <div className="flex-1 min-w-0 text-sm text-slate-700 font-medium leading-snug line-clamp-2 group-open:line-clamp-none">
                         <HeadlineWithMetrics text={head} metricClass="text-brand-cyan" />
                       </div>
+                      {primarySrc && (
+                        <PostReference
+                          iconOnly
+                          caption={primarySrc.message || ""}
+                          permalinkUrl={primarySrc.permalink_url}
+                          iconLabel="View finding source post on Facebook"
+                          className="flex-shrink-0 mt-0.5"
+                        />
+                      )}
                       {hasDetail && (
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-slate-500 mt-1 transition-transform group-open:rotate-180">
                           <polyline points="6 9 12 15 18 9"></polyline>
@@ -306,6 +351,24 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
                   </summary>
                   {hasDetail && (
                     <div className="px-4 pb-4 pl-14 text-xs text-slate-600 leading-relaxed">{body}</div>
+                  )}
+                  {item.source_post_ids.length > 1 && (
+                    <div className="px-4 pb-4 pl-14">
+                      <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted mb-1.5">
+                        Source posts ({item.source_post_ids.length})
+                      </div>
+                      <ul className="space-y-1">
+                        {item.source_post_ids.map((pid) => {
+                          const p = postById.get(pid);
+                          if (!p) return null;
+                          return (
+                            <li key={pid} className="text-xs text-ink-secondary">
+                              <PostReference caption={p.message || ""} permalinkUrl={p.permalink_url} maxChars={80} />
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
                   )}
                 </details>
               );
@@ -536,7 +599,10 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
           </div>
           <div className="grid md:grid-cols-2 gap-3">
             {watchOuts.map((item, i) => {
-              const { head, body } = splitHeadline(item);
+              const { head, body } = splitHeadline(item.text);
+              const primarySrc = item.source_post_ids.length > 0
+                ? postById.get(item.source_post_ids[0])
+                : undefined;
               const hasDetail = Boolean(body);
               return (
                 <details key={i} className="group bg-amber-50/30 border border-amber-200/60 rounded-xl hover:border-amber-300/80 transition-colors">
@@ -551,6 +617,15 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
                       <div className="flex-1 min-w-0 text-sm text-slate-700 font-medium leading-snug line-clamp-2 group-open:line-clamp-none">
                         <HeadlineWithMetrics text={head} metricClass="text-brand-amber" />
                       </div>
+                      {primarySrc && (
+                        <PostReference
+                          iconOnly
+                          caption={primarySrc.message || ""}
+                          permalinkUrl={primarySrc.permalink_url}
+                          iconLabel="View watch-out source post on Facebook"
+                          className="flex-shrink-0 mt-0.5"
+                        />
+                      )}
                       {hasDetail && (
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-amber-600/60 mt-1 transition-transform group-open:rotate-180">
                           <polyline points="6 9 12 15 18 9"></polyline>
@@ -560,6 +635,24 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
                   </summary>
                   {hasDetail && (
                     <div className="px-4 pb-4 pl-14 text-xs text-slate-600 leading-relaxed">{body}</div>
+                  )}
+                  {item.source_post_ids.length > 1 && (
+                    <div className="px-4 pb-4 pl-14">
+                      <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted mb-1.5">
+                        Source posts ({item.source_post_ids.length})
+                      </div>
+                      <ul className="space-y-1">
+                        {item.source_post_ids.map((pid) => {
+                          const p = postById.get(pid);
+                          if (!p) return null;
+                          return (
+                            <li key={pid} className="text-xs text-ink-secondary">
+                              <PostReference caption={p.message || ""} permalinkUrl={p.permalink_url} maxChars={80} />
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
                   )}
                 </details>
               );
