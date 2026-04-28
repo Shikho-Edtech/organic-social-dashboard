@@ -410,7 +410,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
               const primarySrc = sourceIds.length > 0 ? postById.get(sourceIds[0]) : undefined;
               const hasDetail = Boolean(body || tp.why_it_worked || tp.replicable_elements || sourceIds.length);
               return (
-                <details key={i} className="group bg-white border border-slate-200 rounded-xl border-l-4 !border-l-brand-green overflow-hidden hover:border-brand-green/40 transition-colors">
+                <details key={i} className="group bg-white border border-slate-200 rounded-xl border-l-4 !border-l-brand-green hover:border-brand-green/40 transition-colors">
                   <summary className="list-none cursor-pointer p-4">
                     <div className="flex items-center gap-3">
                       <div className="flex-shrink-0 w-6 h-6 rounded-md bg-brand-green/10 text-brand-green font-bold text-xs flex items-center justify-center">
@@ -512,7 +512,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
               const primarySrc = sourceIds.length > 0 ? postById.get(sourceIds[0]) : undefined;
               const hasDetail = Boolean(body || up.why_it_failed || up.lesson || sourceIds.length);
               return (
-                <details key={i} className="group bg-white border border-slate-200 rounded-xl border-l-4 !border-l-brand-red overflow-hidden hover:border-brand-red/40 transition-colors">
+                <details key={i} className="group bg-white border border-slate-200 rounded-xl border-l-4 !border-l-brand-red hover:border-brand-red/40 transition-colors">
                   <summary className="list-none cursor-pointer p-4">
                     <div className="flex items-center gap-3">
                       <div className="flex-shrink-0 w-6 h-6 rounded-md bg-brand-red/10 text-brand-red font-bold text-xs flex items-center justify-center">
