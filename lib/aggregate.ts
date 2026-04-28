@@ -41,6 +41,14 @@ export function daysBetween(a: Date, b: Date): number {
   return Math.floor((b.getTime() - a.getTime()) / 86_400_000);
 }
 
+/**
+ * Monday 00:00 of the BDT week containing `d`.
+ *
+ * IMPORTANT: caller MUST pass a BDT-shifted Date (`bdt(iso)` for posts,
+ * `bdtNow()` for "now"). `getDay()` reads the runtime's local-time day-of-week,
+ * so a raw UTC Date will produce a UTC Monday on Vercel — which can be
+ * 6 hours off the BDT Monday. Latent bug if you pass `new Date()` directly.
+ */
 export function startOfWeekBDT(d: Date): Date {
   const dd = new Date(d);
   const dow = dd.getDay(); // 0 = Sun
@@ -50,8 +58,47 @@ export function startOfWeekBDT(d: Date): Date {
   return dd;
 }
 
+/**
+ * "Now" in BDT wall-clock as a Date whose local-time methods return BDT values.
+ *
+ * Mirrors the convention of `bdt(iso)`: a Date object whose `getFullYear()` /
+ * `getMonth()` / `getDate()` / `getHours()` etc. return Bangladesh-time
+ * values, regardless of the runtime's actual timezone.
+ *
+ * Why this exists: every range picker on the dashboard ("Last 7 days",
+ * "Last 30 days") uses `daysAgo(n)` to compute the range's start. Before this
+ * helper, `daysAgo` used `new Date()` which is in the runtime's local timezone
+ * — UTC on Vercel prod. Comparing that against `bdt(post.created_time)`
+ * (which is BDT-as-local) silently dropped posts created in BDT 00:00–05:59
+ * of the start-of-range day. After the helper, both sides of the comparison
+ * are BDT-as-local and the boundaries align. See LEARNINGS 2026-04-28.
+ *
+ * Implementation: format `new Date()` into a YYYY-MM-DDTHH:mm:ss string in
+ * Asia/Dhaka via `Intl.DateTimeFormat`, then parse that as a naive local
+ * Date — the same trick `bdt()` uses on the pipeline's "+06:00" timestamps.
+ */
+export function bdtNow(): Date {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Dhaka",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "00";
+  // en-CA emits 24h time with "00" for midnight. Stitch into ISO-ish naive form.
+  return new Date(
+    `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}:${get("second")}`
+  );
+}
+
 export function daysAgo(n: number): Date {
-  const d = new Date();
+  // Use BDT wall-clock for "now" so range comparisons against
+  // bdt(post.created_time) align. See bdtNow() docstring for why.
+  const d = bdtNow();
   d.setDate(d.getDate() - n);
   return d;
 }

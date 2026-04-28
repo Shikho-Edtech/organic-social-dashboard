@@ -1,6 +1,8 @@
 // Shared date-range helper for all pages
 // Parses ?range= URL params into a { start, end, label } bundle.
 
+import { bdtNow } from "./aggregate";
+
 export type RangeSpec = {
   start: Date;
   end: Date;
@@ -21,7 +23,11 @@ function endOfDay(d: Date): Date {
 }
 
 function daysAgo(n: number): Date {
-  const d = new Date();
+  // Bucket P6F (2026-04-28): use BDT wall-clock for "now" so the
+  // resulting start-of-range aligns with bdt(post.created_time). Was
+  // using `new Date()` (UTC on Vercel), which silently excluded posts
+  // created BDT 00:00–05:59 of the start day from "Last 7 days" etc.
+  const d = bdtNow();
   d.setDate(d.getDate() - n);
   return startOfDay(d);
 }
@@ -52,7 +58,10 @@ export function rangeDays(range: RangeSpec): number {
 }
 
 export function resolveRange(searchParams: Record<string, string | string[] | undefined>): RangeSpec {
-  const now = new Date();
+  // bdtNow() returns a Date whose local-time methods reflect BDT wall-clock,
+  // matching the convention of bdt(iso). Used as `now` so MTD/YTD month +
+  // year boundaries line up with the BDT calendar an operator would expect.
+  const now = bdtNow();
   const key = (searchParams.range as string) || "30d";
 
   let start: Date;

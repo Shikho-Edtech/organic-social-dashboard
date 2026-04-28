@@ -19,6 +19,7 @@ import type {
   OutcomeVerdict,
 } from "./types";
 import { canonicalizeEntity } from "./entities";
+import { bdtNow } from "./aggregate";
 
 let cachedClient: any = null;
 
@@ -686,6 +687,10 @@ export interface CostSummary {
 
 function _monday(d: Date): Date {
   // ISO week starts Monday. Returns a new Date at 00:00 local time.
+  // IMPORTANT: pass a BDT-shifted Date (`bdtNow()`) — getDay() reads
+  // local-time, so a raw UTC Date on Vercel can land on the wrong
+  // Monday by up to 6 hours. runCostSummary now passes bdtNow() by
+  // default (Bucket P6F 2026-04-28).
   const out = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const dow = out.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
   const delta = dow === 0 ? -6 : 1 - dow; // shift to Monday
@@ -705,7 +710,11 @@ export function runCostSummary(
   logs: Record<string, any>[],
   opts: { now?: Date; budget?: number } = {}
 ): CostSummary {
-  const now = opts.now ?? new Date();
+  // BDT wall-clock for "now" so the weekly Monday boundary matches
+  // BDT's calendar week — was using server-local time which on Vercel
+  // (UTC) put runs that fired Sun 18:00–23:59 UTC = Mon 00:00–05:59 BDT
+  // into the wrong cost-tracking week. See bdtNow() docstring.
+  const now = opts.now ?? bdtNow();
   const budget = opts.budget ?? AI_WEEKLY_BUDGET_USD;
   const thisMonday = _monday(now);
   const lastMonday = new Date(thisMonday);
