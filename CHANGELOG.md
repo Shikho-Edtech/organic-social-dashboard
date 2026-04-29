@@ -1,5 +1,32 @@
 # Changelog
 
+## 2026-04-28 — Sprint P7 Phase 1 shipped (UI cleanup + Strategy→Diagnosis rename + Format×Hour metric selector)
+
+Four focused commits land the Phase 1 deliverables from the brand-team
+review session:
+
+- **Engagement page cleanup** (`f7efb53`): dropped 4 second-row metric
+  boxes (Virality / Discussion Quality / Sentiment Polarity / Save Rate)
+  per spec. Save Rate was permanently "pending"; the other three
+  duplicated signal already in Funnel Engagement chart. Variable
+  cleanup + JSX removal.
+- **Terminology sweep** (`d47cff9`): `ER` → `engagement rate` across
+  user-facing strings on Engagement + Timing pages. Internal variable
+  names (formatER etc.) left alone — code-only.
+- **Strategy → Diagnosis rename** (`efd5095`): full rename across label
+  + URL (`/strategy` → `/diagnosis`, no redirect) + nav + stages config.
+  Brand-audit baseline path migrated. Old `/strategy` URL now 404s per
+  spec.
+- **Format × Hour metric selector** (`f2e2847`): box-level URL-persistent
+  pills (Total reach / Interactions / Engagement rate / Shares). Preview
+  of Phase 3 page-level pills. `formatHourMatrix()` extended from binary
+  to 4-metric.
+
+Plan + Outcomes week selectors **promoted to Phase 2** — discovered
+during build that Content_Calendar overwrites each weekly run, so a
+This/Next/Last selector would render empty tabs until Phase 2's
+locking ships. ROADMAP updated.
+
 ## 2026-04-28 — BDT wall-clock for daysAgo + AI cost weekly bucket (timezone audit)
 
 Sweep audit found three families of timezone drift:

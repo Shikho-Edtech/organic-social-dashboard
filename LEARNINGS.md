@@ -1,5 +1,48 @@
 # Learnings
 
+## 2026-04-28 — Brand-audit baseline tracks file paths; `git mv` migrations need baseline edits too
+
+When renaming `app/strategy/page.tsx` → `app/diagnosis/page.tsx` via
+`git mv`, the brand-audit script reported a regression:
+`1 new violation type(s) beyond baseline · organic-social-dashboard/app/diagnosis/page.tsx`.
+
+Root cause: `.brand-audit-baseline.json` keys violations by file path.
+A `git mv` preserves the git history but the file path is new, so all
+the previously-grandfathered violations are now "new violations on a
+new file" from the audit's POV.
+
+Fix: edit the baseline JSON in the same commit as the rename — change
+the key path from `app/strategy/page.tsx` to `app/diagnosis/page.tsx`,
+keep the violation count identical. Audit goes back to clean.
+
+**Rule going forward:** any `git mv` of a tracked-by-baseline file
+needs a paired baseline-key rename. Same commit. Doesn't count as
+"new violations" — just a path migration.
+
+Discovered during Sprint P7 Phase 1 Strategy → Diagnosis rename.
+
+## 2026-04-28 — Sheet-overwrite-on-write blocks historical-week selectors
+
+Tried building a "This / Next / Last week" selector for `/plan` in
+Phase 1; discovered `getCalendar()` reads from `Content_Calendar`
+which the pipeline OVERWRITES each Monday (not appends). So at any
+moment only one week's calendar exists in the sheet — historical
+weeks aren't preserved.
+
+Building the selector anyway would render two empty tabs (This week
++ Last week always blank), only Next week populated. Cargo-cult UX.
+
+**Fix:** promoted the selector to Phase 2 alongside locking. Phase 2
+changes the pipeline writer from overwrite to append-by-week, which
+is what makes the selector meaningful. Same dependency for
+Outcomes copy update — the shared `<WeekSelector>` component
+(used by all three pages) only ships when the data underneath
+supports multiple weeks.
+
+**Rule going forward:** before building a UI that needs historical
+data slices, audit the underlying sheet writer. Overwrite-on-write
+patterns can't support history-aware UIs without a writer change first.
+
 ## 2026-04-28 — `new Date()` and `getDay()` are runtime-timezone, not BDT — wrap them in bdtNow()
 
 Symptom: dashboard "Last 7 days" range-picked windows silently
