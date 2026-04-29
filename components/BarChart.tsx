@@ -1,5 +1,6 @@
 "use client";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, LabelList } from "recharts";
+import type { CompositeBreakdownEntry } from "./CompositeExplainer";
 
 type FormatSpec = "number" | "percent" | "percent1";
 
@@ -18,6 +19,11 @@ type Props = {
   categoryAxisLabel?: string;
   /** If true, show each bar as a percentage share of total alongside the raw value */
   showPercent?: boolean;
+  /** Sprint P7 v4 (2026-04-29): when set, the chart is in composite-rank
+   *  mode — the bar value is a 0..100 composite score, and the tooltip
+   *  shows the per-metric percentile + weight breakdown that produced it.
+   *  Map keys are bar labels; absent labels fall back to the default tooltip. */
+  compositeBreakdown?: Record<string, CompositeBreakdownEntry[]>;
 };
 
 // Shikho v1.0 palette. Lead with the four core hues (indigo, magenta,
@@ -56,10 +62,12 @@ export default function BarChartBase({
   valueAxisLabel,
   categoryAxisLabel,
   showPercent,
+  compositeBreakdown,
 }: Props) {
   const fmt = makeFormatter(valueFormat);
   const total = showPercent ? data.reduce((s, d) => s + (d.value || 0), 0) : 0;
   const pct = (v: number) => (total > 0 ? (v / total) * 100 : 0);
+  const isCompositeMode = compositeBreakdown !== undefined;
 
   // Dynamic YAxis width for horizontal bars. Previously hardcoded to 130,
   // which burned 44% of a 375px phone's drawing area even when labels were
@@ -151,11 +159,70 @@ export default function BarChartBase({
             />
           </>
         )}
-        <Tooltip
-          contentStyle={{ backgroundColor: "white", border: "1px solid #E6E8F0", borderRadius: "12px", boxShadow: "0 6px 14px rgba(16,22,54,0.08)", fontSize: "12px" }}
-          formatter={tooltipFormatter}
-          cursor={{ fill: "rgba(48,64,144,0.06)" }}
-        />
+        {isCompositeMode ? (
+          // Sprint P7 v4 (2026-04-29): composite-mode tooltip renders a
+          // per-metric percentile + weight breakdown. Recharts passes the
+          // hovered datum's payload via the `content` render prop.
+          <Tooltip
+            cursor={{ fill: "rgba(48,64,144,0.06)" }}
+            content={({ active, payload }: { active?: boolean; payload?: Array<{ payload: { label: string; value: number } }> }) => {
+              if (!active || !payload || payload.length === 0) return null;
+              const datum = payload[0].payload;
+              const breakdown = compositeBreakdown![datum.label];
+              if (!breakdown || breakdown.length === 0) {
+                return (
+                  <div style={{ backgroundColor: "white", border: "1px solid #E6E8F0", borderRadius: "12px", boxShadow: "0 6px 14px rgba(16,22,54,0.08)", padding: "8px 12px", fontSize: "12px" }}>
+                    <div style={{ fontWeight: 600 }}>{datum.label}</div>
+                    <div style={{ color: "#4A506A" }}>{Math.round(datum.value)} composite</div>
+                  </div>
+                );
+              }
+              return (
+                <div style={{ backgroundColor: "#0E1330", border: "1px solid #1A2558", borderRadius: "10px", boxShadow: "0 6px 14px rgba(16,22,54,0.18)", padding: "10px 12px", fontSize: "12px", color: "#DCE0F3", minWidth: "240px" }}>
+                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginBottom: 6, paddingBottom: 6, borderBottom: "1px solid #1A2558" }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "#A4ACD0" }}>
+                      {datum.label}
+                    </span>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: "#FFFFFF", fontVariantNumeric: "tabular-nums" }}>
+                      {Math.round(datum.value)}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    {breakdown.map((b: CompositeBreakdownEntry) => {
+                      const contribution = (b.percentile * b.weight) / 100;
+                      return (
+                        <div key={b.name} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: "#DCE0F3", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {b.name}
+                          </span>
+                          <span style={{ fontSize: 11, color: "#A4ACD0", fontVariantNumeric: "tabular-nums" }}>
+                            {b.raw && <span style={{ opacity: 0.75 }}>{b.raw} · </span>}
+                            p{Math.round(b.percentile)}
+                          </span>
+                          <span style={{ fontSize: 10, color: "#7A86B8", fontVariantNumeric: "tabular-nums", width: 36, textAlign: "right" }}>
+                            × {Math.round(b.weight)}%
+                          </span>
+                          <span style={{ fontSize: 11, fontWeight: 600, fontVariantNumeric: "tabular-nums", width: 32, textAlign: "right" }}>
+                            {contribution.toFixed(0)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px solid #1A2558", fontSize: 10, color: "#7A86B8" }}>
+                    p<span>N</span> = percentile rank. Σ contributions = composite.
+                  </div>
+                </div>
+              );
+            }}
+          />
+        ) : (
+          <Tooltip
+            contentStyle={{ backgroundColor: "white", border: "1px solid #E6E8F0", borderRadius: "12px", boxShadow: "0 6px 14px rgba(16,22,54,0.08)", fontSize: "12px" }}
+            formatter={tooltipFormatter}
+            cursor={{ fill: "rgba(48,64,144,0.06)" }}
+          />
+        )}
         {/*
           maxBarSize caps each bar at ~56px so a 1-bar chart doesn't fill the
           entire plot width (prior pass had no cap and a single pillar bar

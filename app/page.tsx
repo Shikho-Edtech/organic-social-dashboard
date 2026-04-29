@@ -123,6 +123,50 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
     color: canonicalColor("pillar", s.key),
   }));
 
+  // Sprint P7 v4 (2026-04-29): per-cell composite breakdown for the
+  // BarChartBase tooltip. For each pillar in composite mode, compute
+  // the per-metric percentile rank within the pillar population +
+  // the active weight share. Caches sorted lookups once per metric.
+  const pillarCompositeBreakdown: Record<string, Array<{
+    name: string; percentile: number; weight: number; raw?: string;
+  }>> = {};
+  if (isComposite) {
+    // Per-metric sorted population for percentile lookup.
+    const sortedByMetric: Record<string, number[]> = {};
+    for (const m of activeMetrics) {
+      sortedByMetric[m] = pillarStatsAll
+        .map((p) => groupStatValue(p, m))
+        .sort((a, b) => a - b);
+    }
+    // Sum-normalize weights (matches compositeScore math).
+    const rawWeights = activeWeights && activeWeights.length === activeMetrics.length
+      ? activeWeights
+      : activeMetrics.map(() => 1);
+    const totalW = rawWeights.reduce((s, x) => s + Math.max(0, x), 0) || 1;
+    const normalized = rawWeights.map((w) => (Math.max(0, w) / totalW) * 100);
+    // Per-pillar breakdown.
+    for (const s of pillarStatsAll) {
+      const label = s.key || "Unknown";
+      pillarCompositeBreakdown[label] = activeMetrics.map((m, i) => {
+        const value = groupStatValue(s, m);
+        const sorted = sortedByMetric[m];
+        // Percentile rank = fraction strictly less than value.
+        let lo = 0, hi = sorted.length;
+        while (lo < hi) {
+          const mid = (lo + hi) >>> 1;
+          if (sorted[mid] < value) lo = mid + 1; else hi = mid;
+        }
+        const percentile = sorted.length > 0 ? (lo / sorted.length) * 100 : 0;
+        return {
+          name: metricLabel[m],
+          percentile,
+          weight: normalized[i],
+          raw: m === "engagement" ? `${value.toFixed(2)}%` : Math.round(value).toLocaleString(),
+        };
+      });
+    }
+  }
+
   // Biggest movers — pillar-level deltas vs the previous equal-length
   // period. The old "Engagement Mix" donut (reactions vs comments vs shares)
   // was aesthetically pleasing but non-actionable: the mix rarely shifts
@@ -281,6 +325,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
             metricName={isComposite ? "Composite" : metricLabel[primaryMetric]}
             valueAxisLabel={isComposite ? "Composite score" : metricLabel[primaryMetric]}
             showPercent={!isComposite}
+            compositeBreakdown={isComposite ? pillarCompositeBreakdown : undefined}
           />
         </ChartCard>
 

@@ -303,6 +303,42 @@ export default function ExploreClient({ posts, activeMetrics = ["reach"], active
                 metricName={isComposite ? "Composite" : metricLabelFull[primaryMetric]}
                 valueAxisLabel={isComposite ? "Composite score" : metricLabelFull[primaryMetric]}
                 showPercent={!isComposite}
+                compositeBreakdown={isComposite ? (() => {
+                  // Sprint P7 v4 (2026-04-29): per-bar percentile breakdown for
+                  // the composite-mode tooltip. Computed once per render across
+                  // the full grouped population (not the top-12 slice) so the
+                  // percentile rank is honest.
+                  const sortedByMetric: Record<string, number[]> = {};
+                  for (const m of activeMetrics) {
+                    sortedByMetric[m] = grouped.map((g) => groupStatValue(g, m)).sort((a, b) => a - b);
+                  }
+                  const rawWeights = activeWeights && activeWeights.length === activeMetrics.length
+                    ? activeWeights
+                    : activeMetrics.map(() => 1);
+                  const totalW = rawWeights.reduce((s, x) => s + Math.max(0, x), 0) || 1;
+                  const normalized = rawWeights.map((w) => (Math.max(0, w) / totalW) * 100);
+                  const out: Record<string, Array<{ name: string; percentile: number; weight: number; raw?: string }>> = {};
+                  for (const g of grouped) {
+                    const label = g.key || "Unknown";
+                    out[label] = activeMetrics.map((m, i) => {
+                      const value = groupStatValue(g, m);
+                      const sorted = sortedByMetric[m];
+                      let lo = 0, hi = sorted.length;
+                      while (lo < hi) {
+                        const mid = (lo + hi) >>> 1;
+                        if (sorted[mid] < value) lo = mid + 1; else hi = mid;
+                      }
+                      const percentile = sorted.length > 0 ? (lo / sorted.length) * 100 : 0;
+                      return {
+                        name: metricLabelFull[m],
+                        percentile,
+                        weight: normalized[i],
+                        raw: m === "engagement" ? `${value.toFixed(2)}%` : Math.round(value).toLocaleString(),
+                      };
+                    });
+                  }
+                  return out;
+                })() : undefined}
               />
             </ChartCard>
           </div>
