@@ -1,5 +1,37 @@
 # Changelog
 
+## 2026-04-28 — Sprint P7 Phase 3 QA pass (deep-wire metric selector across 5 pages)
+
+User QA caught that the page-level metric selector was visually present
+on Trends/Timing/Reels but only re-keyed selected charts. Spec
+philosophy: every chart with a comparable metric should follow the
+selection (only categorical/count things stay invariant). 5 commits
+fix the gap:
+
+- `7e2c033` — Explore: Performance by X + Reach Over Time both re-key.
+  Single-metric uses raw value sort; multi-metric uses composite. Bar
+  chart's percent share + axis label adapt; trend chart title flips.
+- `5c6e8a2` — Overview Biggest Movers: ranks by primary metric delta
+  with metric-aware floor (reach 5000, interactions 50, engagement
+  0.5%, shares 5). Item rows show appropriate units.
+- `b71f91b` — Trends: collapsed 4 charts into 3 (Daily Posting Volume
+  invariant + Daily {metric} + Weekly {metric}). Engagement-rate path
+  preserves reach-weighted aggregation; other metrics sum per ISO week.
+- `2336baa` — Timing: 3rd heatmap surfaces when active metric is
+  shares or interactions (canonical reach + ER pair stays for
+  divergence-spotting on those metrics).
+- `c50781a` — Reels: "Top 10 Reels by {metric}" list surfaces when
+  metric != reach. Reach already covered by existing Top-by-Plays.
+
+Categorical/count things stay invariant per spec: Format Distribution
+(Overview), Daily Posting Volume (Trends), Reels-domain lists by
+Plays/Watch Time/Followers Gained (Reels).
+
+Net: every page that exposes the MetricSelector now propagates
+selection to every chart it should. Engagement page Format×Hour box
+was Phase 1.4. Diagnosis/Plan/Outcomes correctly don't have the
+selector at all.
+
 ## 2026-04-28 — Sprint P7 Phases 2 + 3 shipped (locking, mid-week diagnosis, week selectors, multi-metric ranking)
 
 Eleven commits land the rest of Sprint P7 across both repos in one

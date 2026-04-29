@@ -1,5 +1,30 @@
 # Learnings
 
+## 2026-04-28 — "Selector visible everywhere" ≠ "selector re-keys everything"
+
+When wiring the page-level MetricSelector, I shipped Trends/Timing/Reels
+with the SELECTOR rendered but only Overview + Explore deep-wired.
+Reasoning at the time: selector visibility gives URL persistence + the
+right vocabulary; per-chart re-keying is incremental.
+
+User QA caught the gap on the very first check — picked Shares on
+Explore, expected "Reach Over Time" to flip to "Shares Over Time" and
+"Performance by Pillar" to rerank by shares. Both were still showing
+reach. The selector being VISIBLE created the expectation that
+selection PROPAGATES. Visible without propagation is broken UX, not
+"shipped foundation."
+
+**Rule going forward:** if a control is visible on a page, it must
+visibly affect things on that page. Otherwise it's misleading. When
+deferring deep-wire work, defer the SELECTOR too — don't ship
+half-wired UI that lies about what it does.
+
+The fix took 5 atomic commits across 4 pages, ~2 hours. Cheaper to
+have done it right the first time. The only true exception is
+"categorical/count things" (Format Distribution, Daily Posting Volume)
+that genuinely don't have a comparable metric — explicitly call those
+out in the chart's caption ("invariant to active metric").
+
 ## 2026-04-28 — When 2 metrics aren't comparable in raw units, percentile-rank first
 
 Tried to ship multi-metric ranking as "average the raw values" — but
