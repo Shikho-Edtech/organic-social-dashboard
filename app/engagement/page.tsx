@@ -237,7 +237,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           hashes to a stable colour that persists across renders. The
           colour is inline `style` because Tailwind can't compile a
           dynamic `text-[#hex]`. */}
-      {/* Best X strip. Prior pass rendered "0.00% eng rate" under a "—"
+      {/* Best X strip. Prior pass rendered "0.00% engagement rate" under a "—"
           label when nothing cleared the MIN_N gate — a fake rate on a fake
           winner. Now: if no bucket qualifies, show a single "Not enough
           posts" line instead of a false precision number. The reliability
@@ -263,7 +263,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           {bestFormat ? (
             <>
               <div className="text-xs text-slate-500 mt-1">
-                {bestFormat.avg_engagement_rate.toFixed(2)}% eng rate
+                {bestFormat.avg_engagement_rate.toFixed(2)}% engagement rate
               </div>
               <div className="text-[11px] text-slate-500 mt-0.5">
                 {reliabilityLabel(bestFormat.count)}
@@ -285,7 +285,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           {bestPillar ? (
             <>
               <div className="text-xs text-slate-500 mt-1">
-                {bestPillar.avg_engagement_rate.toFixed(2)}% eng rate
+                {bestPillar.avg_engagement_rate.toFixed(2)}% engagement rate
               </div>
               <div className="text-[11px] text-slate-500 mt-0.5">
                 {reliabilityLabel(bestPillar.count)}
@@ -307,7 +307,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           {bestHook ? (
             <>
               <div className="text-xs text-slate-500 mt-1">
-                {bestHook.avg_engagement_rate.toFixed(2)}% eng rate
+                {bestHook.avg_engagement_rate.toFixed(2)}% engagement rate
               </div>
               <div className="text-[11px] text-slate-500 mt-0.5">
                 {reliabilityLabel(bestHook.count)}
@@ -329,7 +329,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           {bestSpotlight ? (
             <>
               <div className="text-xs text-slate-500 mt-1">
-                {bestSpotlight.avg_engagement_rate.toFixed(2)}% eng rate
+                {bestSpotlight.avg_engagement_rate.toFixed(2)}% engagement rate
               </div>
               <div className="text-[11px] text-slate-500 mt-0.5">
                 {reliabilityLabel(bestSpotlight.count)}
@@ -351,7 +351,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           {bestTone ? (
             <>
               <div className="text-xs text-ink-400 mt-1">
-                {bestTone.avg_engagement_rate.toFixed(2)}% eng rate
+                {bestTone.avg_engagement_rate.toFixed(2)}% engagement rate
               </div>
               <div className="text-[11px] text-ink-400 mt-0.5">
                 {reliabilityLabel(bestTone.count)}
@@ -555,7 +555,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
                   <span style={{ color: canonicalColor("pillar", bestPillar.key) }}>{bestPillar.key}</span>
                 </div>
                 <div className="text-[12px] text-ink-muted mt-1.5 leading-relaxed">
-                  {bestFormat.key} averages <span className="font-semibold text-ink-700">{bestFormat.avg_engagement_rate.toFixed(2)}%</span> ER
+                  {bestFormat.key} averages <span className="font-semibold text-ink-700">{bestFormat.avg_engagement_rate.toFixed(2)}%</span> engagement rate
                   ({bestFormat.count} post{bestFormat.count === 1 ? "" : "s"}) · {bestPillar.key} averages <span className="font-semibold text-ink-700">{bestPillar.avg_engagement_rate.toFixed(2)}%</span>
                   ({bestPillar.count} post{bestPillar.count === 1 ? "" : "s"}). The intersection is untested — treat it as a hypothesis.
                 </div>
@@ -584,7 +584,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
                   {bestHook.key}
                 </div>
                 <div className="text-[12px] text-ink-muted mt-1.5 leading-relaxed">
-                  <span className="font-semibold text-ink-700">{bestHook.avg_engagement_rate.toFixed(2)}%</span> ER across {bestHook.count} post{bestHook.count === 1 ? "" : "s"}. Try this hook on the other pillars to see whether the opening or the topic is doing the work.
+                  <span className="font-semibold text-ink-700">{bestHook.avg_engagement_rate.toFixed(2)}%</span> engagement rate across {bestHook.count} post{bestHook.count === 1 ? "" : "s"}. Try this hook on the other pillars to see whether the opening or the topic is doing the work.
                 </div>
               </div>
             )}
@@ -635,7 +635,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
                   {bestTone.key}
                 </div>
                 <div className="text-[12px] text-ink-muted mt-1.5 leading-relaxed">
-                  <span className="font-semibold text-ink-700">{bestTone.avg_engagement_rate.toFixed(2)}%</span> ER across {bestTone.count} post{bestTone.count === 1 ? "" : "s"}. Tone is the caption's overall register (Educational vs Urgent / FOMO) — independent of the hook.
+                  <span className="font-semibold text-ink-700">{bestTone.avg_engagement_rate.toFixed(2)}%</span> engagement rate across {bestTone.count} post{bestTone.count === 1 ? "" : "s"}. Tone is the caption's overall register (Educational vs Urgent / FOMO) — independent of the hook.
                 </div>
               </div>
             )}

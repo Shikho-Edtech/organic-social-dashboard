@@ -205,7 +205,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
           <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Best for Engagement (Day)</div>
           <div className="text-xl sm:text-2xl font-bold text-brand-pink mt-2 break-words leading-tight">{bestDayEng?.label || "—"}</div>
           <div className="text-xs text-slate-500 mt-1">
-            {(bestDayEng?.erSum.mean || 0).toFixed(2)}% avg eng rate
+            {(bestDayEng?.erSum.mean || 0).toFixed(2)}% avg engagement rate
           </div>
           <div className="text-[11px] text-slate-500 mt-0.5">
             {reliabilityLabel(bestDayEng?.posts || 0)}
@@ -231,7 +231,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
           <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Best for Engagement (Hour)</div>
           <div className="text-xl sm:text-2xl font-bold text-brand-purple mt-2 break-words leading-tight">{bestHourEng?.label || "—"}</div>
           <div className="text-xs text-slate-500 mt-1">
-            {(bestHourEng?.erSum.mean || 0).toFixed(2)}% avg eng rate
+            {(bestHourEng?.erSum.mean || 0).toFixed(2)}% avg engagement rate
           </div>
           <div className="text-[11px] text-slate-500 mt-0.5">
             {reliabilityLabel(bestHourEng?.posts || 0)}
@@ -247,7 +247,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
         <ChartCard
           title="Engagement Rate · Day × Hour"
           kind="derived"
-          subtitle="Reach-weighted ER for each (day-of-week, publish hour) cell"
+          subtitle="Reach-weighted engagement rate for each (day-of-week, publish hour) cell"
           definition={`For each (day, hour) cell: (Σ interactions ÷ Σ reach) × 100 across all posts that cell. Color saturation encodes the rate — darker = stronger engagement. Cells with fewer than ${CELL_MIN_N} posts are dimmed (still visible so zero-post slots are distinguishable from low-confidence ones). Reach-weighted so a single viral post can't hijack a cell's color.`}
           sampleSize={`${totalCellsReliable} / ${totalCellsWithPosts} cells reliable (n≥${CELL_MIN_N}), ${inRange.length} posts total`}
           caption={`Read left-to-right for daily patterns, top-to-bottom for weekday patterns. Dark diagonal bands suggest consistent "best time" windows. Bangladesh Time (UTC+6).`}
@@ -277,7 +277,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
           title="Avg Reach · Day × Hour"
           kind="observed"
           subtitle="Per-post unique reach averaged for each (day, hour) cell"
-          definition={`For each (day, hour) cell: Σ reach ÷ N posts that cell. Color encodes average reach per post; cells with fewer than ${CELL_MIN_N} posts are dimmed. Pair with the engagement rate heatmap above — reach and ER can diverge (a cell can deliver high reach with low ER, or vice versa).`}
+          definition={`For each (day, hour) cell: Σ reach ÷ N posts that cell. Color encodes average reach per post; cells with fewer than ${CELL_MIN_N} posts are dimmed. Pair with the engagement rate heatmap above — reach and engagement rate can diverge (a cell can deliver high reach with low engagement rate, or vice versa).`}
           sampleSize={`${totalCellsReliable} / ${totalCellsWithPosts} cells reliable (n≥${CELL_MIN_N})`}
           caption={`Dark cells here + dark cells above = that day/hour is your best publish window on both axes.`}
           viewData={reachViewData}
