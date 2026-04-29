@@ -261,6 +261,129 @@ export function cadenceGaps(posts: Post[]): number[] {
  */
 export type FormatHourMetric = "reach" | "interactions" | "engagement" | "shares";
 
+// Sprint P7 Phase 3 (2026-04-28): page-level multi-metric ranking. Same
+// 4-metric set as FormatHourMetric, exposed as a stable type for the
+// `<MetricSelector>` component + composite ranking helpers below. Keeps
+// the two metric vocabularies aligned — Format×Hour box-level pills and
+// page-level pills speak the same language.
+export type RankingMetric = FormatHourMetric;
+
+/**
+ * Extract a single-metric value from a Post for ranking purposes.
+ * Used by the composite ranker below to score individual rows.
+ */
+export function postMetricValue(p: Post, metric: RankingMetric): number {
+  switch (metric) {
+    case "reach":        return reach(p);
+    case "interactions": return totalInteractions(p);
+    case "engagement":   return engagementRate(p);
+    case "shares":       return p.shares || 0;
+  }
+}
+
+/**
+ * Composite score for a single row across multiple metrics. Each metric
+ * is normalized to its percentile-rank within the supplied population
+ * (0..1, higher = better), then averaged with equal weight.
+ *
+ * Why percentile-rank: raw values across reach (10000s) and engagement
+ * rate (0.X%) aren't comparable for averaging. Percentile-rank puts
+ * everything on the same 0..1 scale so equal-weight averaging is
+ * meaningful.
+ *
+ * Why this signature: caller computes percentile-rank lookup tables
+ * once per metric (not per row) for O(N log N) total instead of O(N²).
+ *
+ * Usage:
+ *   const sortedByMetric: Record<RankingMetric, number[]> = {
+ *     reach:        [...posts.map(p => reach(p))].sort((a,b) => a-b),
+ *     interactions: ... etc
+ *   };
+ *   const score = compositeScore(post, ["reach","interactions"], sortedByMetric);
+ *
+ * Returns 0..1; rows with the highest composite rank highest.
+ */
+export function compositeScore(
+  p: Post,
+  metrics: RankingMetric[],
+  sortedByMetric: Record<RankingMetric, number[]>,
+): number {
+  if (metrics.length === 0) return 0;
+  let sum = 0;
+  for (const m of metrics) {
+    const value = postMetricValue(p, m);
+    const sorted = sortedByMetric[m] || [];
+    if (sorted.length === 0) continue;
+    sum += percentileRankIn(value, sorted);
+  }
+  return sum / metrics.length;
+}
+
+/**
+ * Percentile rank of `value` in a pre-sorted ascending array. Returns
+ * the fraction of array entries strictly less than `value` (0 = below
+ * everything, 1 = above everything). Tied values get fractional credit
+ * for the lower-rank position.
+ *
+ * Implements binary search for O(log N) per lookup. Caller is
+ * responsible for pre-sorting; this helper does NOT sort.
+ */
+export function percentileRankIn(value: number, sortedAsc: number[]): number {
+  const n = sortedAsc.length;
+  if (n === 0) return 0;
+  // Binary search for first index >= value.
+  let lo = 0;
+  let hi = n;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    if (sortedAsc[mid] < value) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo / n;
+}
+
+/**
+ * Build the sorted-by-metric lookup tables a composite ranker needs.
+ * Run this ONCE per page render (not per row) for O(N log N) total.
+ */
+export function buildMetricSorts(
+  posts: Post[],
+  metrics: RankingMetric[],
+): Record<RankingMetric, number[]> {
+  const out: Partial<Record<RankingMetric, number[]>> = {};
+  for (const m of metrics) {
+    out[m] = posts.map((p) => postMetricValue(p, m)).sort((a, b) => a - b);
+  }
+  // Fill any unrequested keys with empty arrays so the type stays clean.
+  for (const opt of ["reach", "interactions", "engagement", "shares"] as RankingMetric[]) {
+    if (!out[opt]) out[opt] = [];
+  }
+  return out as Record<RankingMetric, number[]>;
+}
+
+/**
+ * Sort posts by composite score across `metrics`, descending. When
+ * `metrics` has length 1, falls back to a direct value sort (cheaper +
+ * preserves exact ordering instead of percentile-bucketed). When
+ * length 0, returns posts unchanged.
+ */
+export function sortByComposite(
+  posts: Post[],
+  metrics: RankingMetric[],
+): Post[] {
+  if (metrics.length === 0) return posts;
+  if (metrics.length === 1) {
+    const m = metrics[0];
+    return [...posts].sort((a, b) => postMetricValue(b, m) - postMetricValue(a, m));
+  }
+  const sorted = buildMetricSorts(posts, metrics);
+  // Decorate, sort, undecorate (Schwartzian) so we don't recompute the
+  // composite per comparison.
+  const decorated = posts.map((p) => [compositeScore(p, metrics, sorted), p] as const);
+  decorated.sort((a, b) => b[0] - a[0]);
+  return decorated.map(([_, p]) => p);
+}
+
 export function formatHourMatrix(
   posts: Post[],
   metric: FormatHourMetric
