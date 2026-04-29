@@ -26,12 +26,14 @@ type DayRow = {
 
 export default async function TimingPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   const range = resolveRange(searchParams);
-  // Sprint P7 Phase 3: page-level metric selector. Timing page already
-  // has both reach + engagement-rate heatmaps (the two primary signals
-  // for "when to post"); the selector renders for cross-page URL
-  // persistence + future v3.5 deep wiring (e.g. could show a third
-  // heatmap for shares/interactions when active).
+  // Sprint P7 Phase 3 + QA pass (2026-04-28): page-level metric
+  // selector. Timing's canonical pair is reach + engagement-rate
+  // heatmaps (the two primary signals for "when to post"); when the
+  // active metric is shares or interactions, a third heatmap surfaces
+  // below the canonical pair so the user can compare the new metric
+  // against reach.
   const activeMetrics = parseMetricParam(searchParams.metric);
+  const primaryMetric = activeMetrics[0];
   const [posts, runStatus] = await Promise.all([getPosts(), getRunStatus()]);
   const inRange = filterPosts(posts, { start: range.start, end: range.end });
 
@@ -73,10 +75,14 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
   // Day×Hour aggregation for the heatmap. Bucket posts by (day-of-week,
   // publish-hour-in-BDT); compute reach-weighted ER per bucket (so a
   // single monster post doesn't hijack the cell).
-  type CellBucket = { posts: number; reach: number; interactions: number; n: number };
+  type CellBucket = { posts: number; reach: number; interactions: number; shares?: number; n: number };
   const grid: CellBucket[][] = Array.from({ length: 7 }, () =>
     Array.from({ length: 24 }, () => ({ posts: 0, reach: 0, interactions: 0, n: 0 }))
   );
+  // Sprint P7 QA pass (2026-04-28): add per-cell shares + share aggregates so
+  // the optional third heatmap (when active metric is shares or
+  // interactions) renders against the same grid we already built for
+  // reach + ER. Almost-zero cost — one more accumulator field.
   for (const p of inRange) {
     if (!p.created_time) continue;
     const d = bdt(p.created_time);
@@ -89,10 +95,15 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
     grid[day][hour].posts += 1;
     grid[day][hour].reach += r;
     grid[day][hour].interactions += totalInteractions(p);
+    grid[day][hour].shares = (grid[day][hour].shares || 0) + (p.shares || 0);
     grid[day][hour].n += 1;
   }
   const erCells: HeatmapCell[] = [];
   const reachCells: HeatmapCell[] = [];
+  // Third heatmap cells: avg of active metric per cell. Only built + rendered
+  // when active metric is "shares" or "interactions"; reach + engagement
+  // are already covered by the canonical pair above.
+  const metricCells: HeatmapCell[] = [];
   for (let d = 0; d < 7; d++) {
     for (let h = 0; h < 24; h++) {
       const b = grid[d][h];
@@ -100,6 +111,16 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
       const avgReach = b.posts > 0 ? b.reach / b.posts : 0;
       erCells.push({ day: d, hour: h, value: er, n: b.n, totalReach: b.reach });
       reachCells.push({ day: d, hour: h, value: avgReach, n: b.n, totalReach: b.reach });
+      // Per-cell value of the active metric. For interactions: sum ÷ posts.
+      // For shares: sum ÷ posts. Both yield "avg per post" semantics that
+      // matches the existing reach heatmap's scale.
+      const metricValue =
+        primaryMetric === "shares"
+          ? (b.posts > 0 ? (b.shares || 0) / b.posts : 0)
+          : primaryMetric === "interactions"
+            ? (b.posts > 0 ? b.interactions / b.posts : 0)
+            : 0;
+      metricCells.push({ day: d, hour: h, value: metricValue, n: b.n, totalReach: b.reach });
     }
   }
 
@@ -307,6 +328,42 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
           )}
         </ChartCard>
       </div>
+
+      {/* Sprint P7 QA pass (2026-04-28): third heatmap rendered when the
+          active metric is shares or interactions. Reach + engagement
+          are the canonical timing pair (always shown); shares /
+          interactions add a third dimension when those are the focus.
+          Honors the spec philosophy "every chart with a comparable
+          metric should re-key" while preserving the dual-view value of
+          the canonical pair. */}
+      {(primaryMetric === "shares" || primaryMetric === "interactions") && (
+        <div className="mb-6">
+          <ChartCard
+            title={`Avg ${primaryMetric === "shares" ? "Shares" : "Interactions"} · Day × Hour`}
+            kind="observed"
+            subtitle={`Per-post ${primaryMetric === "shares" ? "shares" : "total interactions"} averaged for each (day, hour) cell`}
+            definition={`For each (day, hour) cell: Σ ${primaryMetric === "shares" ? "shares" : "interactions (reactions + comments + shares)"} ÷ N posts that cell. Color encodes the per-post average; cells with fewer than ${CELL_MIN_N} posts are dimmed. Surfaced because you've selected ${primaryMetric === "shares" ? "Shares" : "Interactions"} at the page level.`}
+            sampleSize={`${totalCellsReliable} / ${totalCellsWithPosts} cells reliable (n≥${CELL_MIN_N})`}
+            caption={`Compare against the reach heatmap above — a cell can deliver high reach with low ${primaryMetric === "shares" ? "shares" : "interactions"} per post (passive consumption) or vice versa (engaged niche audience).`}
+          >
+            {totalCellsWithPosts === 0 ? (
+              <EmptyChart
+                message="No posts in this date range"
+                hint="Widen the range or check that posts exist for this window."
+              />
+            ) : (
+              <Heatmap
+                cells={metricCells}
+                minN={CELL_MIN_N}
+                metricLabel={`avg ${primaryMetric}`}
+                valueFormat="number"
+                minColor={primaryMetric === "shares" ? "#FEF3D9" : "#FCEAF3"}
+                maxColor={primaryMetric === "shares" ? "#E0A010" : "#C02080"}
+              />
+            )}
+          </ChartCard>
+        </div>
+      )}
     </div>
   );
 }
