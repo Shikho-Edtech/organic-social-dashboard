@@ -1,14 +1,21 @@
 "use client";
 import { useMemo, useState, useRef, useEffect } from "react";
 import type { Post, DailyMetric } from "@/lib/types";
-import { computeKpis, filterPosts, dailyReach, groupStats, bdt, reach, engagementRate, daysAgo } from "@/lib/aggregate";
+import { computeKpis, filterPosts, dailyReach, groupStats, bdt, reach, engagementRate, daysAgo, sortByComposite, type RankingMetric } from "@/lib/aggregate";
 import { Card, ChartCard } from "@/components/Card";
 import TrendChart from "@/components/TrendChart";
 import BarChartBase from "@/components/BarChart";
 import PostReference from "@/components/PostReference";
 import { canonicalColor, type ColorField } from "@/lib/colors";
 
-type Props = { posts: Post[]; daily: DailyMetric[] };
+type Props = {
+  posts: Post[];
+  daily: DailyMetric[];
+  /** Sprint P7 Phase 3: active ranking metrics from ?metric=... URL param.
+   *  Composite-ranks post lists when 2+; falls back to single-metric sort
+   *  when 1. Default ["reach"] preserves prior behavior. */
+  activeMetrics?: RankingMetric[];
+};
 type Preset = "7d" | "30d" | "90d" | "ytd" | "all" | "custom";
 
 // Map the group-by dimension onto a canonical colour field so a bar for
@@ -54,7 +61,7 @@ function uniqueValues(posts: Post[], key: keyof Post): string[] {
   return Array.from(set).sort();
 }
 
-export default function ExploreClient({ posts }: Props) {
+export default function ExploreClient({ posts, activeMetrics = ["reach"] }: Props) {
   const [preset, setPreset] = useState<Preset>("30d");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
@@ -97,9 +104,14 @@ export default function ExploreClient({ posts }: Props) {
   const kpis = computeKpis(filtered);
   const trend = dailyReach(filtered).map((d) => ({ date: d.date.slice(5), value: d.reach }));
   // Full sorted list so pagination can walk past the top 10.
+  // Sprint P7 Phase 3: composite-rank when 2+ metrics active. The
+  // existing variable name `sortedByReach` keeps the diff small —
+  // semantically it's now "sortedByActiveMetrics" but rename is risky
+  // given how many references exist; the value is the same shape
+  // (Post[] descending by score).
   const sortedByReach = useMemo(
-    () => [...filtered].sort((a, b) => reach(b) - reach(a)),
-    [filtered]
+    () => sortByComposite(filtered, activeMetrics),
+    [filtered, activeMetrics]
   );
   const grouped = groupStats(filtered, groupByDim);
 
@@ -258,7 +270,10 @@ export default function ExploreClient({ posts }: Props) {
               <div>
                 <h3 className="text-base font-semibold text-slate-900">Top Posts</h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Ranked by unique reach · {sortedByReach.length.toLocaleString()} matching
+                  {activeMetrics.length === 1
+                    ? `Ranked by ${{ reach: "unique reach", interactions: "total interactions", engagement: "engagement rate", shares: "shares" }[activeMetrics[0]]}`
+                    : `Ranked by composite (${activeMetrics.length} metrics, equal weight)`}
+                  {" · "}{sortedByReach.length.toLocaleString()} matching
                 </p>
               </div>
               <div className="flex items-center gap-2 text-xs text-slate-500">
