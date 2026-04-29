@@ -259,9 +259,11 @@ export function cadenceGaps(posts: Post[]): number[] {
  *  - "reach"     → mean unique reach per post in the cell
  *  - "engagement" → mean engagement rate (totalInteractions ÷ reach × 100)
  */
+export type FormatHourMetric = "reach" | "interactions" | "engagement" | "shares";
+
 export function formatHourMatrix(
   posts: Post[],
-  metric: "reach" | "engagement"
+  metric: FormatHourMetric
 ): Record<string, Record<number, { mean: number; n: number }>> {
   const buckets: Record<string, Record<number, number[]>> = {};
   for (const p of posts) {
@@ -276,7 +278,11 @@ export function formatHourMatrix(
     const v =
       metric === "reach"
         ? reach(p)
-        : engagementRate(p);
+        : metric === "interactions"
+          ? totalInteractions(p)
+          : metric === "shares"
+            ? (p.shares || 0)
+            : engagementRate(p);
     buckets[fmt][hour].push(v);
   }
   const out: Record<string, Record<number, { mean: number; n: number }>> = {};

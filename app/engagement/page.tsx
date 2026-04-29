@@ -10,6 +10,8 @@ import {
   formatHourMatrix,
   reach as postReach,
 } from "@/lib/aggregate";
+import type { FormatHourMetric } from "@/lib/aggregate";
+import Link from "next/link";
 import { minPostsForRange, reliabilityLabel } from "@/lib/stats";
 import { resolveRange, rangeDays as computeRangeDays } from "@/lib/daterange";
 import { canonicalColor } from "@/lib/colors";
@@ -35,8 +37,121 @@ function rankByReachWeighted(items: GroupStatRow[]): GroupStatRow | undefined {
   return [...items].sort((a, b) => b.avg_engagement_rate - a.avg_engagement_rate)[0];
 }
 
+// ─── Format × Hour box-level metric selector (Sprint P7 Phase 1.4) ──────
+// Shared helpers + the pill component that switches the heatmap metric.
+// Server-rendered: pills are <Link>s that change ?fhMetric=... and the page
+// re-renders with the new metric. URL-persistent so deep links / refresh
+// preserve selection. Preview of the page-level multi-metric selector
+// landing in Phase 3.
+
+const FH_METRIC_OPTIONS: { id: FormatHourMetric; label: string }[] = [
+  { id: "reach",        label: "Total reach" },
+  { id: "interactions", label: "Interactions" },
+  { id: "engagement",   label: "Engagement rate" },
+  { id: "shares",       label: "Shares" },
+];
+
+const FH_METRIC_TITLES: Record<FormatHourMetric, string> = {
+  reach: "Reach",
+  interactions: "Interactions",
+  engagement: "Engagement rate",
+  shares: "Shares",
+};
+
+const FH_METRIC_SUBTITLES: Record<FormatHourMetric, string> = {
+  reach: "Mean unique reach per post",
+  interactions: "Mean total interactions per post (reactions + comments + shares)",
+  engagement: "Mean engagement rate per post (interactions ÷ reach × 100)",
+  shares: "Mean shares per post",
+};
+
+const FH_METRIC_DEFINITIONS: Record<FormatHourMetric, string> = {
+  reach: "mean unique reach per post published in that cell",
+  interactions: "mean (reactions + comments + shares) per post in that cell",
+  engagement: "mean engagement rate per post in that cell, where engagement rate = interactions ÷ reach × 100",
+  shares: "mean shares per post in that cell",
+};
+
+const FH_METRIC_NOUNS: Record<FormatHourMetric, string> = {
+  reach: "reach",
+  interactions: "interactions",
+  engagement: "engagement rate",
+  shares: "shares",
+};
+
+function formatFhValue(value: number, metric: FormatHourMetric): string {
+  if (metric === "engagement") return `${value.toFixed(2)}%`;
+  return Math.round(value).toLocaleString();
+}
+
+// Build the URL for a metric pill by overlaying the new fhMetric on the
+// current searchParams. Preserves all other params (range, etc).
+function buildFhMetricUrl(
+  searchParams: Record<string, string | string[] | undefined>,
+  metric: FormatHourMetric,
+): string {
+  const params = new URLSearchParams();
+  for (const [k, v] of Object.entries(searchParams)) {
+    if (k === "fhMetric") continue;
+    if (typeof v === "string") params.set(k, v);
+    else if (Array.isArray(v) && v.length) params.set(k, v[0]);
+  }
+  if (metric !== "reach") params.set("fhMetric", metric);
+  const qs = params.toString();
+  return qs ? `/engagement?${qs}` : "/engagement";
+}
+
+function FormatHourMetricPills({
+  active,
+  searchParams,
+}: {
+  active: FormatHourMetric;
+  searchParams: Record<string, string | string[] | undefined>;
+}) {
+  return (
+    <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+      <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+        Rank by:
+      </span>
+      {FH_METRIC_OPTIONS.map((opt) => {
+        const isActive = opt.id === active;
+        return (
+          <Link
+            key={opt.id}
+            href={buildFhMetricUrl(searchParams, opt.id)}
+            scroll={false}
+            aria-pressed={isActive}
+            className={`px-2.5 py-1 rounded-md border text-xs font-medium transition-colors ${
+              isActive
+                ? "bg-brand-shikho-indigo text-white border-brand-shikho-indigo"
+                : "bg-ink-paper text-ink-secondary border-ink-100 hover:border-brand-shikho-indigo hover:text-brand-shikho-indigo"
+            }`}
+          >
+            {opt.label}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
 export default async function EngagementPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   const range = resolveRange(searchParams);
+
+  // Sprint P7 Phase 1.4 (2026-04-28): box-level metric selector for the
+  // Format × Hour heatmap. URL param `?fhMetric=reach|interactions|
+  // engagement|shares` rewires the matrix's underlying value. This is a
+  // preview of the Phase 3 page-level multi-metric selector; the
+  // Format × Hour box was singled out per spec because the other charts
+  // on /engagement are AI-classifier-driven and don't slice cleanly by
+  // alternate metrics. Default = reach (today's behavior).
+  const fhMetricParam = typeof searchParams?.fhMetric === "string"
+    ? searchParams.fhMetric
+    : "";
+  const fhMetric: FormatHourMetric =
+    fhMetricParam === "interactions" || fhMetricParam === "engagement" || fhMetricParam === "shares"
+      ? fhMetricParam
+      : "reach";
   const [posts, runStatus, videos] = await Promise.all([
     getPosts(),
     getRunStatus(),
@@ -206,7 +321,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
   // small Heatmap grid component can render; apply a minimum-n filter to
   // dim cells that are a single post so a 1-post outlier doesn't paint
   // the grid.
-  const fhMatrix = formatHourMatrix(inRange, "reach");
+  const fhMatrix = formatHourMatrix(inRange, fhMetric);
   const matrixFormats = Object.keys(fhMatrix)
     .filter((f) => f && f !== "Unknown")
     // Cap to the 6 most-posted formats so the grid stays legible at 360px.
@@ -414,11 +529,16 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           for visual consistency across "when" views. */}
       {matrixFormats.length > 0 && matrixMax > 0 && (
         <div className="mb-6">
+          {/* Sprint P7 Phase 1.4 box-level metric selector. Pills are
+              <Link>s that change the URL query param so server-rendering
+              picks up the new metric on the next request. Preview of
+              the page-level multi-metric pills landing in Phase 3. */}
+          <FormatHourMetricPills active={fhMetric} searchParams={searchParams} />
           <ChartCard
-            title="Format × Hour · Reach"
+            title={`Format × Hour · ${FH_METRIC_TITLES[fhMetric]}`}
             kind="derived"
-            subtitle="Mean reach per post for each (format, publish hour) cell"
-            definition={`For each (format, hour) cell: mean unique reach per post published in that cell. Color intensity encodes reach relative to the strongest cell on the grid. Cells with fewer than ${MATRIX_MIN_N} posts are dimmed — still visible so you can see where coverage is thin, but the color isn't trustworthy. Top ${matrixFormats.length} formats shown.`}
+            subtitle={`${FH_METRIC_SUBTITLES[fhMetric]} for each (format, publish hour) cell`}
+            definition={`For each (format, hour) cell: ${FH_METRIC_DEFINITIONS[fhMetric]}. Color intensity encodes the value relative to the strongest cell on the grid. Cells with fewer than ${MATRIX_MIN_N} posts are dimmed — still visible so you can see where coverage is thin, but the color isn't trustworthy. Top ${matrixFormats.length} formats shown.`}
             sampleSize={`${matrixFormats.length} format${matrixFormats.length === 1 ? "" : "s"} × 24 hours, n = ${inRange.length} post${inRange.length === 1 ? "" : "s"}`}
             caption="Reels at 8pm behave nothing like Carousels at 8pm. Find the dark cells per format, not just overall."
           >
@@ -481,7 +601,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
                           <td
                             key={h}
                             className="px-0 py-0.5 text-center"
-                            title={n === 0 ? `${f} @ ${h.toString().padStart(2, "0")}:00 — no posts` : `${f} @ ${h.toString().padStart(2, "0")}:00 — mean reach ${Math.round(mean).toLocaleString()} over ${n} post${n === 1 ? "" : "s"}${isReliable ? "" : " (low-n, dimmed)"}`}
+                            title={n === 0 ? `${f} @ ${h.toString().padStart(2, "0")}:00 — no posts` : `${f} @ ${h.toString().padStart(2, "0")}:00 — mean ${FH_METRIC_NOUNS[fhMetric]} ${formatFhValue(mean, fhMetric)} over ${n} post${n === 1 ? "" : "s"}${isReliable ? "" : " (low-n, dimmed)"}`}
                           >
                             <div
                               className="mx-0.5 h-[22px] rounded-xs"

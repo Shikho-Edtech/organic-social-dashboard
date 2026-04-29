@@ -111,33 +111,48 @@ Thu-Sun (via mid-week cron), refreshed Mon-Sun (via Monday end-of-week cron).
 
 ### Sprint P7 phasing
 
-#### Phase 1 — UI cleanup + rename + Plan week selector (~3-4 days)
-1. Terminology sweep across all pages (`ER` → `engagement rate`, dashes
-   → words / colons)
-2. Engagement page: drop 4 second-row boxes; keep top 5; methodology
-   footer absorbs definitions
-3. Format × Hour box-level metric selector
-4. Strategy → Diagnosis full rename (label + URL + nav + sheet column
-   references that surface to UI)
-5. Plan page week selector (This / Next / Last week, mirroring `/outcomes`)
-6. Outcomes selector copy update ("current" → "This")
+#### Phase 1 — UI cleanup + rename + Format×Hour selector (~2-3 days)
+1. Terminology sweep across all pages (`ER` → `engagement rate`)
+2. Engagement page: drop 4 second-row boxes; keep top 5
+3. Strategy → Diagnosis full rename (label + URL + nav)
+4. Format × Hour box-level metric selector
 
-**Done when:** all 6 changes deployed, brand-audit clean, mobile
-checklist passes at 360/768/1280, no broken links from old `/strategy` URL.
+**Plan + Outcomes week selector promoted to Phase 2** — discovered during
+Phase 1 build that `Content_Calendar` is overwritten each weekly run, so
+only one week's calendar exists in the sheet today. Building a This /
+Next / Last selector would render two empty tabs. The selector becomes
+meaningful once Phase 2's locking ships (preserves historical calendar
+rows on the sheet). Same dependency for Outcomes copy update ("current"
+→ "This") since the upgrade is part of the shared `WeekSelector`
+component built in Phase 2.
 
-#### Phase 2 — locking + Diagnosis week selectors + mid-week run (~1 week)
+**Done when:** terminology sweep + Engagement cleanup + rename + box-
+level selector all deployed, brand-audit clean, mobile checklist passes
+at 360/768/1280, no broken links from old `/strategy` URL.
+
+#### Phase 2 — locking + week selectors + mid-week run (~1 week)
 1. Pipeline `--mode midweek` flag + new Thursday cron workflow
 2. Diagnosis prompt: `PARTIAL_WEEK` banner injection for mid-week mode
 3. Pipeline `Weekly_Analysis` writer: append (not replace) for same
    week_ending with different engine values
 4. Pipeline writers for `Strategy`, `Content_Calendar`, `Plan_Narrative`:
-   skip-on-existing-running-week guard
-5. Dashboard: Diagnosis week selector reading the appropriate row
-   (mid-week vs end-of-week) per `engine` field
-6. Dashboard: "Preliminary, mid-week (Thu)" pill on the This-week
+   skip-on-existing-running-week guard. Critical: this changes
+   `Content_Calendar` from overwrite-each-run to append-by-week, which
+   unblocks the historical Plan/Outcomes views.
+5. **Shared `<WeekSelector>` component** consumed by Diagnosis + Plan +
+   Outcomes (URL param `?week=YYYY-MM-DD` for archival; semantic labels
+   "This / Last / Next" for current/adjacent weeks computed off `bdtNow()`).
+6. Dashboard: Diagnosis week selector (This / Last) reading the
+   appropriate Weekly_Analysis row per `engine` field
+7. Dashboard: Plan week selector (This / Next / Last) — promoted from
+   Phase 1 because Content_Calendar overwrite-on-write made it useless
+   until locking ships in this phase
+8. Dashboard: Outcomes selector adopts the shared component (copy update
+   "current" → "This")
+9. Dashboard: "Preliminary, mid-week (Thu)" pill on the This-week
    diagnosis card
-7. Plan-vs-actual comparison enhancement (lift more from `/outcomes`
-   into the per-week Plan view)
+10. Plan-vs-actual comparison enhancement (lift more from `/outcomes`
+    into the per-week Plan view)
 
 **Done when:** Thursday mid-week cron produces a fresh row;
 `Diagnosis · This week` shows the mid-week verdict with the pill;
