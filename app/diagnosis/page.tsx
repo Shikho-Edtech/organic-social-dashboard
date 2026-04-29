@@ -214,7 +214,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
         />
         <AcademicContextStrip />
         <PageHeader
-          title="Strategy"
+          title="Diagnosis"
           subtitle="Claude's diagnosis and recommended actions"
           dateLabel={`${range.label} · AI diagnosis off`}
           lastScrapedAt={runStatus.last_run_at}
@@ -235,7 +235,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
   return (
     <div className={isArchival ? "opacity-[0.97] [filter:saturate(0.9)]" : ""}>
       {isArchival ? (
-        <ArchivalLine archiveDateLabel={archiveDateLabel} livePath="/strategy" />
+        <ArchivalLine archiveDateLabel={archiveDateLabel} livePath="/diagnosis" />
       ) : (
         <StalenessBanner
           info={staleness}
@@ -246,7 +246,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
       )}
       <AcademicContextStrip />
       <PageHeader
-        title="Strategy"
+        title="Diagnosis"
         subtitle={isArchival
           ? (archiveDateLabel
               ? `Archived diagnosis for week ending ${archiveDateLabel}`

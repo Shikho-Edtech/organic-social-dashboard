@@ -110,7 +110,7 @@ export const STAGES: Record<StageId, StageDef> = {
     noun: "AI diagnosis",
     aiBacked: true,
     envVars: ["DIAGNOSIS_PROVIDER", "DIAGNOSIS_MODEL", "DIAGNOSIS_API_KEY"],
-    pages: ["/strategy"],
+    pages: ["/diagnosis"],
     readStatus: (r) => r.diagnosis_status,
     readLastSuccessful: (r) => r.last_successful_diagnosis_at,
   },
