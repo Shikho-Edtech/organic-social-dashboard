@@ -1,8 +1,179 @@
 # ROADMAP
 
-**Last updated:** 2026-04-20
-**Status:** current execution plan. Supersedes the 11-step migration in
-[ARCHITECTURE.md](ARCHITECTURE.md) §11 for day-to-day work.
+**Last updated:** 2026-04-28
+**Status:** current execution plan. The 11-step ARCHITECTURE migration is
+largely complete; day-to-day work has moved on to UX correctness and
+brand-team utility (Sprint P7, below).
+
+---
+
+## Sprint P7 — Mon-Sun reporting reframe, locking, multi-metric ranking, mid-week diagnosis
+
+**Why now:** brand-team review session 2026-04-28 surfaced five concrete
+gaps. (1) Week semantics were inconsistent — labels said one thing, the
+analysis cohort sliced another. (2) Running-week strategy + plan were
+silently regenerated on every cron, breaking trust in "the plan is
+fixed." (3) Every ranking on every page was hardwired to reach — brand
+team needs interactions / engagement-rate / shares as first-class
+ranking dimensions. (4) "Strategy" page is actually a diagnosis output;
+the name was misleading. (5) A `Diagnosis · This week` view is dead
+weight 4 days a week without a mid-week run, since the verdict only
+generates Monday after the previous week closes.
+
+Sprint P7 ships a reframe across all three: time semantics, plan stability,
+and metric-driven ranking. Locked v1 scope below.
+
+### Sprint P7 v1 spec (locked 2026-04-28)
+
+#### Renames + URL migrations
+- **Strategy → Diagnosis.** Page label, URL path (`/strategy` → `/diagnosis`,
+  no redirect), nav entry, hero card eyebrow, sheet column references that
+  surface to UI. The pipeline-side `DIAGNOSIS_PROMPT_VERSION` field already
+  uses the diagnosis term; the rename is purely surface.
+
+#### Week semantics (already partially shipped today, lock the contract)
+- BDT Mon-Sun is the canonical week. `week_ending` = closing Sunday.
+- Pipeline cohort (`this_week` / `previous_week` / `last_7` / `prev_7` in
+  `classify.py`) and dashboard range pickers (`bdtNow()` in `lib/aggregate.ts`)
+  both honor BDT Mon-Sun. Done in commits `6809e5d`, `5875145`, `e795804`.
+- "This week" / "Last week" / "Next week" wording is consistent everywhere.
+  Outcomes selector copy: rename "current week" → "This week".
+
+#### Week selectors on time-bucketed pages
+- **Diagnosis page**: This week · Last week (URL param `?week=YYYY-MM-DD`)
+- **Plan page**: This week · Next week · Last week
+- **Outcomes page**: unchanged (already has the pattern; copy update only)
+
+#### Mid-week diagnosis run (NEW — unblocks Diagnosis "This week" view)
+Without this the "This week" Diagnosis view is empty Mon-Wed, populated
+Thu-Sun (via mid-week cron), refreshed Mon-Sun (via Monday end-of-week cron).
+
+- New workflow: `.github/workflows/midweek-diagnosis.yml`
+- Cron: Thursday 04:00 UTC = 10:00 BDT
+- Pipeline mode: `python main.py --mode midweek` — runs fetch + classify +
+  diagnosis only; **skips** strategy + calendar + plan_narrative + outcome_log
+- Cohort: Mon-Wed (3 full days) + Thursday morning of running week
+- Diagnosis prompt: gets a `PARTIAL_WEEK` banner so the model qualifies
+  claims with "so far this week" instead of definitive end-of-week language
+- Sheet write: appended to `Weekly_Analysis` as a separate row with
+  `engine="ai-midweek"` for the same `week_ending`. End-of-week Monday cron
+  produces a second row (`engine="ai"`) for the now-closed week.
+- Dashboard: Diagnosis "This week" tab reads the latest mid-week row; shows
+  a "Preliminary, mid-week (Thu)" pill + timestamp on the verdict card
+
+#### Lock running-week artifacts (v1) + manual unlock (v2)
+- **v1 (Sprint P7)**: pipeline writers for `Content_Calendar`,
+  `Plan_Narrative`, `Strategy` skip overwriting an existing row whose
+  `week_ending` matches the running week. Diagnosis is exempt — it gets
+  refreshed by the mid-week + Monday cycle so its overwrites are intentional.
+  Implementation: read existing row before write; if engine field present and
+  matches expected source, skip; else write.
+- **v2 (deferred)**: "Unlock & regenerate this week" button on Diagnosis +
+  Plan pages. Sets a `force_regenerate` flag the next pipeline run honors.
+
+#### Top-level multi-metric ranking selector (Flavor B — multi-select equal weight)
+- Multi-select pill component: `Total Reach · Interactions · Engagement Rate · Shares`
+- Equal-weight averaging when 2+ selected; single-select still works
+- URL param `?metric=reach,interactions` (persistent across page nav)
+- Default: `?metric=reach` (today's de-facto behavior)
+- Pages with the page-level selector: **Overview · Trends · Engagement ·
+  Timing · Reels · Explore** (6 pages)
+- Pages WITHOUT the selector: **Diagnosis · Plan · Outcomes**
+- Engagement page: also gets a box-level selector on the **Format × Hour**
+  chart (independent of the page-level selector since Engagement page itself
+  doesn't have one)
+
+##### Selector propagation contract per page
+| Page | Wired by selector | Untouched |
+|---|---|---|
+| Overview | trend chart, content pillars table, biggest-numbers / followers panel | format distribution |
+| Trends | every trend chart | — |
+| Engagement | (none — page-level selector absent) | — |
+| Engagement / Format×Hour box | the box itself only | rest of page |
+| Timing | day×hour heatmaps + summary | — |
+| Reels | Top-10 lists (plays / watch time / followers gained) ranking | retention curves, reels table itself (already sortable) |
+| Explore | every ranking list (top posts, etc) | — |
+
+#### Engagement page top-row cleanup
+- **Keep** top row 5 boxes: Best Format, Best Pillar, Best Hook, Best Spotlight Type, Best Tone
+- **Remove** second row 4: Virality, Discussion Quality, Sentiment Polarity, Save Rate
+- Move definitions of removed boxes into the methodology footer at the bottom
+  of the page, as plain text (these were placeholder/awaiting-pipeline-data
+  anyway and added clutter without value)
+
+#### Terminology pass
+- `ER` → `engagement rate` everywhere it appears in UI copy
+- Strip `+`, `-`, em-dashes / en-dashes from labels (matches the global
+  CLAUDE.md ban for professional output)
+- Keep "Reels" page name — page strictly filters `is_reel=true`, the name
+  is accurate and brand-team-recognizable. Revisit only when expanding to
+  multi-platform short-form (IG Reels, YouTube Shorts, TikTok)
+
+### Sprint P7 phasing
+
+#### Phase 1 — UI cleanup + rename + Plan week selector (~3-4 days)
+1. Terminology sweep across all pages (`ER` → `engagement rate`, dashes
+   → words / colons)
+2. Engagement page: drop 4 second-row boxes; keep top 5; methodology
+   footer absorbs definitions
+3. Format × Hour box-level metric selector
+4. Strategy → Diagnosis full rename (label + URL + nav + sheet column
+   references that surface to UI)
+5. Plan page week selector (This / Next / Last week, mirroring `/outcomes`)
+6. Outcomes selector copy update ("current" → "This")
+
+**Done when:** all 6 changes deployed, brand-audit clean, mobile
+checklist passes at 360/768/1280, no broken links from old `/strategy` URL.
+
+#### Phase 2 — locking + Diagnosis week selectors + mid-week run (~1 week)
+1. Pipeline `--mode midweek` flag + new Thursday cron workflow
+2. Diagnosis prompt: `PARTIAL_WEEK` banner injection for mid-week mode
+3. Pipeline `Weekly_Analysis` writer: append (not replace) for same
+   week_ending with different engine values
+4. Pipeline writers for `Strategy`, `Content_Calendar`, `Plan_Narrative`:
+   skip-on-existing-running-week guard
+5. Dashboard: Diagnosis week selector reading the appropriate row
+   (mid-week vs end-of-week) per `engine` field
+6. Dashboard: "Preliminary, mid-week (Thu)" pill on the This-week
+   diagnosis card
+7. Plan-vs-actual comparison enhancement (lift more from `/outcomes`
+   into the per-week Plan view)
+
+**Done when:** Thursday mid-week cron produces a fresh row;
+`Diagnosis · This week` shows the mid-week verdict with the pill;
+re-running Monday's cron does NOT overwrite Plan or Strategy for the
+just-closed week unless the row is missing.
+
+#### Phase 3 — multi-metric ranking selector (~1.5-2 weeks)
+1. Build `<MetricSelector>` component (multi-select pills, URL-persistent)
+2. Wire the selector into Overview (trend chart, pillars table, followers
+   panel — NOT format distribution)
+3. Wire into Trends + Timing + Reels + Explore per the propagation contract
+4. Wire box-level into Engagement Format × Hour
+5. Sheet/aggregator-side: helper that takes a metric set and returns a
+   composite rank (averaged equal-weight)
+
+**Done when:** changing the page-level metric selector on any of the 6
+pages re-ranks every applicable list/chart on that page; URL param
+`?metric=...` survives nav and reload.
+
+### Sprint P7 v2 deferrals
+- Mid-week plan slot editing UI (move/edit individual slots within a
+  running week)
+- Manual "Unlock & regenerate this week" button per Diagnosis / Plan
+- Multi-metric weight sliders (Flavor A — composite scoring with
+  user-assigned weights). Phase 3 ships equal-weight; sliders are an
+  additive component change, not a refactor.
+
+### Cross-repo lockstep contract for Sprint P7
+| Change | Pipeline | Dashboard |
+|---|---|---|
+| Diagnosis rename | sheet column references that surface to UI (none today; `Strategy` sheet tab + `engine="ai"` value stay) | URL path `/strategy` → `/diagnosis`, label, nav entry, all internal references |
+| Mid-week run | new workflow + `--mode midweek` + new `engine="ai-midweek"` value | week selector reads engine field, "Preliminary" pill |
+| Locking | writer skip-on-existing-week logic | (no read-side change; the absence-of-overwrite is invisible) |
+| Multi-metric | (none — pipeline already writes all 4 raw metrics per row) | full UI surface |
+
+---
 
 The full ARCHITECTURE spec is aspirational — it covers every piece we
 *might* need at scale. For a single-reader, N=1 project the full build
