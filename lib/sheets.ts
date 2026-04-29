@@ -614,6 +614,70 @@ export async function getCalendar(): Promise<CalendarSlot[]> {
 }
 
 /**
+ * Sprint P7 v3 archive (2026-04-29): Content_Calendar is now append-by-week.
+ * `getCalendarByWeekStarting(weekStarting)` filters slots whose Date falls
+ * in the week starting on the given Monday (YYYY-MM-DD). Returns rows for
+ * exactly that 7-day window.
+ *
+ * Used by the Plan page's This/Next/Last week selector. Falls back to
+ * empty array when no slots exist for the target week (e.g. "Last week"
+ * selected on a Page that hasn't accumulated history yet, or "Next week"
+ * selected before Monday's cron has fired for the upcoming week).
+ */
+export async function getCalendarByWeekStarting(weekStarting: string): Promise<CalendarSlot[]> {
+  if (!weekStarting) return [];
+  const rows = await readTab("Content_Calendar");
+  const objects = rowsToObjects(rows);
+  // Build the 7-day Mon-Sun set in BDT — the canonical sheet stores
+  // ISO YYYY-MM-DD dates so simple string match works.
+  const wkStart = new Date(`${weekStarting}T00:00:00`);
+  if (isNaN(wkStart.getTime())) return [];
+  const dayKeys = new Set<string>();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(wkStart);
+    d.setDate(d.getDate() + i);
+    dayKeys.add(d.toISOString().slice(0, 10));
+  }
+  const matching = objects.filter((r) => {
+    const dateRaw = String(r["Date"] || "").trim();
+    // Try ISO match first (canonical), then permissive parse fallback.
+    if (dayKeys.has(dateRaw)) return true;
+    const parsed = new Date(dateRaw);
+    if (isNaN(parsed.getTime())) return false;
+    const iso = parsed.toISOString().slice(0, 10);
+    return dayKeys.has(iso);
+  });
+  return calendarFromRows(matching);
+}
+
+/**
+ * List unique week_starting Mondays present in Content_Calendar. Useful for
+ * the Plan page selector to know which weeks have data (e.g. disable
+ * "Last week" pill when no historical rows exist yet). Newest first.
+ */
+export async function listCalendarWeeks(): Promise<string[]> {
+  const rows = await readTab("Content_Calendar");
+  if (rows.length === 0) return [];
+  const objects = rowsToObjects(rows);
+  // Each calendar row has a Date; group dates into weeks (the Monday of
+  // their containing Mon-Sun).
+  const weekStarts = new Set<string>();
+  for (const r of objects) {
+    const dateRaw = String(r["Date"] || "").trim();
+    if (!dateRaw) continue;
+    const d = new Date(`${dateRaw}T12:00:00`);
+    if (isNaN(d.getTime())) continue;
+    // Walk back to Monday: getDay() returns Sun=0..Sat=6. Mon=1.
+    const dow = d.getDay();
+    const back = dow === 0 ? 6 : dow - 1;
+    const mon = new Date(d);
+    mon.setDate(mon.getDate() - back);
+    weekStarts.add(mon.toISOString().slice(0, 10));
+  }
+  return Array.from(weekStarts).sort().reverse();
+}
+
+/**
  * Step 3 archival mode: fetch a specific past calendar by a "run key".
  *
  * Content_Calendar is overwritten each week — there's no historical archive

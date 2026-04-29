@@ -1,5 +1,5 @@
 // Plan view — Content Calendar
-import { getCalendar, getCalendarByRunId, getRunStatus, computeStaleness, getStageEngine, getPlanNarrative } from "@/lib/sheets";
+import { getCalendar, getCalendarByRunId, getCalendarByWeekStarting, getRunStatus, computeStaleness, getStageEngine, getPlanNarrative } from "@/lib/sheets";
 import { Card } from "@/components/Card";
 import PageHeader from "@/components/PageHeader";
 import StalenessBanner from "@/components/StalenessBanner";
@@ -7,7 +7,22 @@ import AIDisabledEmptyState from "@/components/AIDisabledEmptyState";
 import ArchivalLine from "@/components/ArchivalLine";
 import PlanNarrativeCard from "@/components/PlanNarrativeCard";
 import AcademicContextStrip from "@/components/AcademicContextStrip";
+import WeekSelector, { computeWeekEndings } from "@/components/WeekSelector";
 import { STAGES } from "@/lib/stages";
+
+/**
+ * Sprint P7 v3 (2026-04-29): map a closing-Sunday week_ending (canonical
+ * across the dashboard) to the corresponding Monday week_starting that
+ * Content_Calendar rows live under. e.g. Sunday May 3 → Monday April 27.
+ */
+function weekStartingFromEnding(weekEnding: string): string {
+  if (!weekEnding) return "";
+  const sun = new Date(`${weekEnding}T12:00:00`);
+  if (isNaN(sun.getTime())) return "";
+  const mon = new Date(sun);
+  mon.setDate(mon.getDate() - 6);
+  return mon.toISOString().slice(0, 10);
+}
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -97,16 +112,34 @@ function formatNativeCI(ci: {
 }
 
 export default async function PlanPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
-  // Step 3 archival mode: `?archived=<run-id>` switches the page into a
-  // read-only view against a specific past Content_Calendar snapshot. Until
-  // Calendar_Archive exists in the sheet, the archival reader always returns
-  // []; the page falls back to "archive not found" copy via the empty list.
+  // Step 3 archival mode (legacy): `?archived=<run-id>` reads from the
+  // legacy Calendar_Archive tab. Sprint P7 v3 supersedes this with the
+  // week-by-week Content_Calendar history; archival mode kept for
+  // backward compatibility with any existing deep links.
   const archivedParam = typeof searchParams?.archived === "string" ? searchParams.archived : "";
   const isArchival = Boolean(archivedParam);
 
-  const [liveCalendar, archivedCalendar, runStatus, calendarEngine, planNarrative] = await Promise.all([
-    isArchival ? Promise.resolve([] as Awaited<ReturnType<typeof getCalendar>>) : getCalendar(),
+  // Sprint P7 v3 (2026-04-29): Plan week selector. Resolves
+  // ?week=this|next|last|YYYY-MM-DD to the corresponding week_ending
+  // Sunday, then derives the Monday week_starting that Content_Calendar
+  // rows live under. Default = "this" (current Mon-Sun running week).
+  const weekParam = typeof searchParams.week === "string" ? searchParams.week : "";
+  const { this_: thisWeekEnding, last: lastWeekEnding, next: nextWeekEnding } = computeWeekEndings();
+  const isThisWeekView = !weekParam || weekParam === "this" || weekParam === thisWeekEnding;
+  const isLastWeekView = weekParam === "last" || weekParam === lastWeekEnding;
+  const isNextWeekView = weekParam === "next" || weekParam === nextWeekEnding;
+  const targetWeekEnding = isThisWeekView ? thisWeekEnding : isLastWeekView ? lastWeekEnding : isNextWeekView ? nextWeekEnding : weekParam;
+  const targetWeekStarting = weekStartingFromEnding(targetWeekEnding);
+
+  const [archivedCalendar, weekCalendar, fallbackLatestCalendar, runStatus, calendarEngine, planNarrative] = await Promise.all([
     isArchival ? getCalendarByRunId(archivedParam) : Promise.resolve([] as Awaited<ReturnType<typeof getCalendar>>),
+    isArchival || !targetWeekStarting
+      ? Promise.resolve([] as Awaited<ReturnType<typeof getCalendar>>)
+      : getCalendarByWeekStarting(targetWeekStarting),
+    // Fallback: if the target week has no rows yet (e.g. Last week view
+    // before history accumulates), getCalendar() shows whatever's in
+    // the sheet so the page isn't empty.
+    isArchival ? Promise.resolve([] as Awaited<ReturnType<typeof getCalendar>>) : getCalendar(),
     getRunStatus(),
     getStageEngine("calendar"),
     // PLN-07: read the week-level narrative summary the pipeline (PLN-06)
@@ -114,7 +147,15 @@ export default async function PlanPage({ searchParams }: { searchParams: Record<
     // mode since we don't have week-indexed narrative archival yet.
     isArchival ? Promise.resolve(null) : getPlanNarrative(),
   ]);
-  const calendar = isArchival ? archivedCalendar : liveCalendar;
+  // Calendar selection priority:
+  //   1. archival mode (?archived=<runId>) → legacy archive
+  //   2. week-scoped fetch returned rows → use those
+  //   3. fallback to whatever's in the live Content_Calendar tab
+  //      (graceful for the period between v3 ship + first new write)
+  const calendar = isArchival
+    ? archivedCalendar
+    : (weekCalendar.length > 0 ? weekCalendar : fallbackLatestCalendar);
+  const usingFallback = !isArchival && weekCalendar.length === 0 && fallbackLatestCalendar.length > 0;
   const staleness = computeStaleness("calendar", runStatus);
   const aiDisabled = calendarEngine === "native" || calendarEngine === "off";
   const byDay: Record<string, typeof calendar> = {};
@@ -185,16 +226,65 @@ export default async function PlanPage({ searchParams }: { searchParams: Record<
         title="Plan"
         subtitle={isArchival
           ? "Archived content calendar"
-          : "Next week's content calendar — click a day to expand"}
-        dateLabel={isArchival ? "Archived snapshot" : "Generated by latest weekly run"}
+          : (isThisWeekView
+              ? "This week's content calendar"
+              : isNextWeekView
+                ? "Next week's content calendar"
+                : "Last week's content calendar (historical)")}
+        dateLabel={isArchival ? "Archived snapshot" : `Week starting ${targetWeekStarting}`}
         showPicker={false}
         lastScrapedAt={runStatus.last_run_at}
       />
 
+      {/* Sprint P7 v3 (2026-04-29): Plan week selector. Hidden in
+          archival mode — that path uses the legacy ArchivalLine UI.
+          Selector enabled now that Content_Calendar is append-by-week
+          (commit pending). Pre-existing rows from the clear+rewrite
+          era live under whichever week's Date column they had at
+          time of last write — usually "Next week" relative to that
+          run. So immediately after this ships, "This week" or
+          "Next week" tab will populate from the existing single-week
+          row set, and "Last week" stays empty until next Monday's run
+          appends fresh history. */}
+      {!isArchival && (
+        <WeekSelector
+          basePath="/plan"
+          current={weekParam}
+          choices={["this", "next", "last"]}
+          preserve={searchParams}
+        />
+      )}
+
+      {/* Sprint P7 v3: when the week-scoped fetch returned 0 rows but the
+          tab has data, show a small note that we're showing the latest
+          available week as fallback. This is the bridge state right
+          after ship — once next Monday's append-by-week run lands,
+          fallback won't fire on the targeted week. */}
+      {usingFallback && (
+        <div className="mb-4 inline-flex items-start gap-2 px-3 py-2 rounded-md bg-shikho-indigo-50 border border-shikho-indigo-100 text-shikho-indigo-700 text-xs">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 mt-0.5">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          <span>
+            No calendar rows for the selected week yet — showing the most recent
+            calendar in the sheet as fallback. History accumulates from the
+            next weekly run forward.
+          </span>
+        </div>
+      )}
+
       {calendar.length === 0 && (
         <Card className="text-center py-12">
           <p className="text-slate-700 font-medium">No calendar generated yet</p>
-          <p className="text-slate-500 text-sm mt-2">The next weekly pipeline run will populate next week&apos;s plan.</p>
+          <p className="text-slate-500 text-sm mt-2">
+            {isLastWeekView
+              ? "No calendar rows for last week. History accumulates from the next weekly run forward."
+              : isNextWeekView
+                ? "Next week's calendar will be generated by the upcoming Monday cron."
+                : "The next weekly pipeline run will populate this week's plan."}
+          </p>
         </Card>
       )}
 
