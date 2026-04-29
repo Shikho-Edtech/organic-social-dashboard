@@ -5,7 +5,7 @@
 Live triggers + cross-repo architectural unblock + v3.5 follow-ups
 shipped in one autonomous session. 8 commits across 2 repos:
 
-**Live validation:**
+**Live validation (3 runs):**
 - `25099892852` — first ever mid-week diagnosis run. Wrote
   `engine="ai-midweek"` row for week_ending=2026-05-03 with the
   PARTIAL_WEEK headline ("In this mid-week update, follower growth
@@ -13,11 +13,19 @@ shipped in one autonomous session. 8 commits across 2 repos:
   (strategy stage slipped through main.py's --mode midweek dispatch
   because run() had no midweek_mode guard). Fixed in commit `f43e14f`
   with explicit guard at strategy stage start.
-- `25104738385` — first weekly run after fix. Locking guards
-  validated: Content_Calendar + Plan_Narrative both correctly
-  reported "running-week locked, skipped write" on the 2nd
-  consecutive run. Strategy lock fired on 2nd-run too (existing
-  row's week_ending matched new write's; engine="ai" matched).
+- `25104738385` — first weekly run after fix. Wrote Strategy +
+  Content_Calendar + Plan_Narrative for week_ending=2026-04-26.
+  Content_Calendar + Plan_Narrative locks fired (existing rows
+  from earlier runs); Strategy didn't lock (existing row was for
+  week_ending=2026-05-03 from the leftover mid-week run, different
+  week so different lock state).
+- `25105294793` — second consecutive weekly run. **All three locks
+  fired correctly:**
+  - `Strategy: running-week locked (week_ending=2026-04-26, engine=ai); skipped write`
+  - `Content_Calendar: running-week locked (week starting 2026-05-04 already in sheet); skipped write`
+  - `Plan_Narrative: running-week locked (week=2026-05-04 already in sheet); skipped write`
+  - Diagnosis correctly NOT locked (exempt per spec — mid-week +
+    Monday cycle is intentional dual-write).
 
 **Plan selector unblocked (cross-repo Sprint P7 v3):**
 - Pipeline `f43e14f`: Content_Calendar writer changed from
