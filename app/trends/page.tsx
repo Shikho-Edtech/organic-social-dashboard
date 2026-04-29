@@ -1,5 +1,5 @@
 import { getPosts, getDailyMetrics, getRunStatus } from "@/lib/sheets";
-import { filterPosts, dailyReach, reach, bdt } from "@/lib/aggregate";
+import { filterPosts, dailyMetricTrend, postMetricValue, bdt, type RankingMetric } from "@/lib/aggregate";
 import { resolveRange } from "@/lib/daterange";
 import PageHeader from "@/components/PageHeader";
 import { ChartCard } from "@/components/Card";
@@ -12,17 +12,30 @@ export const revalidate = 300;
 
 export default async function TrendsPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   const range = resolveRange(searchParams);
-  // Sprint P7 Phase 3: page-level metric selector. Trends already has
-  // multi-metric series (volume, reach, engagement rate) so the
-  // selector is more of a "highlight focus" cue here. Per-chart deep
-  // wiring is v3.5 — for v1 the selector renders for cross-page URL
-  // persistence.
+  // Sprint P7 Phase 3 + QA pass (2026-04-28): page-level metric pills
+  // re-key the daily + weekly trend charts. "Daily Posting Volume" is
+  // a COUNT chart and stays invariant (the spec philosophy says
+  // categorical/count things don't follow the metric).
   const activeMetrics = parseMetricParam(searchParams.metric);
+  const primaryMetric: RankingMetric = activeMetrics[0];
+  const isComposite = activeMetrics.length > 1;
+  const metricLabelFull: Record<RankingMetric, string> = {
+    reach: "Reach",
+    interactions: "Interactions",
+    engagement: "Engagement Rate",
+    shares: "Shares",
+  };
+  const metricLabelLower: Record<RankingMetric, string> = {
+    reach: "reach",
+    interactions: "interactions",
+    engagement: "engagement rate",
+    shares: "shares",
+  };
 
   const [posts, daily, runStatus] = await Promise.all([getPosts(), getDailyMetrics(), getRunStatus()]);
   const inRange = filterPosts(posts, { start: range.start, end: range.end });
 
-  // Daily posting volume
+  // Daily posting volume — COUNT, unchanged across metrics.
   const byDay: Record<string, number> = {};
   for (const p of inRange) {
     if (!p.created_time) continue;
@@ -33,41 +46,43 @@ export default async function TrendsPage({ searchParams }: { searchParams: Recor
     .map(([date, v]) => ({ label: date.slice(5), value: v }))
     .sort((a, b) => a.label.localeCompare(b.label));
 
-  // Daily reach
-  const reachData = dailyReach(inRange).map((d) => ({ date: d.date.slice(5), value: d.reach }));
+  // Daily metric trend — sums or averages depending on metric semantic.
+  // dailyMetricTrend returns {date, value, posts}; we slice the date
+  // for the MM-DD axis label.
+  const dailyData = dailyMetricTrend(inRange, primaryMetric).map((d) => ({
+    date: d.date.slice(5),
+    value: d.value,
+  }));
 
-  // Weekly engagement rate
-  const weekBuckets: Record<string, { reach: number; eng: number }> = {};
+  // Weekly bucket — for engagement rate it's reach-weighted (Σ ints ÷
+  // Σ reach × 100). For other metrics it's a simple sum per ISO week.
+  const weekBuckets: Record<string, { value: number; reach: number; ints: number; n: number }> = {};
   for (const p of inRange) {
     if (!p.created_time) continue;
     const d = bdt(p.created_time);
     const weekKey = `${d.getFullYear()}-W${String(getWeek(d)).padStart(2, "0")}`;
-    const r = reach(p);
-    const e = (p.reactions || 0) + (p.comments || 0) + (p.shares || 0);
-    weekBuckets[weekKey] = weekBuckets[weekKey] || { reach: 0, eng: 0 };
-    weekBuckets[weekKey].reach += r;
-    weekBuckets[weekKey].eng += e;
+    weekBuckets[weekKey] = weekBuckets[weekKey] || { value: 0, reach: 0, ints: 0, n: 0 };
+    const v = postMetricValue(p, primaryMetric);
+    if (primaryMetric === "engagement") {
+      // For ER, accumulate reach + interactions for reach-weighted aggregation
+      const r = postMetricValue(p, "reach");
+      const i = postMetricValue(p, "interactions");
+      weekBuckets[weekKey].reach += r;
+      weekBuckets[weekKey].ints += i;
+    } else {
+      weekBuckets[weekKey].value += v;
+    }
+    weekBuckets[weekKey].n += 1;
   }
-  const weeklyEng = Object.entries(weekBuckets)
+  const weeklyData = Object.entries(weekBuckets)
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([week, v]) => ({ date: formatWeekRange(week), value: v.reach > 0 ? (v.eng / v.reach) * 100 : 0 }));
-
-  // Weekly shares
-  const weekShares: Record<string, number> = {};
-  for (const p of inRange) {
-    if (!p.created_time) continue;
-    const d = bdt(p.created_time);
-    const weekKey = `${d.getFullYear()}-W${String(getWeek(d)).padStart(2, "0")}`;
-    weekShares[weekKey] = (weekShares[weekKey] || 0) + (p.shares || 0);
-  }
-  const sharesData = Object.entries(weekShares)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([k, v]) => ({ label: formatWeekRange(k), value: v }));
-
-  // Sprint P6: dropped the "Weekly at-a-glance" 2x2 sparkline grid. The
-  // full-size charts below cover the same signal with more context, and
-  // users flagged the sparkline strip as clutter that duplicated signals
-  // already on /overview's reach trend + biggest movers.
+    .map(([week, v]) => ({
+      label: formatWeekRange(week),
+      value:
+        primaryMetric === "engagement"
+          ? (v.reach > 0 ? (v.ints / v.reach) * 100 : 0)
+          : v.value,
+    }));
 
   return (
     <div>
@@ -79,47 +94,80 @@ export default async function TrendsPage({ searchParams }: { searchParams: Recor
           title="Daily Posting Volume"
           kind="observed"
           subtitle="Posts published per day"
-          definition="Count of posts published on each calendar day (BDT). Gaps mean no posts were published that day."
+          definition="Count of posts published on each calendar day (BDT). Gaps mean no posts were published that day. Invariant to the active ranking metric — this is a count, not a metric."
           caption="Number of posts published each day in the selected period."
         >
           <BarChartBase data={volumeData} color="#3F4FA2" metricName="Posts" valueAxisLabel="Posts published" categoryAxisLabel="Date (MM-DD)" />
         </ChartCard>
         <ChartCard
-          title="Daily Reach"
+          title={`Daily ${metricLabelFull[primaryMetric]}${isComposite ? " (primary metric)" : ""}`}
           kind="observed"
-          subtitle="Unique reach per day"
-          definition="Sum of post-level unique reach for posts published that day. Not lifetime page reach — reach attributed to posts. Spikes typically mean a single post went viral."
-          caption="Daily unique reach — spikes often indicate viral or boosted content."
+          subtitle={
+            primaryMetric === "engagement"
+              ? "Mean engagement rate per day"
+              : `${primaryMetric === "reach" ? "Unique " : ""}${metricLabelLower[primaryMetric]} per day`
+          }
+          definition={
+            primaryMetric === "engagement"
+              ? "Mean post-level engagement rate per day. Engagement rate = interactions ÷ reach × 100."
+              : `Sum of post-level ${metricLabelLower[primaryMetric]} for posts published that day. Spikes typically mean a single post performed unusually well.`
+          }
+          caption={
+            isComposite
+              ? `Showing ${metricLabelFull[primaryMetric]} as primary metric of the active composite. Multi-line composite trend is v3.5.`
+              : `Daily ${metricLabelLower[primaryMetric]} — spikes often indicate viral or boosted content.`
+          }
         >
-          <TrendChart data={reachData} color="#304090" variant="area" metricName="Reach" valueAxisLabel="Unique reach" />
+          <TrendChart
+            data={dailyData}
+            color="#304090"
+            variant="area"
+            metricName={metricLabelFull[primaryMetric]}
+            valueAxisLabel={metricLabelFull[primaryMetric]}
+            valueFormat={primaryMetric === "engagement" ? "percent1" : undefined}
+          />
         </ChartCard>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4">
+      <div className="mb-6">
         <ChartCard
-          title="Weekly Engagement Rate"
+          title={`Weekly ${metricLabelFull[primaryMetric]}${isComposite ? " (primary metric)" : ""}`}
           kind="derived"
-          subtitle="Interactions per unique reach"
-          definition="For each ISO week: (total reactions + comments + shares) ÷ (total unique reach). This is reach-weighted, not averaged per post, so a few high-reach posts dominate the signal — which is what you want."
-          caption="Week-over-week stability indicates healthy audience relationship. Big drops warrant investigating what changed."
+          subtitle={
+            primaryMetric === "engagement"
+              ? "Reach-weighted engagement rate per ISO week"
+              : `Total ${metricLabelLower[primaryMetric]} per ISO week`
+          }
+          definition={
+            primaryMetric === "engagement"
+              ? "For each ISO week: (Σ reactions + comments + shares) ÷ (Σ unique reach) × 100. Reach-weighted (not averaged per post) so a few high-reach posts dominate the signal — which is what you want."
+              : `For each ISO week: total ${metricLabelLower[primaryMetric]} across posts published that week.`
+          }
+          caption={
+            primaryMetric === "engagement"
+              ? "Week-over-week stability indicates healthy audience relationship. Big drops warrant investigating what changed."
+              : primaryMetric === "shares"
+                ? "Shares are the strongest virality signal — they expand reach beyond the existing audience."
+                : `Weekly ${metricLabelLower[primaryMetric]} — useful for spotting multi-week trends that daily noise might obscure.`
+          }
         >
-          <TrendChart
-            data={weeklyEng}
-            color="#C02080"
-            variant="line"
-            valueFormat="percent1"
-            metricName="Engagement rate"
-            valueAxisLabel="Engagement rate"
-          />
-        </ChartCard>
-        <ChartCard
-          title="Weekly Shares"
-          kind="observed"
-          subtitle="Share volume over time"
-          definition="Total shares across all posts published in each ISO week."
-          caption="Shares are the strongest virality signal — they expand reach beyond your existing audience."
-        >
-          <BarChartBase data={sharesData} color="#E0A010" metricName="Shares" valueAxisLabel="Shares" />
+          {primaryMetric === "engagement" ? (
+            <TrendChart
+              data={weeklyData.map((d) => ({ date: d.label, value: d.value }))}
+              color="#C02080"
+              variant="line"
+              valueFormat="percent1"
+              metricName={metricLabelFull[primaryMetric]}
+              valueAxisLabel={metricLabelFull[primaryMetric]}
+            />
+          ) : (
+            <BarChartBase
+              data={weeklyData}
+              color={primaryMetric === "shares" ? "#E0A010" : primaryMetric === "interactions" ? "#C02080" : "#304090"}
+              metricName={metricLabelFull[primaryMetric]}
+              valueAxisLabel={metricLabelFull[primaryMetric]}
+            />
+          )}
         </ChartCard>
       </div>
     </div>
@@ -152,7 +200,7 @@ function formatWeekRange(weekKey: string): string {
   const sun = new Date(mon.getTime() + 6 * 86_400_000);
   const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   if (mon.getMonth() === sun.getMonth()) {
-    return `${MONTHS[mon.getMonth()]} ${mon.getDate()}\u2013${sun.getDate()}`;
+    return `${MONTHS[mon.getMonth()]} ${mon.getDate()}–${sun.getDate()}`;
   }
-  return `${MONTHS[mon.getMonth()]} ${mon.getDate()}\u2013${MONTHS[sun.getMonth()]} ${sun.getDate()}`;
+  return `${MONTHS[mon.getMonth()]} ${mon.getDate()}–${MONTHS[sun.getMonth()]} ${sun.getDate()}`;
 }
