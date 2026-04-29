@@ -1,5 +1,6 @@
 import { getPosts, getLatestDiagnosis, getDiagnosisByWeek, getDiagnosisByWeekPreferred, getRunStatus, computeStaleness, getStageEngine } from "@/lib/sheets";
 import WeekSelector, { computeWeekEndings } from "@/components/WeekSelector";
+import RegenerateThisWeekButton from "@/components/RegenerateThisWeekButton";
 import { filterPosts } from "@/lib/aggregate";
 import { resolveRange } from "@/lib/daterange";
 import PageHeader from "@/components/PageHeader";
@@ -297,12 +298,19 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
       {/* Sprint P7 Phase 2: week selector for Diagnosis. Hidden in
           archival mode — that path uses the older ArchivalLine UI. */}
       {!isArchival && (
-        <WeekSelector
-          basePath="/diagnosis"
-          current={weekParam}
-          choices={["this", "last"]}
-          preserve={searchParams}
-        />
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-4">
+          <WeekSelector
+            basePath="/diagnosis"
+            current={weekParam}
+            choices={["this", "last"]}
+            preserve={searchParams}
+          />
+          {/* Sprint P7 v4 (2026-04-29): regenerate button only on
+              "Last week" view — that's where the end-of-week verdict
+              gets locked. "This week" verdicts are mid-week reads
+              that auto-refresh on the Thursday cron. */}
+          {isLastWeekView && <RegenerateThisWeekButton scope="weekly" />}
+        </div>
       )}
 
       {/* Sprint P7 Phase 2: "Preliminary, mid-week (Thu)" pill on
