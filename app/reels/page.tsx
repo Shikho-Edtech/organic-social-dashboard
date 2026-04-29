@@ -284,6 +284,50 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
     });
   const topByFollowersMax = topByFollowers.reduce((m, r) => Math.max(m, r.value), 0);
 
+  // Sprint P7 QA pass (2026-04-28): "Top 10 Reels by {active metric}"
+  // surfaces when the active page-level metric is NOT reach. Reach is
+  // already covered by the existing "Top by Plays" list (Plays
+  // correlates strongly with unique reach), so duplicating that view
+  // for metric=reach would be noise. Other metrics produce distinct
+  // rankings worth surfacing.
+  // Uses post-level metric value (postById.get(reel.post_id)). Reels
+  // without a corresponding post entry fall through with 0 and get
+  // filtered before display.
+  const primaryMetric = activeMetrics[0];
+  const showPageLevelMetricList = primaryMetric !== "reach";
+  const metricLabel: Record<typeof primaryMetric, string> = {
+    reach: "Reach",
+    interactions: "Interactions",
+    engagement: "Engagement Rate",
+    shares: "Shares",
+  };
+  const topByPageLevelMetric = showPageLevelMetricList
+    ? [...reels]
+        .map((r) => {
+          const p = postById.get(r.post_id);
+          if (!p) return null;
+          // Compute the active metric value from the underlying post.
+          const reachVal = (p.unique_views as number) || (p.media_views as number) || 0;
+          const ints = ((p.reactions as number) || 0) + ((p.comments as number) || 0) + ((p.shares as number) || 0);
+          const value =
+            primaryMetric === "interactions" ? ints
+            : primaryMetric === "shares" ? ((p.shares as number) || 0)
+            : primaryMetric === "engagement" ? (reachVal > 0 ? (ints / reachVal) * 100 : 0)
+            : reachVal;
+          return {
+            id: r.post_id,
+            caption: (p?.message || "").replace(/\s+/g, " ").trim(),
+            permalink: p?.permalink_url || "",
+            value: primaryMetric === "engagement" ? Number(value.toFixed(2)) : value,
+            meta: `${(r.reel_plays || 0).toLocaleString()} plays · ${(r.avg_watch_time || 0).toFixed(1)}s avg watch`,
+          };
+        })
+        .filter((x): x is NonNullable<typeof x> => x !== null && x.value > 0)
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 10)
+    : [];
+  const topByPageLevelMetricMax = topByPageLevelMetric.reduce((m, r) => Math.max(m, r.value), 0);
+
   // Retention funnel (aggregate drop-off across all reels) — derived from the
   // per-second curve so it works for reels (Meta's bucket fields are empty).
   // Each bar shows: viewers still watching at second N, computed as
@@ -474,6 +518,35 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
             caption="High plays with zero follower gain = viral but not sticky. Low plays with high follower gain = niche but converts."
           >
             <TopReelList rows={topByFollowers} max={topByFollowersMax} valueLabel="followers" barColor="#1A8E78" formatValue={(v) => `+${v}`} />
+          </ChartCard>
+        </div>
+      )}
+
+      {/* Sprint P7 QA pass (2026-04-28): "Top 10 Reels by {active metric}"
+          when the page-level selector is NOT on reach (reach is already
+          covered by Top-by-Plays since plays correlates strongly with
+          unique reach). Other metrics produce distinct rankings worth
+          surfacing — e.g. metric=shares ranks reels by shares, which
+          can flip the ordering vs plays. */}
+      {showPageLevelMetricList && topByPageLevelMetric.length > 0 && (
+        <div className="mb-6">
+          <ChartCard
+            title={`Top 10 Reels by ${metricLabel[primaryMetric]}`}
+            kind="observed"
+            subtitle={`Reels ranked by ${primaryMetric === "engagement" ? "engagement rate" : `total ${primaryMetric}`}`}
+            definition={`For each reel: the underlying post's ${primaryMetric === "engagement" ? "engagement rate (interactions ÷ reach × 100)" : `total ${primaryMetric}`}. Surfaced because you've selected ${metricLabel[primaryMetric]} at the page level. Compare against Top by Plays — reels that lead on the active metric but trail on plays are punching above their weight on that dimension.`}
+            sampleSize={`top ${topByPageLevelMetric.length}`}
+            caption="Reach + watch time is the canonical reels view; this list shows which reels lead on the metric you've picked. The meta shows plays + avg watch time so you can spot a reel that scored high on the active metric without massive distribution."
+          >
+            <TopReelList
+              rows={topByPageLevelMetric}
+              max={topByPageLevelMetricMax}
+              valueLabel={primaryMetric}
+              barColor={primaryMetric === "shares" ? "#E0A010" : primaryMetric === "interactions" ? "#C02080" : "#1A8E78"}
+              formatValue={(v) =>
+                primaryMetric === "engagement" ? `${v.toFixed(2)}%` : v.toLocaleString()
+              }
+            />
           </ChartCard>
         </div>
       )}
