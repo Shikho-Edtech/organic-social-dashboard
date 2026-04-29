@@ -4,6 +4,7 @@ import { resolveRange } from "@/lib/daterange";
 import PageHeader from "@/components/PageHeader";
 import { ChartCard } from "@/components/Card";
 import TrendChart from "@/components/TrendChart";
+import MultiLineTrendChart, { type MultiSeries } from "@/components/MultiLineTrendChart";
 import BarChartBase from "@/components/BarChart";
 import MetricSelector, { parseMetricParam } from "@/components/MetricSelector";
 
@@ -53,6 +54,25 @@ export default async function TrendsPage({ searchParams }: { searchParams: Recor
     date: d.date.slice(5),
     value: d.value,
   }));
+  // v3.5 (2026-04-29): multi-line composite series for 2+ metrics.
+  const METRIC_COLORS: Record<RankingMetric, string> = {
+    reach: "#304090",
+    interactions: "#C02080",
+    engagement: "#1A8E78",
+    shares: "#E0A010",
+  };
+  const compositeDailySeries: MultiSeries[] = isComposite
+    ? activeMetrics.map((m) => ({
+        name: metricLabelFull[m],
+        color: METRIC_COLORS[m],
+        data: dailyMetricTrend(inRange, m).map((d) => ({
+          date: d.date.slice(5),
+          value: d.value,
+        })),
+        formatter: (v: number) =>
+          m === "engagement" ? `${v.toFixed(2)}%` : Math.round(v).toLocaleString(),
+      }))
+    : [];
 
   // Weekly bucket — for engagement rate it's reach-weighted (Σ ints ÷
   // Σ reach × 100). For other metrics it's a simple sum per ISO week.
@@ -100,32 +120,44 @@ export default async function TrendsPage({ searchParams }: { searchParams: Recor
           <BarChartBase data={volumeData} color="#3F4FA2" metricName="Posts" valueAxisLabel="Posts published" categoryAxisLabel="Date (MM-DD)" />
         </ChartCard>
         <ChartCard
-          title={`Daily ${metricLabelFull[primaryMetric]}${isComposite ? " (primary metric)" : ""}`}
+          title={
+            isComposite
+              ? `Composite Daily Trend (${activeMetrics.length} metrics, normalized)`
+              : `Daily ${metricLabelFull[primaryMetric]}`
+          }
           kind="observed"
           subtitle={
-            primaryMetric === "engagement"
-              ? "Mean engagement rate per day"
-              : `${primaryMetric === "reach" ? "Unique " : ""}${metricLabelLower[primaryMetric]} per day`
+            isComposite
+              ? "Each line normalized to % of its own peak — shapes are comparable, raw values shown in tooltip"
+              : primaryMetric === "engagement"
+                ? "Mean engagement rate per day"
+                : `${primaryMetric === "reach" ? "Unique " : ""}${metricLabelLower[primaryMetric]} per day`
           }
           definition={
-            primaryMetric === "engagement"
-              ? "Mean post-level engagement rate per day. Engagement rate = interactions ÷ reach × 100."
-              : `Sum of post-level ${metricLabelLower[primaryMetric]} for posts published that day. Spikes typically mean a single post performed unusually well.`
+            isComposite
+              ? "Multi-series trend with per-series % of peak normalization. Hover any point to see raw values per metric."
+              : primaryMetric === "engagement"
+                ? "Mean post-level engagement rate per day. Engagement rate = interactions ÷ reach × 100."
+                : `Sum of post-level ${metricLabelLower[primaryMetric]} for posts published that day. Spikes typically mean a single post performed unusually well.`
           }
           caption={
             isComposite
-              ? `Showing ${metricLabelFull[primaryMetric]} as primary metric of the active composite. Multi-line composite trend is v3.5.`
+              ? "Shapes diverge → metrics tell different stories that day. Shapes track → metrics correlate."
               : `Daily ${metricLabelLower[primaryMetric]} — spikes often indicate viral or boosted content.`
           }
         >
-          <TrendChart
-            data={dailyData}
-            color="#304090"
-            variant="area"
-            metricName={metricLabelFull[primaryMetric]}
-            valueAxisLabel={metricLabelFull[primaryMetric]}
-            valueFormat={primaryMetric === "engagement" ? "percent1" : undefined}
-          />
+          {isComposite ? (
+            <MultiLineTrendChart series={compositeDailySeries} />
+          ) : (
+            <TrendChart
+              data={dailyData}
+              color="#304090"
+              variant="area"
+              metricName={metricLabelFull[primaryMetric]}
+              valueAxisLabel={metricLabelFull[primaryMetric]}
+              valueFormat={primaryMetric === "engagement" ? "percent1" : undefined}
+            />
+          )}
         </ChartCard>
       </div>
 

@@ -5,6 +5,7 @@ import PageHeader from "@/components/PageHeader";
 import KpiCard from "@/components/KpiCard";
 import { ChartCard } from "@/components/Card";
 import TrendChart from "@/components/TrendChart";
+import MultiLineTrendChart, { type MultiSeries } from "@/components/MultiLineTrendChart";
 import Donut from "@/components/Donut";
 import BarChartBase from "@/components/BarChart";
 import { canonicalColor } from "@/lib/colors";
@@ -60,13 +61,32 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
 
   // Sprint P7 Phase 3: trend chart re-keys to active primary metric.
   // dailyMetricTrend handles sum-vs-mean semantics per metric (reach
-  // sums daily; engagement averages daily). Multi-line composite trend
-  // is deferred to v3.5 (cleaner UX with a multi-series chart, not
-  // jamming everything onto one line).
+  // sums daily; engagement averages daily).
+  // v3.5 (2026-04-29): when 2+ metrics active, build per-series data
+  // for the multi-line normalized trend chart (each series % of its
+  // own peak so unit-mismatched metrics share one y-axis).
   const trend = dailyMetricTrend(inRange, primaryMetric).map((d) => ({
     date: d.date.slice(5),
     value: d.value,
   }));
+  const METRIC_COLORS: Record<typeof primaryMetric, string> = {
+    reach: "#304090",        // shikho-indigo-600
+    interactions: "#C02080", // shikho-magenta-500
+    engagement: "#1A8E78",   // brand green
+    shares: "#E0A010",       // shikho-sunrise-500
+  };
+  const compositeTrendSeries: MultiSeries[] = isComposite
+    ? activeMetrics.map((m) => ({
+        name: metricLabel[m],
+        color: METRIC_COLORS[m],
+        data: dailyMetricTrend(inRange, m).map((d) => ({
+          date: d.date.slice(5),
+          value: d.value,
+        })),
+        formatter: (v: number) =>
+          m === "engagement" ? `${v.toFixed(2)}%` : Math.round(v).toLocaleString(),
+      }))
+    : [];
 
   // Sprint P6: dropped the Virality / North-Star / Cadence strip and the
   // AI cost banner. Virality + north-star were second-order signals that
@@ -172,35 +192,52 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
         <KpiCard label="Followers" value={currentFollowers} sublabel={`${netFollowers >= 0 ? "+" : ""}${netFollowers.toLocaleString()} in range`} />
       </div>
 
-      {/* Primary chart: trend re-keys to active primary metric */}
+      {/* Primary chart: trend re-keys to active primary metric.
+          v3.5 (2026-04-29): when 2+ metrics active, swap to the
+          MultiLineTrendChart that plots each series normalized to %
+          of its own peak — solves the unit-mismatch problem (reach
+          10000s, ER 0.X%, shares 10s) without jamming multiple
+          y-axes onto one chart. Single-metric path unchanged. */}
       <div className="grid lg:grid-cols-2 gap-4 mb-6">
         <ChartCard
-          title={`${metricLabel[primaryMetric]} Trend${isComposite ? " (primary metric of composite)" : ""}`}
+          title={
+            isComposite
+              ? `Composite Trend (${activeMetrics.length} metrics, normalized)`
+              : `${metricLabel[primaryMetric]} Trend`
+          }
           kind="observed"
           subtitle={
-            primaryMetric === "engagement"
-              ? "Daily mean engagement rate"
-              : primaryMetric === "reach"
-                ? "Daily unique reach"
-                : `Daily total ${primaryMetric}`
+            isComposite
+              ? "Each line normalized to % of its own peak — shapes are comparable, raw values shown in tooltip"
+              : primaryMetric === "engagement"
+                ? "Daily mean engagement rate"
+                : primaryMetric === "reach"
+                  ? "Daily unique reach"
+                  : `Daily total ${primaryMetric}`
           }
           definition={
-            primaryMetric === "engagement"
-              ? "Mean post-level engagement rate per day. Engagement rate = interactions ÷ reach × 100. Days with no posts emit 0."
-              : "Sum of the active metric for posts published that day. Attributed to post-publish date in BDT."
+            isComposite
+              ? "Multi-series trend with per-series % of peak normalization. A line at 100% means that day was that metric's peak in the period; 50% means half the peak. Hover any point to see the raw value in original units."
+              : primaryMetric === "engagement"
+                ? "Mean post-level engagement rate per day. Engagement rate = interactions ÷ reach × 100. Days with no posts emit 0."
+                : "Sum of the active metric for posts published that day. Attributed to post-publish date in BDT."
           }
           caption={
             isComposite
-              ? `Showing ${metricLabel[primaryMetric]} as the primary metric of the active composite. Multi-line composite trend is a v3.5 follow-up.`
+              ? "Shapes diverge → metrics are telling different stories that period (worth investigating). Shapes track → metrics correlate (one signal can stand in for the other)."
               : `Daily ${metricLabel[primaryMetric].toLowerCase()} for posts in the selected period.`
           }
         >
-          <TrendChart
-            data={trend}
-            color="#304090"
-            metricName={metricLabel[primaryMetric]}
-            valueAxisLabel={metricLabel[primaryMetric]}
-          />
+          {isComposite ? (
+            <MultiLineTrendChart series={compositeTrendSeries} />
+          ) : (
+            <TrendChart
+              data={trend}
+              color="#304090"
+              metricName={metricLabel[primaryMetric]}
+              valueAxisLabel={metricLabel[primaryMetric]}
+            />
+          )}
         </ChartCard>
 
         <ChartCard
