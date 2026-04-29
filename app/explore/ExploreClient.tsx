@@ -15,6 +15,9 @@ type Props = {
    *  Composite-ranks post lists when 2+; falls back to single-metric sort
    *  when 1. Default ["reach"] preserves prior behavior. */
   activeMetrics?: RankingMetric[];
+  /** Sprint P7 v3.5: optional positional weights from ?weights=... param.
+   *  When omitted, equal-weight composite. */
+  activeWeights?: number[];
 };
 type Preset = "7d" | "30d" | "90d" | "ytd" | "all" | "custom";
 
@@ -61,7 +64,7 @@ function uniqueValues(posts: Post[], key: keyof Post): string[] {
   return Array.from(set).sort();
 }
 
-export default function ExploreClient({ posts, activeMetrics = ["reach"] }: Props) {
+export default function ExploreClient({ posts, activeMetrics = ["reach"], activeWeights }: Props) {
   const [preset, setPreset] = useState<Preset>("30d");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
@@ -130,8 +133,8 @@ export default function ExploreClient({ posts, activeMetrics = ["reach"] }: Prop
   // given how many references exist; the value is the same shape
   // (Post[] descending by score).
   const sortedByReach = useMemo(
-    () => sortByComposite(filtered, activeMetrics),
-    [filtered, activeMetrics]
+    () => sortByComposite(filtered, activeMetrics, activeWeights),
+    [filtered, activeMetrics, activeWeights]
   );
   const grouped = groupStats(filtered, groupByDim);
 
@@ -280,8 +283,8 @@ export default function ExploreClient({ posts, activeMetrics = ["reach"] }: Prop
                   const ranked = isComposite
                     ? [...grouped].sort(
                         (a, b) =>
-                          groupStatCompositeScore(b, activeMetrics, grouped) -
-                          groupStatCompositeScore(a, activeMetrics, grouped),
+                          groupStatCompositeScore(b, activeMetrics, grouped, activeWeights) -
+                          groupStatCompositeScore(a, activeMetrics, grouped, activeWeights),
                       )
                     : [...grouped].sort(
                         (a, b) =>
@@ -290,7 +293,7 @@ export default function ExploreClient({ posts, activeMetrics = ["reach"] }: Prop
                   return ranked.slice(0, 12).map((g) => ({
                     label: g.key || "Unknown",
                     value: isComposite
-                      ? Math.round(groupStatCompositeScore(g, activeMetrics, grouped) * 100)
+                      ? Math.round(groupStatCompositeScore(g, activeMetrics, grouped, activeWeights) * 100)
                       : groupStatValue(g, primaryMetric),
                     color: canonicalColor(colorFieldFor(groupByDim), g.key),
                   }));

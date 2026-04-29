@@ -9,7 +9,7 @@ import MultiLineTrendChart, { type MultiSeries } from "@/components/MultiLineTre
 import Donut from "@/components/Donut";
 import BarChartBase from "@/components/BarChart";
 import { canonicalColor } from "@/lib/colors";
-import MetricSelector, { parseMetricParam } from "@/components/MetricSelector";
+import MetricSelector, { parseMetricParam, parseWeightsParam } from "@/components/MetricSelector";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -22,6 +22,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
   // ranking on the pillars chart; the trend chart shows the FIRST
   // active metric (multi-line trend chart is a v3.5 follow-up).
   const activeMetrics = parseMetricParam(searchParams.metric);
+  const activeWeights = parseWeightsParam(searchParams.weights, activeMetrics.length);
   const primaryMetric = activeMetrics[0];
   const isComposite = activeMetrics.length > 1;
   const metricLabel: Record<typeof primaryMetric, string> = {
@@ -107,8 +108,8 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
   const pillarStatsRanked = isComposite
     ? [...pillarStatsAll].sort(
         (a, b) =>
-          groupStatCompositeScore(b, activeMetrics, pillarStatsAll) -
-          groupStatCompositeScore(a, activeMetrics, pillarStatsAll),
+          groupStatCompositeScore(b, activeMetrics, pillarStatsAll, activeWeights) -
+          groupStatCompositeScore(a, activeMetrics, pillarStatsAll, activeWeights),
       )
     : [...pillarStatsAll].sort(
         (a, b) => groupStatValue(b, primaryMetric) - groupStatValue(a, primaryMetric),
@@ -117,7 +118,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
   const pillarData = pillarStats.map((s) => ({
     label: s.key || "Unknown",
     value: isComposite
-      ? Math.round(groupStatCompositeScore(s, activeMetrics, pillarStatsAll) * 100)
+      ? Math.round(groupStatCompositeScore(s, activeMetrics, pillarStatsAll, activeWeights) * 100)
       : groupStatValue(s, primaryMetric),
     color: canonicalColor("pillar", s.key),
   }));
@@ -176,6 +177,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
       <MetricSelector
         basePath="/"
         active={activeMetrics}
+        weights={activeWeights}
         preserve={searchParams}
       />
 

@@ -284,39 +284,46 @@ export function postMetricValue(p: Post, metric: RankingMetric): number {
 /**
  * Composite score for a single row across multiple metrics. Each metric
  * is normalized to its percentile-rank within the supplied population
- * (0..1, higher = better), then averaged with equal weight.
+ * (0..1, higher = better), then weighted-averaged.
+ *
+ * `weights` (Sprint P7 v3.5): optional positional weights matching
+ * `metrics` (one weight per metric, same order). Weights need not sum
+ * to 1 — they're normalized internally. When absent, all weights = 1
+ * (equal-weight averaging — Flavor B).
  *
  * Why percentile-rank: raw values across reach (10000s) and engagement
  * rate (0.X%) aren't comparable for averaging. Percentile-rank puts
- * everything on the same 0..1 scale so equal-weight averaging is
- * meaningful.
+ * everything on the same 0..1 scale so weighted averaging is meaningful.
  *
  * Why this signature: caller computes percentile-rank lookup tables
  * once per metric (not per row) for O(N log N) total instead of O(N²).
- *
- * Usage:
- *   const sortedByMetric: Record<RankingMetric, number[]> = {
- *     reach:        [...posts.map(p => reach(p))].sort((a,b) => a-b),
- *     interactions: ... etc
- *   };
- *   const score = compositeScore(post, ["reach","interactions"], sortedByMetric);
- *
- * Returns 0..1; rows with the highest composite rank highest.
  */
 export function compositeScore(
   p: Post,
   metrics: RankingMetric[],
   sortedByMetric: Record<RankingMetric, number[]>,
+  weights?: number[],
 ): number {
   if (metrics.length === 0) return 0;
+  // Normalize weights to sum=1; default = equal weight per metric.
+  const w = weights && weights.length === metrics.length
+    ? normalizeWeights(weights)
+    : metrics.map(() => 1 / metrics.length);
   let sum = 0;
-  for (const m of metrics) {
+  for (let i = 0; i < metrics.length; i++) {
+    const m = metrics[i];
     const value = postMetricValue(p, m);
     const sorted = sortedByMetric[m] || [];
     if (sorted.length === 0) continue;
-    sum += percentileRankIn(value, sorted);
+    sum += percentileRankIn(value, sorted) * w[i];
   }
-  return sum / metrics.length;
+  return sum;
+}
+
+function normalizeWeights(weights: number[]): number[] {
+  const total = weights.reduce((s, x) => s + Math.max(0, x), 0);
+  if (total <= 0) return weights.map(() => 1 / weights.length);
+  return weights.map((x) => Math.max(0, x) / total);
 }
 
 /**
@@ -365,11 +372,13 @@ export function buildMetricSorts(
  * Sort posts by composite score across `metrics`, descending. When
  * `metrics` has length 1, falls back to a direct value sort (cheaper +
  * preserves exact ordering instead of percentile-bucketed). When
- * length 0, returns posts unchanged.
+ * length 0, returns posts unchanged. Optional `weights` (v3.5)
+ * passed straight through to compositeScore.
  */
 export function sortByComposite(
   posts: Post[],
   metrics: RankingMetric[],
+  weights?: number[],
 ): Post[] {
   if (metrics.length === 0) return posts;
   if (metrics.length === 1) {
@@ -377,9 +386,7 @@ export function sortByComposite(
     return [...posts].sort((a, b) => postMetricValue(b, m) - postMetricValue(a, m));
   }
   const sorted = buildMetricSorts(posts, metrics);
-  // Decorate, sort, undecorate (Schwartzian) so we don't recompute the
-  // composite per comparison.
-  const decorated = posts.map((p) => [compositeScore(p, metrics, sorted), p] as const);
+  const decorated = posts.map((p) => [compositeScore(p, metrics, sorted, weights), p] as const);
   decorated.sort((a, b) => b[0] - a[0]);
   return decorated.map(([_, p]) => p);
 }
@@ -689,20 +696,26 @@ export function groupStatValue(s: GroupStatRow, metric: RankingMetric): number {
 /**
  * Composite GroupStatRow ranking across multiple metrics. Same
  * percentile-rank averaging as `compositeScore` but operating on
- * pre-aggregated group rows instead of raw posts.
+ * pre-aggregated group rows instead of raw posts. Optional `weights`
+ * (Sprint P7 v3.5) — same semantics as compositeScore.
  */
 export function groupStatCompositeScore(
   s: GroupStatRow,
   metrics: RankingMetric[],
   population: GroupStatRow[],
+  weights?: number[],
 ): number {
   if (metrics.length === 0) return 0;
+  const w = weights && weights.length === metrics.length
+    ? normalizeWeights(weights)
+    : metrics.map(() => 1 / metrics.length);
   let sum = 0;
-  for (const m of metrics) {
+  for (let i = 0; i < metrics.length; i++) {
+    const m = metrics[i];
     const sorted = population.map((r) => groupStatValue(r, m)).sort((a, b) => a - b);
-    sum += percentileRankIn(groupStatValue(s, m), sorted);
+    sum += percentileRankIn(groupStatValue(s, m), sorted) * w[i];
   }
-  return sum / metrics.length;
+  return sum;
 }
 
 export function dailyReach(posts: Post[]): { date: string; reach: number; posts: number }[] {
