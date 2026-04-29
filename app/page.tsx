@@ -102,30 +102,45 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
     color: canonicalColor("pillar", s.key),
   }));
 
-  // Biggest movers — pillar-level reach deltas vs the previous equal-length
+  // Biggest movers — pillar-level deltas vs the previous equal-length
   // period. The old "Engagement Mix" donut (reactions vs comments vs shares)
   // was aesthetically pleasing but non-actionable: the mix rarely shifts
   // meaningfully and doesn't inform a decision about what to post next.
   // Movers answer the question someone actually opens Overview for: "what
   // changed this period, and is it good or bad?" Top 3 risers + top 3
-  // fallers, ranked by absolute % delta (so a -40% -> +10% swing reads
-  // correctly even if the absolute reach number is small).
+  // fallers, ranked by absolute % delta.
+  //
+  // Sprint P7 QA pass (2026-04-28): movers re-key to active primary
+  // metric. With composite (2+ active) we still use primary-metric
+  // delta — composite-of-deltas is awkward to define and less
+  // actionable. Filter floor adapts per metric so we don't compare
+  // engagement-rate jumps in absolute terms (a 0.5%→2% engagement
+  // swing IS the story, not noise).
   const prevPillarStats = groupStats(prevRange, "content_pillar");
   const prevPillarMap = new Map(prevPillarStats.map((s) => [s.key, s]));
   type Mover = { key: string; current: number; previous: number; pct: number };
+  // Floor = "ignore tiny-base pillars" — scaled per metric so engagement
+  // rate uses a percentage threshold instead of a raw 5000 floor.
+  const moverFloor: Record<typeof primaryMetric, number> = {
+    reach: 5000,
+    interactions: 50,
+    engagement: 0.5, // 0.5% engagement rate floor
+    shares: 5,
+  };
+  const floor = moverFloor[primaryMetric];
   const moverRaw: Mover[] = groupStats(inRange, "content_pillar")
     .map((s) => {
-      const prev = prevPillarMap.get(s.key)?.total_reach ?? 0;
+      const prevStat = prevPillarMap.get(s.key);
+      const cur = groupStatValue(s, primaryMetric);
+      const prev = prevStat ? groupStatValue(prevStat, primaryMetric) : 0;
       return {
         key: s.key || "Unknown",
-        current: s.total_reach,
+        current: cur,
         previous: prev,
-        pct: wowDelta(s.total_reach, prev).pct,
+        pct: wowDelta(cur, prev).pct,
       };
     })
-    // Ignore tiny-base pillars; a jump from 50 → 200 reach is a 300% rise
-    // that would dominate the list and obscure the pillars that matter.
-    .filter((m) => (m.previous >= 5000 || m.current >= 5000));
+    .filter((m) => (m.previous >= floor || m.current >= floor));
   const risers = [...moverRaw].sort((a, b) => b.pct - a.pct).filter((m) => m.pct > 0).slice(0, 3);
   const fallers = [...moverRaw].sort((a, b) => a.pct - b.pct).filter((m) => m.pct < 0).slice(0, 3);
 
@@ -233,14 +248,14 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
         <ChartCard
           title="Biggest Movers"
           kind="derived"
-          subtitle="Pillar reach vs previous period"
-          definition="For each content pillar: total unique reach this period vs the same number of days immediately preceding it. Tiny-base pillars (< 5k reach either side) are excluded so small pillars with noisy % deltas don't drown out real shifts. Ranked by absolute % change."
+          subtitle={`Pillar ${metricLabel[primaryMetric].toLowerCase()} vs previous period`}
+          definition={`For each content pillar: ${primaryMetric === "engagement" ? "mean engagement rate" : `total ${metricLabel[primaryMetric].toLowerCase()}`} this period vs the same number of days immediately preceding it. Tiny-base pillars are excluded so small pillars with noisy % deltas don't drown out real shifts. Ranked by absolute % change.`}
           sampleSize={`top ${risers.length + fallers.length} of ${moverRaw.length} pillars`}
           caption="Which pillars gained ground this period, which lost it. Lean into the risers, diagnose the fallers before next week's plan."
         >
           {risers.length + fallers.length === 0 ? (
             <div className="py-8 text-center text-sm text-ink-500">
-              Not enough pillars clear the 5k-reach threshold in either period to rank movers. Widen the date range.
+              Not enough pillars clear the {floor.toLocaleString()}{primaryMetric === "engagement" ? "%" : ""}-{metricLabel[primaryMetric].toLowerCase()} threshold in either period to rank movers. Widen the date range.
             </div>
           ) : (
             <div className="space-y-4">
@@ -258,7 +273,9 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
                             {m.key}
                           </div>
                           <div className="text-[11px] text-ink-500 tabular-nums">
-                            {m.current.toLocaleString()} reach (was {m.previous.toLocaleString()})
+                            {primaryMetric === "engagement"
+                              ? `${m.current.toFixed(2)}% (was ${m.previous.toFixed(2)}%)`
+                              : `${Math.round(m.current).toLocaleString()} ${metricLabel[primaryMetric].toLowerCase()} (was ${Math.round(m.previous).toLocaleString()})`}
                           </div>
                         </div>
                         <div className="text-sm font-semibold text-brand-green tabular-nums shrink-0">
@@ -283,7 +300,9 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
                             {m.key}
                           </div>
                           <div className="text-[11px] text-ink-500 tabular-nums">
-                            {m.current.toLocaleString()} reach (was {m.previous.toLocaleString()})
+                            {primaryMetric === "engagement"
+                              ? `${m.current.toFixed(2)}% (was ${m.previous.toFixed(2)}%)`
+                              : `${Math.round(m.current).toLocaleString()} ${metricLabel[primaryMetric].toLowerCase()} (was ${Math.round(m.previous).toLocaleString()})`}
                           </div>
                         </div>
                         <div className="text-sm font-semibold text-brand-red tabular-nums shrink-0">
