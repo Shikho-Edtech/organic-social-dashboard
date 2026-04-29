@@ -192,36 +192,15 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
   // (NOT mean-of-ratios — that's the "simpson's paradox on small-reach
   // posts" trap the codebase already guards against in computeKpis).
 
-  const sumShares = inRange.reduce((s, p) => s + (p.shares || 0), 0);
-  const sumReach = inRange.reduce((s, p) => s + postReach(p), 0);
-  const sumComments = inRange.reduce((s, p) => s + (p.comments || 0), 0);
-  const sumReactions = inRange.reduce((s, p) => s + (p.reactions || 0), 0);
-  const sumClicks = inRange.reduce((s, p) => s + (p.clicks || 0), 0);
-  const sumPositive = inRange.reduce((s, p) => s + (p.love || 0) + (p.wow || 0), 0);
-  const sumNegative = inRange.reduce((s, p) => s + (p.sorry || 0) + (p.anger || 0), 0);
-
-  // Item 33 — virality (shares ÷ reach). Percent for display.
-  const viralityPct = sumReach > 0 ? (sumShares / sumReach) * 100 : 0;
-
-  // Item 34 — discussion quality (comments ÷ reactions). Ratio, shown with 2dp.
-  const discussionRatio = sumReactions > 0 ? sumComments / sumReactions : 0;
-
-  // Item 35 — sentiment polarity ((love+wow) ÷ (sad+angry)). Null when no
-  // negative signal exists so we can render "—" instead of Infinity.
-  const polarity = sumNegative > 0 ? sumPositive / sumNegative : sumPositive > 0 ? null : 0;
-
-  // Item 36 — CTR proxy on LINK posts only. Link posts are where the
-  // click signal is meaningful — other formats pick up incidental clicks
-  // (tag, permalink) that muddy the ratio.
-  // Item 39 — save-to-reach ratio (SCOPE-DOWN: Saves column not ingested,
-  // see lib/aggregate.ts saveRate + DECISIONS). Value will be 0% everywhere
-  // until the pipeline writes a Saves column. Surfaced now so the tile
-  // exists and auto-updates once the data lands.
-  const saves = inRange.reduce((s, p) => {
-    const sv = (p as any).saves ?? 0;
-    return s + (typeof sv === "number" ? sv : 0);
-  }, 0);
-  const saveRatePct = sumReach > 0 ? (saves / sumReach) * 100 : 0;
+  // Sprint P7 Phase 1 (2026-04-28): the four secondary tiles (Virality,
+  // Discussion Quality, Sentiment Polarity, Save Rate) were dropped per
+  // brand-team review — they cluttered the strip without driving decisions
+  // and Save Rate was permanently "pending" since the pipeline never
+  // ingested Saves. The numerator/denominator sums + ratio computations
+  // they used were removed alongside the JSX. If Saves ever ships from
+  // Meta, the pattern lives in git history (commit before this one) and
+  // can be revived as a single new tile next to the Best-X strip rather
+  // than its own row.
 
   // Item 38 — format × hour-of-day reach matrix. Flatten into cells the
   // small Heatmap grid component can render; apply a minimum-n filter to
@@ -247,10 +226,6 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
       if (c.n >= MATRIX_MIN_N && c.mean > matrixMax) matrixMax = c.mean;
     }
   }
-
-  // Row 6 of the Best-X strip gains virality as its 6th metric. Only
-  // interesting when there's non-zero reach — keep the render guarded.
-  const hasViralityData = sumReach > 0;
 
   return (
     <div>
@@ -388,88 +363,14 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
         </Card>
       </div>
 
-      {/* Bucket E derived-metrics strip (items 33, 34, 35, 36, 39, 40, 42).
-          These are all "second-order" ratios — computed from fields already
-          on Post/VideoMetric. Sits above the AI recommendation block so the
-          reader sees raw shaping signals first, then the AI-synthesized
-          "so do this" directly below. Each tile uses ink-* typography, no
-          slate or gray classes (brand rule). Save-to-reach renders 0% today because
-          the pipeline hasn't added the Saves column yet — see the TODO on
-          saveRate() in lib/aggregate.ts.
-
-          Layout: 2 cols on mobile (380px ÷ 2 ≈ 190 per card, fine for
-          short values like "1.24%") up to 4 cols on lg+. Keeps the strip
-          short enough not to push charts below the fold. */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <Card className="!p-4">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">Virality</div>
-          <div
-            className="text-base sm:text-lg font-bold mt-1.5 break-words leading-snug"
-            style={{ color: "#C02080" }}
-            title="Shares divided by reach across the period"
-          >
-            {hasViralityData ? viralityPct.toFixed(2) + "%" : "—"}
-          </div>
-          <div className="text-xs text-ink-400 mt-1">
-            shares ÷ reach
-          </div>
-          <div className="text-[11px] text-ink-400 mt-0.5">
-            {sumShares.toLocaleString()} shares · {sumReach.toLocaleString()} reach
-          </div>
-        </Card>
-        <Card className="!p-4">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">Discussion Quality</div>
-          <div
-            className="text-base sm:text-lg font-bold mt-1.5 break-words leading-snug"
-            style={{ color: "#304090" }}
-            title="Comments divided by reactions — separates liked-and-moved-on from sparked-conversation"
-          >
-            {sumReactions > 0 ? discussionRatio.toFixed(3) : "—"}
-          </div>
-          <div className="text-xs text-ink-400 mt-1">
-            comments ÷ reactions
-          </div>
-          <div className="text-[11px] text-ink-400 mt-0.5">
-            {sumComments.toLocaleString()} comments · {sumReactions.toLocaleString()} reactions
-          </div>
-        </Card>
-        <Card className="!p-4">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">Sentiment Polarity</div>
-          <div
-            className="text-base sm:text-lg font-bold mt-1.5 break-words leading-snug"
-            style={{ color: polarity === null ? "#1A8E78" : polarity >= 1 ? "#10b981" : "#E03050" }}
-            title="(love + wow) ÷ (sad + angry) — values >1 mean positive reactions outweigh negative"
-          >
-            {polarity === null
-              ? "all +"
-              : sumNegative === 0 && sumPositive === 0
-              ? "—"
-              : polarity.toFixed(2)}
-          </div>
-          <div className="text-xs text-ink-400 mt-1">
-            (love + wow) ÷ (sad + angry)
-          </div>
-          <div className="text-[11px] text-ink-400 mt-0.5">
-            +{sumPositive.toLocaleString()} · −{sumNegative.toLocaleString()}
-          </div>
-        </Card>
-        <Card className="!p-4">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">Save Rate</div>
-          <div
-            className="text-base sm:text-lg font-bold mt-1.5 break-words leading-snug"
-            style={{ color: "#6E7389" }}
-            title="Saves divided by reach — intent-to-return signal. Currently 0% because the pipeline hasn't ingested the Saves column yet."
-          >
-            {saves > 0 ? saveRatePct.toFixed(2) + "%" : "pending"}
-          </div>
-          <div className="text-xs text-ink-400 mt-1">
-            saves ÷ reach
-          </div>
-          <div className="text-[11px] text-ink-400 mt-0.5">
-            {saves > 0 ? `${saves.toLocaleString()} saves in range` : "awaiting pipeline Saves column"}
-          </div>
-        </Card>
-      </div>
+      {/* Sprint P7 Phase 1 (2026-04-28): the second derived-metrics row
+          (Virality / Discussion Quality / Sentiment Polarity / Save Rate)
+          was removed per brand-team review. Save Rate was permanently
+          "pending" since the pipeline never ingested Saves; the other three
+          duplicated signal already visible in the Funnel Engagement chart
+          + the Best X strip above. Keeps the page focused on decisions,
+          not vanity metrics. Pattern preserved in git history (commit
+          before Phase 1) for revival if Saves data ever ships from Meta. */}
 
       {/* Funnel distribution + engagement (moved from /strategy in Sprint P6).
           TOFU cyan = awareness, MOFU indigo = consideration, BOFU coral =
