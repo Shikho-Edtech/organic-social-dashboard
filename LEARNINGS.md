@@ -1,5 +1,51 @@
 # Learnings
 
+## 2026-04-29 — Deprecation registry vs live fetch: check both before panicking on a Graph API bump
+
+When validating the v21→v25 Graph API bump, an early smoke test
+panicked: `page_fans`, `page_fan_adds_unique`, `page_fan_removes_unique`,
+`page_negative_feedback`, `post_impressions`, and `post_negative_feedback`
+all returned HTTP 400 on v25. First instinct: "v25 broke us, we need
+to find replacements before bumping."
+
+Real picture after checking the live fetch path: NONE of those metrics
+are actually requested. They live in `lib/aggregate.ts`'s deprecation
+registry — a defensive list of "if the sheet ever has a column with
+this name, treat it as alias for X" — but the pipeline `src/fetch.py`
+already migrated to v25-compatible alternatives months ago
+(`page_daily_follows_unique`, `page_daily_unfollows_unique`, etc.).
+
+**Rule going forward:** when a Graph API bump audit shows endpoints
+returning 4xx, before assuming they're broken, check the actual fetch
+path in `src/fetch.py` and confirm whether the metric is requested
+live OR only resolved as an alias when reading historical sheet data.
+Two different code paths, two different blast radii.
+
+The deprecation registry exists for backward compat with old sheet
+columns; it isn't a list of "things we still call live." Conflating
+the two adds an hour of phantom debugging on every bump.
+
+## 2026-04-29 — UI surfaces for CLI escape hatches: link out > API-route until pain emerges
+
+The `--force-regenerate` bypass for running-week locking shipped with
+both a Python CLI flag AND a `workflow_dispatch` input on the GitHub
+Actions workflows. Adding a dashboard button could either (a) POST
+directly to the GitHub API via a Next.js route + Vercel-side PAT, or
+(b) link out to the GitHub Actions "Run workflow" panel.
+
+Picked (b). The 2-click cost of the link-out is invisible to the
+operator (audience size = 1), and skipping the secret-on-Vercel
+removes a high-blast-radius credential. The disclosure copy
+*doubles as documentation* — it tells the operator why the lock
+exists and what they're flipping. An API route hides that context
+behind a single button click; arguably worse for ops literacy.
+
+**Rule going forward:** when adding a UI surface for an existing
+CLI escape hatch, default to link-out + clear copy. Promote to API
+route only when (a) operator pain emerges from extra clicks, or
+(b) an audit-log requirement materializes. "We could automate it"
+isn't a reason to hold a workflow-write PAT in production env.
+
 ## 2026-04-29 — "Skip stage X on mode Y" needs an explicit guard at the stage, not just the mode dispatch
 
 When implementing `--mode midweek` for the Sprint P7 mid-week diagnosis

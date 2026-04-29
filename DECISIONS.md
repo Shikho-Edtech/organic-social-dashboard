@@ -1,5 +1,80 @@
 # Decisions
 
+## 2026-04-29 — Sprint P7 v4.2: zero-config link-out for "Regenerate this week" over PAT-route
+
+The `force_regenerate` CLI bypass for running-week locking was already
+live as `python main.py --force-regenerate` and as a workflow_dispatch
+input on `weekly-analysis.yml` / `midweek-diagnosis.yml`. The dashboard
+needed a UI surface for it.
+
+Two ways to land it:
+
+A. **Next.js API route** `/api/regenerate` → POSTs to
+   `repos/:owner/:repo/actions/workflows/:workflow/dispatches`. Click
+   triggers the run directly. Requires `GITHUB_PAT` env var on Vercel
+   with `workflow:write` scope, plus an audit-log story (who clicked).
+
+B. **Disclosure-style link out** to the GitHub Actions UI's "Run workflow"
+   panel for the relevant workflow file. Operator flips the
+   `force_regenerate` toggle ON in the GitHub UI before clicking Run.
+   No secret on Vercel; no API route to maintain.
+
+Picked B for v4.2.
+
+**Why:**
+- Audience size = 1 (the operator). The friction delta (2 clicks: open
+  panel → toggle → click Run, vs. 1 click in dashboard) doesn't justify
+  the ops cost of holding a `workflow:write` PAT in Vercel env.
+- A Vercel-side PAT with `workflow:write` scope is high-blast-radius
+  if leaked. Until at least one ops moment exists where the extra
+  click materially hurt, the secret-free path wins.
+- The disclosure copy doubles as documentation: it tells operators
+  *why* the lock exists ("Strategy/Calendar/Plan_Narrative are locked
+  for the running week so accidental mid-week reruns don't clobber a
+  stable plan") and *what they're flipping* (`force_regenerate=true`).
+  An API route would hide that context behind a single button.
+- v4.5 candidate is the API route. Promote when (a) operator pain
+  emerges, or (b) the audit-log story matters (e.g., shared-account
+  ops where "who triggered the bypass" needs a paper trail).
+
+## 2026-04-29 — Sprint P7 v4.3: bump Graph API in one step, audit-then-go (not n-1 conservative)
+
+`scripts/check_graph_version.py` flagged us 4 majors behind (v21→v25).
+Two postures available:
+
+A. **Audit-then-bump-current** — read v22→v25 changelogs end-to-end,
+   smoke-test every endpoint we use against v25, then bump to v25.
+B. **Conservative n-1** — bump to v24 (one major behind current).
+   Rationale: deprecation cliffs hit at the *current* version; n-1
+   absorbs Meta's stability lag.
+
+Picked A.
+
+**Why:**
+- The audit work is identical for v24 and v25. Once you're reading
+  changelogs you might as well land on the highest safe version.
+- `WARN_LAG = 2` in the version-check script means n-1 still won't
+  silence the cron alert when v26 ships. We'd be back here in weeks.
+- v25's deprecations are *queued for v26*, not active. There's no
+  v25-specific stability tax to pay; v25 is functionally a refresh
+  of v24 for our endpoint set.
+- Conservative-by-default loses its value when "current minus 1" is
+  visibly behind a recent deprecation that we already migrated for
+  (`post_impressions_unique` → `post_total_media_view_unique` was
+  pre-staged in `lib/aggregate.ts::reach`).
+
+**Audit pattern that worked, codify for next bump:**
+1. Read each major's changelog. Tag every breaking change for OUR
+   endpoint set (Page Insights, Posts edge, Video edge, Reels insights,
+   page-level posts insights). Skip Instagram/WhatsApp/Marketing/Live
+   Video sections — we're FB-Page-only.
+2. Cross-check the deprecation registry in `lib/aggregate.ts` and
+   pipeline fetch path. Confirm anything deprecated isn't called live.
+3. Live smoke-test every endpoint we DO call against the target
+   version. Curl/PowerShell + token; check HTTP 200 + payload shape.
+4. Flip `GRAPH_API_VERSION`. Push. Watch one full weekly run.
+5. DECISIONS entry on what was tested + what's queued for the next bump.
+
 ## 2026-04-28 — Sprint P7 Phase 3: percentile-rank composite over weighted-sliders for v1
 
 Spec called for "multi-metric scoring composite" in v1 (originally

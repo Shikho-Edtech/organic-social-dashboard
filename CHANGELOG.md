@@ -1,5 +1,57 @@
 # Changelog
 
+## 2026-04-29 — Sprint P7 v4 (per-cell explainer wired, regenerate UI button, Graph API v25 bump)
+
+Three v4 follow-up items pulled forward in one session. Closes the
+v3.5 explainer-primitive loop, adds a UI surface for the locking
+escape hatch, and lifts the pipeline to a current Graph API version.
+
+**v4.1 — per-cell composite explainer wired (`874ecb3`):**
+- `BarChartBase` accepts optional `compositeBreakdown` prop keyed by
+  bar label. When passed (composite mode only), a custom Recharts
+  `<Tooltip content={...}>` render prop replaces the default tooltip
+  with a dark indigo popover matching `<CompositeExplainer>` /
+  `<PostReference>` styling.
+- Each tooltip row shows: per-metric percentile, weight, raw value,
+  and contribution to the composite score. Weights are sum-normalized
+  to match `compositeScore` math.
+- Wired on Overview (Pillar performance) + Explore (Performance by X).
+  Explore uses the FULL grouped population for percentile ranks (not
+  the top-12 slice) so ranks stay honest. Single-metric mode still
+  uses the default Recharts tooltip — no behavior change there.
+
+**v4.2 — "Regenerate this week" UI button (`9061767`):**
+- New `<RegenerateThisWeekButton>` disclosure component. Coral border
+  on hover; 3-step instructions panel with link to GitHub Actions UI.
+- `scope` prop ("weekly" | "midweek") routes to the right workflow.
+  Operator flips the `force_regenerate` workflow_dispatch input to
+  bypass running-week locking. Zero-config — no PAT secret needed.
+- Wired on Diagnosis (`isLastWeekView` only — where end-of-week
+  verdict gets locked) + Plan (`isThisWeekView || isNextWeekView` —
+  where Calendar/Plan_Narrative are locked). v4.5 candidate is a
+  Next.js API route POSTing to `actions/workflows/dispatches`
+  directly; deferred until pain emerges.
+
+**v4.3 — Graph API v21.0 → v25.0 bump (pipeline `bb2a1e8`, closes #2):**
+- Audited Facebook Graph API changelogs v22→v25. v22 (Instagram-only),
+  v23 (WhatsApp + Marketing), v24 (Live Video + Marketing) all safe
+  for our FB-only endpoints. v25 Page Insights deprecations are
+  *queued for v26*, not active in v25.
+- Live smoke-tested every endpoint we use against v25.0:
+  `post_total_media_view_unique`, `post_engagements`,
+  `post_impressions_unique`, `post_clicks`, `post_reactions_*`,
+  `page_daily_follows_unique`, `page_daily_unfollows_unique`,
+  `/me?fields=followers_count,fan_count` — all HTTP 200.
+- Deprecated metrics (`post_impressions`, `post_negative_feedback`,
+  `page_fans`, `page_fan_adds_unique`, `page_fan_removes_unique`,
+  `page_negative_feedback`) confirmed not in live fetch path; they
+  sit in the deprecation registry only.
+- `scripts/check_graph_version.py` now reports `STATUS: current`
+  (lag 0/0). Sunday cron will stop firing red.
+- Next bump (→ v26.0) needs a separate audit when v26 lands; that's
+  the deprecation cliff for several Page-level `_unique` metrics
+  we use today.
+
 ## 2026-04-29 — Sprint P7 v3 + v3.5 (live validation, Plan selector unblocked, multi-line composite, weight sliders)
 
 Live triggers + cross-repo architectural unblock + v3.5 follow-ups
