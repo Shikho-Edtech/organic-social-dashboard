@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState, useRef, useEffect } from "react";
 import type { Post, DailyMetric } from "@/lib/types";
-import { computeKpis, filterPosts, dailyReach, groupStats, bdt, reach, engagementRate, daysAgo, sortByComposite, type RankingMetric } from "@/lib/aggregate";
+import { computeKpis, filterPosts, dailyReach, dailyMetricTrend, groupStats, groupStatValue, groupStatCompositeScore, bdt, reach, engagementRate, daysAgo, sortByComposite, type RankingMetric } from "@/lib/aggregate";
 import { Card, ChartCard } from "@/components/Card";
 import TrendChart from "@/components/TrendChart";
 import BarChartBase from "@/components/BarChart";
@@ -102,7 +102,27 @@ export default function ExploreClient({ posts, activeMetrics = ["reach"] }: Prop
   );
 
   const kpis = computeKpis(filtered);
-  const trend = dailyReach(filtered).map((d) => ({ date: d.date.slice(5), value: d.reach }));
+  // Sprint P7 QA pass (2026-04-28): trend chart re-keys to active primary
+  // metric. Multi-line composite is v3.5; for v1 the chart shows the
+  // first active metric.
+  const primaryMetric = activeMetrics[0];
+  const isComposite = activeMetrics.length > 1;
+  const metricLabelFull: Record<RankingMetric, string> = {
+    reach: "Reach",
+    interactions: "Interactions",
+    engagement: "Engagement Rate",
+    shares: "Shares",
+  };
+  const metricLabelLower: Record<RankingMetric, string> = {
+    reach: "reach",
+    interactions: "interactions",
+    engagement: "engagement rate",
+    shares: "shares",
+  };
+  const trend = dailyMetricTrend(filtered, primaryMetric).map((d) => ({
+    date: d.date.slice(5),
+    value: d.value,
+  }));
   // Full sorted list so pagination can walk past the top 10.
   // Sprint P7 Phase 3: composite-rank when 2+ metrics active. The
   // existing variable name `sortedByReach` keeps the diff small —
@@ -232,36 +252,74 @@ export default function ExploreClient({ posts, activeMetrics = ["reach"] }: Prop
               give the instant "does this filter make sense?" read, and the
               post list is the deep-dive after. Chart cards sit under the
               filter controls; Top Posts drops to the bottom of the scroll. */}
+          {/* Sprint P7 QA pass (2026-04-28): both charts re-key to the
+              active page-level metric. Single-metric: bar values are the
+              metric's total/mean per segment. Multi-metric: bars show
+              composite percentile rank (0–100). Trend chart shows the
+              first active metric's daily series. */}
           <div className="mb-6">
             <ChartCard
               title={`Performance by ${groupByLabel}`}
               kind="ai"
-              subtitle="Total unique reach by segment"
-              caption={`Each bar is the sum of unique reach for posts in that ${groupByLabel.toLowerCase()} segment. Percentage shown is share of total reach across segments shown.`}
+              subtitle={
+                isComposite
+                  ? `Composite rank by ${activeMetrics.length} metrics`
+                  : `${primaryMetric === "engagement" ? "Mean" : "Total"} ${metricLabelLower[primaryMetric]} by segment`
+              }
+              caption={
+                isComposite
+                  ? `Bars show each segment's average percentile rank across the selected metrics. Higher = stronger on more dimensions.`
+                  : `Each bar is the ${primaryMetric === "engagement" ? "mean" : "sum"} ${metricLabelLower[primaryMetric]} for posts in that ${groupByLabel.toLowerCase()} segment. Percentage shown is share of total ${metricLabelLower[primaryMetric]} across segments shown.`
+              }
             >
               <BarChartBase
-                data={grouped.slice(0, 12).map((g) => ({
-                  label: g.key || "Unknown",
-                  value: g.total_reach,
-                  color: canonicalColor(colorFieldFor(groupByDim), g.key),
-                }))}
+                data={(() => {
+                  // Sort by active metric (single) or composite (multi),
+                  // take top 12, build chart data with metric-specific
+                  // values + percent semantics.
+                  const ranked = isComposite
+                    ? [...grouped].sort(
+                        (a, b) =>
+                          groupStatCompositeScore(b, activeMetrics, grouped) -
+                          groupStatCompositeScore(a, activeMetrics, grouped),
+                      )
+                    : [...grouped].sort(
+                        (a, b) =>
+                          groupStatValue(b, primaryMetric) - groupStatValue(a, primaryMetric),
+                      );
+                  return ranked.slice(0, 12).map((g) => ({
+                    label: g.key || "Unknown",
+                    value: isComposite
+                      ? Math.round(groupStatCompositeScore(g, activeMetrics, grouped) * 100)
+                      : groupStatValue(g, primaryMetric),
+                    color: canonicalColor(colorFieldFor(groupByDim), g.key),
+                  }));
+                })()}
                 horizontal
                 height={Math.max(200, Math.min(12, grouped.length) * 34)}
-                metricName="Reach"
-                valueAxisLabel="Unique reach"
-                showPercent
+                metricName={isComposite ? "Composite" : metricLabelFull[primaryMetric]}
+                valueAxisLabel={isComposite ? "Composite score" : metricLabelFull[primaryMetric]}
+                showPercent={!isComposite}
               />
             </ChartCard>
           </div>
 
           <div className="mb-6">
             <ChartCard
-              title="Reach Over Time"
+              title={`${metricLabelFull[primaryMetric]} Over Time${isComposite ? " (primary metric)" : ""}`}
               kind="observed"
-              subtitle="Daily unique reach for the current filter set"
-              caption="Trend of daily unique reach for the posts matching your filters. Gaps indicate days with no qualifying posts."
+              subtitle={`Daily ${metricLabelLower[primaryMetric]} for the current filter set`}
+              caption={
+                isComposite
+                  ? `Trend shows ${metricLabelLower[primaryMetric]} (the first active metric of the composite). Multi-line composite trend is a v3.5 follow-up. Gaps indicate days with no qualifying posts.`
+                  : `Trend of daily ${metricLabelLower[primaryMetric]} for the posts matching your filters. Gaps indicate days with no qualifying posts.`
+              }
             >
-              <TrendChart data={trend} metricName="Reach" valueAxisLabel="Unique reach" />
+              <TrendChart
+                data={trend}
+                metricName={metricLabelFull[primaryMetric]}
+                valueAxisLabel={metricLabelFull[primaryMetric]}
+              />
             </ChartCard>
           </div>
 
