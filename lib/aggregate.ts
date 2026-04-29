@@ -640,6 +640,71 @@ export function topByEngagement(posts: Post[], minReach = 500, n = 10): Post[] {
 
 // ─── Daily trend aggregation ───
 
+/**
+ * Sprint P7 Phase 3 (2026-04-28): metric-aware daily trend. Sums or
+ * averages per BDT day depending on the metric semantic:
+ *   - reach / interactions / shares → SUM per day (cumulative volume)
+ *   - engagement → MEAN per day (rate metric, not summable)
+ *
+ * Returns the same shape as dailyReach but with a generic `value` field.
+ * Charts that consume `dailyReach` already use `.reach` / `.value` —
+ * pages adopt the new shape via the metric-keyed accessor.
+ */
+export function dailyMetricTrend(
+  posts: Post[],
+  metric: RankingMetric,
+): { date: string; value: number; posts: number }[] {
+  const byDay: Record<string, { values: number[]; posts: number }> = {};
+  for (const p of posts) {
+    if (!p.created_time) continue;
+    const d = dateStr(bdt(p.created_time));
+    byDay[d] = byDay[d] || { values: [], posts: 0 };
+    byDay[d].values.push(postMetricValue(p, metric));
+    byDay[d].posts += 1;
+  }
+  return Object.entries(byDay)
+    .map(([date, v]) => {
+      const value =
+        metric === "engagement"
+          ? (v.values.length ? v.values.reduce((s, x) => s + x, 0) / v.values.length : 0)
+          : v.values.reduce((s, x) => s + x, 0);
+      return { date, value, posts: v.posts };
+    })
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/**
+ * Pick the right total field from a GroupStatRow for a given metric.
+ * Used by metric-aware ranking on Overview's content-pillar bar chart.
+ */
+export function groupStatValue(s: GroupStatRow, metric: RankingMetric): number {
+  switch (metric) {
+    case "reach":        return s.total_reach;
+    case "interactions": return s.total_interactions;
+    case "engagement":   return s.avg_engagement_rate;
+    case "shares":       return s.total_shares;
+  }
+}
+
+/**
+ * Composite GroupStatRow ranking across multiple metrics. Same
+ * percentile-rank averaging as `compositeScore` but operating on
+ * pre-aggregated group rows instead of raw posts.
+ */
+export function groupStatCompositeScore(
+  s: GroupStatRow,
+  metrics: RankingMetric[],
+  population: GroupStatRow[],
+): number {
+  if (metrics.length === 0) return 0;
+  let sum = 0;
+  for (const m of metrics) {
+    const sorted = population.map((r) => groupStatValue(r, m)).sort((a, b) => a - b);
+    sum += percentileRankIn(groupStatValue(s, m), sorted);
+  }
+  return sum / metrics.length;
+}
+
 export function dailyReach(posts: Post[]): { date: string; reach: number; posts: number }[] {
   const byDay: Record<string, { reach: number; posts: number }> = {};
   for (const p of posts) {

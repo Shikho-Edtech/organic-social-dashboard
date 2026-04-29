@@ -1,5 +1,5 @@
 import { getPosts, getDailyMetrics, getRunStatus } from "@/lib/sheets";
-import { filterPosts, computeKpis, dailyReach, groupStats, wowDelta } from "@/lib/aggregate";
+import { filterPosts, computeKpis, dailyReach, dailyMetricTrend, groupStats, groupStatValue, groupStatCompositeScore, wowDelta } from "@/lib/aggregate";
 import { resolveRange } from "@/lib/daterange";
 import PageHeader from "@/components/PageHeader";
 import KpiCard from "@/components/KpiCard";
@@ -8,12 +8,27 @@ import TrendChart from "@/components/TrendChart";
 import Donut from "@/components/Donut";
 import BarChartBase from "@/components/BarChart";
 import { canonicalColor } from "@/lib/colors";
+import MetricSelector, { parseMetricParam } from "@/components/MetricSelector";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
 
 export default async function OverviewPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   const range = resolveRange(searchParams);
+  // Sprint P7 Phase 3: page-level multi-metric ranking. Default ["reach"]
+  // preserves the legacy "Reach Trend" + reach-ranked Content Pillars
+  // behavior. Multi-select activates composite (percentile-rank avg)
+  // ranking on the pillars chart; the trend chart shows the FIRST
+  // active metric (multi-line trend chart is a v3.5 follow-up).
+  const activeMetrics = parseMetricParam(searchParams.metric);
+  const primaryMetric = activeMetrics[0];
+  const isComposite = activeMetrics.length > 1;
+  const metricLabel: Record<typeof primaryMetric, string> = {
+    reach: "Reach",
+    interactions: "Interactions",
+    engagement: "Engagement Rate",
+    shares: "Shares",
+  };
 
   const [posts, daily, runStatus] = await Promise.all([
     getPosts(),
@@ -43,8 +58,15 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
   const netFollowers = dailyInRange.reduce((s, d) => s + ((d.new_follows || 0) - (d.unfollows || 0)), 0);
   const currentFollowers = dailyInRange.length ? dailyInRange[dailyInRange.length - 1].followers_total : (daily.length ? daily[daily.length - 1].followers_total : 0);
 
-  // Weekly reach trend
-  const trend = dailyReach(inRange).map((d) => ({ date: d.date.slice(5), value: d.reach }));
+  // Sprint P7 Phase 3: trend chart re-keys to active primary metric.
+  // dailyMetricTrend handles sum-vs-mean semantics per metric (reach
+  // sums daily; engagement averages daily). Multi-line composite trend
+  // is deferred to v3.5 (cleaner UX with a multi-series chart, not
+  // jamming everything onto one line).
+  const trend = dailyMetricTrend(inRange, primaryMetric).map((d) => ({
+    date: d.date.slice(5),
+    value: d.value,
+  }));
 
   // Sprint P6: dropped the Virality / North-Star / Cadence strip and the
   // AI cost banner. Virality + north-star were second-order signals that
@@ -57,11 +79,26 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
   const formatStats = groupStats(inRange, "format");
   const formatDist = formatStats.map((s) => ({ label: s.key || "Unknown", value: s.count }));
 
-  // Content pillars
-  const pillarStats = groupStats(inRange, "content_pillar").slice(0, 10);
+  // Content pillars — Sprint P7 Phase 3: rank by active metric.
+  // Single-metric: direct value sort. Multi-metric: composite percentile
+  // average. The bar VALUE shown is the metric's raw total (or composite
+  // rank 0..100 for multi-select so the bar still has a tangible scale).
+  const pillarStatsAll = groupStats(inRange, "content_pillar");
+  const pillarStatsRanked = isComposite
+    ? [...pillarStatsAll].sort(
+        (a, b) =>
+          groupStatCompositeScore(b, activeMetrics, pillarStatsAll) -
+          groupStatCompositeScore(a, activeMetrics, pillarStatsAll),
+      )
+    : [...pillarStatsAll].sort(
+        (a, b) => groupStatValue(b, primaryMetric) - groupStatValue(a, primaryMetric),
+      );
+  const pillarStats = pillarStatsRanked.slice(0, 10);
   const pillarData = pillarStats.map((s) => ({
     label: s.key || "Unknown",
-    value: s.total_reach,
+    value: isComposite
+      ? Math.round(groupStatCompositeScore(s, activeMetrics, pillarStatsAll) * 100)
+      : groupStatValue(s, primaryMetric),
     color: canonicalColor("pillar", s.key),
   }));
 
@@ -96,6 +133,17 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
     <div>
       <PageHeader title="Overview" subtitle="Key performance at a glance" dateLabel={range.label} lastScrapedAt={runStatus.last_run_at} />
 
+      {/* Sprint P7 Phase 3: page-level metric selector. Affects the
+          Reach/Interactions/etc Trend chart + the Content Pillars
+          ranking. Format Distribution intentionally NOT affected
+          (its semantic — "what's the post mix" — doesn't change
+          based on which metric you rank by). */}
+      <MetricSelector
+        basePath="/"
+        active={activeMetrics}
+        preserve={searchParams}
+      />
+
       {/* KPIs — canonical template caps at 5 cards (Batch 3d, #19). Dropped
           "Interactions" because Engagement Rate is the same signal normalized
           — raw count encourages the wrong read (a reach-up/rate-down period
@@ -109,16 +157,35 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
         <KpiCard label="Followers" value={currentFollowers} sublabel={`${netFollowers >= 0 ? "+" : ""}${netFollowers.toLocaleString()} in range`} />
       </div>
 
-      {/* Primary chart: reach trend */}
+      {/* Primary chart: trend re-keys to active primary metric */}
       <div className="grid lg:grid-cols-2 gap-4 mb-6">
         <ChartCard
-          title="Reach Trend"
+          title={`${metricLabel[primaryMetric]} Trend${isComposite ? " (primary metric of composite)" : ""}`}
           kind="observed"
-          subtitle="Daily unique reach"
-          definition="Sum of post-level unique reach for posts published that day. Attributed to post-publish date, not page impression date."
-          caption="Daily unique users reached by posts in the selected period."
+          subtitle={
+            primaryMetric === "engagement"
+              ? "Daily mean engagement rate"
+              : primaryMetric === "reach"
+                ? "Daily unique reach"
+                : `Daily total ${primaryMetric}`
+          }
+          definition={
+            primaryMetric === "engagement"
+              ? "Mean post-level engagement rate per day. Engagement rate = interactions ÷ reach × 100. Days with no posts emit 0."
+              : "Sum of the active metric for posts published that day. Attributed to post-publish date in BDT."
+          }
+          caption={
+            isComposite
+              ? `Showing ${metricLabel[primaryMetric]} as the primary metric of the active composite. Multi-line composite trend is a v3.5 follow-up.`
+              : `Daily ${metricLabel[primaryMetric].toLowerCase()} for posts in the selected period.`
+          }
         >
-          <TrendChart data={trend} color="#304090" metricName="Reach" valueAxisLabel="Unique reach" />
+          <TrendChart
+            data={trend}
+            color="#304090"
+            metricName={metricLabel[primaryMetric]}
+            valueAxisLabel={metricLabel[primaryMetric]}
+          />
         </ChartCard>
 
         <ChartCard
@@ -136,18 +203,30 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
         <ChartCard
           title="Content Pillars"
           kind="ai"
-          subtitle="Total reach by content pillar"
-          definition="Sum of unique reach for all posts in each pillar. Pillars are assigned by the weekly classifier using the full pillar taxonomy."
-          sampleSize={`top ${pillarData.length} of ${groupStats(inRange, "content_pillar").length}`}
-          caption="Which pillars drive the most audience reach in this period. Percentage shown is share of total reach across the pillars displayed."
+          subtitle={
+            isComposite
+              ? `Composite rank by ${activeMetrics.length} metrics`
+              : `${primaryMetric === "engagement" ? "Avg" : "Total"} ${metricLabel[primaryMetric].toLowerCase()} by content pillar`
+          }
+          definition={
+            isComposite
+              ? "Composite rank: each metric percentile-normalized within the pillar set, then averaged with equal weight. Bars show the composite score 0–100 (higher = better)."
+              : `${primaryMetric === "engagement" ? "Mean" : "Sum"} of ${metricLabel[primaryMetric].toLowerCase()} for all posts in each pillar. Pillars are assigned by the weekly classifier.`
+          }
+          sampleSize={`top ${pillarData.length} of ${pillarStatsAll.length}`}
+          caption={
+            isComposite
+              ? "Pillars ranked by their average percentile across the selected metrics. A pillar that's strong on every metric ranks above one that's only top on a single dimension."
+              : `Which pillars drive the most ${metricLabel[primaryMetric].toLowerCase()} in this period. Percentage is share of total across the pillars displayed.`
+          }
         >
           <BarChartBase
             data={pillarData}
             horizontal
             height={Math.max(200, pillarData.length * 32)}
-            metricName="Reach"
-            valueAxisLabel="Unique reach"
-            showPercent
+            metricName={isComposite ? "Composite" : metricLabel[primaryMetric]}
+            valueAxisLabel={isComposite ? "Composite score" : metricLabel[primaryMetric]}
+            showPercent={!isComposite}
           />
         </ChartCard>
 
