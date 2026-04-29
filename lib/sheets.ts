@@ -226,6 +226,11 @@ function diagnosisFromRow(row: Record<string, any>): Diagnosis {
       watch_outs: full.watch_outs || [],
       reel_intelligence: full.reel_intelligence || {},
       full_diagnosis: full,
+      // Sprint P7 Phase 2: extract engine + generated_at so the dashboard
+      // can distinguish mid-week ("ai-midweek") from end-of-week ("ai")
+      // rows when both exist for the same week_ending.
+      engine: typeof full.engine === "string" ? full.engine : undefined,
+      generated_at: typeof full.generated_at === "string" ? full.generated_at : undefined,
     };
   } catch {
     return {
@@ -263,6 +268,44 @@ export async function getDiagnosisByWeek(weekEnding: string): Promise<Diagnosis 
   const objects = rowsToObjects(rows);
   const match = objects.find((r) => String(r["Week Ending"] || "").trim() === weekEnding.trim());
   return match ? diagnosisFromRow(match) : null;
+}
+
+/**
+ * Sprint P7 Phase 2 (2026-04-28): multi-row-per-week_ending aware reader
+ * for the new Diagnosis week selector. Weekly_Analysis can carry
+ * multiple rows for the same week_ending after Phase 2:
+ *   - one with `engine="ai-midweek"` (Thursday cron)
+ *   - one with `engine="ai"` (end-of-week Monday cron)
+ *
+ * `prefer="midweek"` returns the mid-week row when present, else falls
+ * back to the end-of-week row. `prefer="full"` does the inverse.
+ *
+ * The dashboard's Diagnosis page uses:
+ *   - This week  → prefer="midweek" (Thursday-fresh partial-week diagnosis)
+ *   - Last week  → prefer="full"    (end-of-week verdict for prior week)
+ *
+ * Returns null when no row matches.
+ */
+export async function getDiagnosisByWeekPreferred(
+  weekEnding: string,
+  prefer: "midweek" | "full" = "full",
+): Promise<Diagnosis | null> {
+  if (!weekEnding) return null;
+  const rows = await readTab("Weekly_Analysis");
+  const objects = rowsToObjects(rows);
+  const matching = objects.filter(
+    (r) => String(r["Week Ending"] || "").trim() === weekEnding.trim(),
+  );
+  if (matching.length === 0) return null;
+  if (matching.length === 1) return diagnosisFromRow(matching[0]);
+  // Multiple rows for the same week_ending — pick by engine preference.
+  const parsed = matching.map(diagnosisFromRow);
+  const midweekRow = parsed.find((d) => d.engine === "ai-midweek");
+  const fullRow = parsed.find((d) => d.engine === "ai" || d.engine === "native-insights");
+  if (prefer === "midweek") {
+    return midweekRow || fullRow || parsed[parsed.length - 1];
+  }
+  return fullRow || midweekRow || parsed[parsed.length - 1];
 }
 
 /**

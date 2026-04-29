@@ -1,4 +1,5 @@
-import { getPosts, getLatestDiagnosis, getDiagnosisByWeek, getRunStatus, computeStaleness, getStageEngine } from "@/lib/sheets";
+import { getPosts, getLatestDiagnosis, getDiagnosisByWeek, getDiagnosisByWeekPreferred, getRunStatus, computeStaleness, getStageEngine } from "@/lib/sheets";
+import WeekSelector, { computeWeekEndings } from "@/components/WeekSelector";
 import { filterPosts } from "@/lib/aggregate";
 import { resolveRange } from "@/lib/daterange";
 import PageHeader from "@/components/PageHeader";
@@ -138,8 +139,22 @@ function normalizeFinding(item: any): NormalizedFinding {
   return { text: "", source_post_ids: [] };
 }
 
-export default async function StrategyPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
+export default async function DiagnosisPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   const range = resolveRange(searchParams);
+
+  // Sprint P7 Phase 2 (2026-04-28): week selector wires up two views:
+  //   - This week → midweek-preferred row for the running week (mid-week
+  //     diagnosis runs Thursday morning; before then, "This week" falls
+  //     back to a placeholder card encouraging the user to wait/check
+  //     "Last week").
+  //   - Last week → end-of-week row for the just-finished Mon-Sun
+  //     (this is the "Weekly verdict" people are used to).
+  // ?week=this | last | YYYY-MM-DD. Default = "this".
+  const weekParam = typeof searchParams.week === "string" ? searchParams.week : "";
+  const { this_: thisWeekEnding, last: lastWeekEnding } = computeWeekEndings();
+  const isThisWeekView = !weekParam || weekParam === "this" || weekParam === thisWeekEnding;
+  const isLastWeekView = weekParam === "last" || weekParam === lastWeekEnding;
+  const targetWeek = isThisWeekView ? thisWeekEnding : isLastWeekView ? lastWeekEnding : weekParam;
 
   // Step 3 archival mode: `?archived=<week-ending>` switches the page into
   // read-only mode against a specific prior diagnosis row. Absent param =
@@ -147,14 +162,35 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
   const archivedParam = typeof searchParams.archived === "string" ? searchParams.archived : "";
   const isArchival = Boolean(archivedParam);
 
-  const [posts, liveDiagnosis, archivedDiagnosis, runStatus, diagnosisEngine] = await Promise.all([
+  // Sprint P7 Phase 2: when a week selector value is present, fetch the
+  // preferred row for that week (mid-week-preferred for "This week",
+  // end-of-week-preferred for "Last week"). Falls back to the latest
+  // row when nothing matches the target week (e.g. before mid-week
+  // cron has run on a Tuesday).
+  const weekScopedDiagnosisP =
+    isArchival || !targetWeek
+      ? Promise.resolve(null as Awaited<ReturnType<typeof getDiagnosisByWeekPreferred>>)
+      : getDiagnosisByWeekPreferred(
+          targetWeek,
+          isThisWeekView ? "midweek" : "full",
+        );
+
+  const [posts, liveDiagnosis, archivedDiagnosis, weekDiagnosis, runStatus, diagnosisEngine] = await Promise.all([
     getPosts(),
     isArchival ? Promise.resolve(null) : getLatestDiagnosis(),
     isArchival ? getDiagnosisByWeek(archivedParam) : Promise.resolve(null),
+    weekScopedDiagnosisP,
     getRunStatus(),
     getStageEngine("diagnosis"),
   ]);
-  const diagnosis = isArchival ? archivedDiagnosis : liveDiagnosis;
+  // Diagnosis row priority: archival → week-scoped (when selector active)
+  // → latest. weekDiagnosis is null when isArchival is true OR no row
+  // exists for the target week. The "no This-week mid-week row yet"
+  // case (Tuesday morning, mid-week cron hasn't fired) renders an
+  // appropriate placeholder via the existing empty-state path.
+  const diagnosis = isArchival
+    ? archivedDiagnosis
+    : (weekDiagnosis || (isThisWeekView ? null : liveDiagnosis));
   const staleness = computeStaleness("diagnosis", runStatus);
   const aiDisabled = diagnosisEngine === "native" || diagnosisEngine === "off";
   const inRange = filterPosts(posts, { start: range.start, end: range.end });
@@ -251,10 +287,71 @@ export default async function StrategyPage({ searchParams }: { searchParams: Rec
           ? (archiveDateLabel
               ? `Archived diagnosis for week ending ${archiveDateLabel}`
               : "Archived diagnosis")
-          : "Claude's diagnosis and recommended actions"}
-        dateLabel={`${range.label} · verdict = ${isArchival ? "archived snapshot" : "latest weekly snapshot"}`}
+          : (isThisWeekView
+              ? "This week's diagnosis (mid-week, refreshes Thursday)"
+              : "Last week's verdict")}
+        dateLabel={`${range.label} · ${isArchival ? "archived snapshot" : (isThisWeekView ? "this week" : "last week")}`}
         lastScrapedAt={runStatus.last_run_at}
       />
+
+      {/* Sprint P7 Phase 2: week selector for Diagnosis. Hidden in
+          archival mode — that path uses the older ArchivalLine UI. */}
+      {!isArchival && (
+        <WeekSelector
+          basePath="/diagnosis"
+          current={weekParam}
+          choices={["this", "last"]}
+          preserve={searchParams}
+        />
+      )}
+
+      {/* Sprint P7 Phase 2: "Preliminary, mid-week (Thu)" pill on
+          this-week views when the diagnosis row was generated by the
+          mid-week cron. Tells the user this is partial-week data. */}
+      {!isArchival && isThisWeekView && diagnosis?.engine === "ai-midweek" && (
+        <div className="mb-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-amber/10 border border-brand-amber/30 text-brand-amber text-xs font-semibold">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          Preliminary, mid-week (Thu)
+          {diagnosis.generated_at && (
+            <span className="text-brand-amber/70 font-normal">
+              · {new Date(diagnosis.generated_at).toLocaleString("en-US", {
+                timeZone: "Asia/Dhaka",
+                month: "short",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+              })} BDT
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Sprint P7 Phase 2: empty state for "This week" view before the
+          mid-week cron runs (Mon-Wed mornings). Tells the user to come
+          back Thursday or check Last week. */}
+      {!isArchival && isThisWeekView && !diagnosis && (
+        <div className="mb-6 rounded-xl border border-ink-100 bg-ink-paper p-6 sm:p-8 text-center">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-shikho-indigo-50 text-brand-shikho-indigo mb-3">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          </div>
+          <h3 className="text-base font-semibold text-ink-primary mb-1.5">
+            This week&apos;s diagnosis runs Thursday morning
+          </h3>
+          <p className="text-sm text-ink-muted leading-relaxed max-w-md mx-auto">
+            The mid-week diagnosis cron fires Thursday at 10:00 BDT, covering
+            Mon–Wed of this running week. Until then, switch to{" "}
+            <span className="font-semibold">Last week</span> for the most recent
+            completed verdict.
+          </p>
+        </div>
+      )}
 
       {/* Sprint P6: Weekly verdict — clean readable statement.
           Previous version used a splitHeadline helper that chopped the

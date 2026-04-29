@@ -97,6 +97,19 @@ export type Diagnosis = {
   watch_outs: any[];
   reel_intelligence: any;
   full_diagnosis: any;
+  // Sprint P7 Phase 2 (2026-04-28): pipeline stamps an engine field on
+  // every diagnosis row inside Full Diagnosis (JSON). Possible values:
+  //   - "ai"               — end-of-week Monday cron, full week of data
+  //   - "ai-midweek"       — Thursday mid-week cron, partial week
+  //   - "native-insights"  — STR-07 fallback (AI failed validation)
+  // Dashboard uses this to pick the right row when Weekly_Analysis
+  // carries multiple rows for the same week_ending (e.g. mid-week +
+  // end-of-week diagnoses for the same week).
+  engine?: string;
+  // Generated-at timestamp from the diagnosis dict, surfaces in the
+  // "Preliminary, mid-week (Thu)" pill on the Diagnosis page for
+  // mid-week views.
+  generated_at?: string;
 };
 
 // Sprint P4 wiring (2026-04-23): per-slot native forecast stamped by
