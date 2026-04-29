@@ -193,23 +193,43 @@ export default async function OutcomesPage({
 
       {activeWeek && rows.length > 0 && (
         <>
-          {/* Week picker (only when there's more than one week to pick) */}
+          {/* Week picker. Sprint P7 Phase 2 (2026-04-28): the most-recent
+              week now carries a "Last week" semantic label since Outcomes
+              are inherently for completed weeks (Outcome_Log scoring runs
+              Monday after the week closes, so "This week" makes no sense
+              here). Older weeks stay as raw YYYY-MM-DD date pills for
+              historical archive access. */}
           {allWeeks.length > 1 && (
             <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
-              <span className="text-ink-muted">Week ending:</span>
-              {allWeeks.map((wk) => {
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+                Showing:
+              </span>
+              {allWeeks.map((wk, idx) => {
                 const active = wk === activeWeek;
+                // First pill is always the most recent week → label as
+                // "Last week (Apr 26)" for parity with Diagnosis/Plan
+                // selectors. Older weeks render as raw date pills.
+                const isLastWeek = idx === 0;
                 return (
                   <Link
                     key={wk}
                     href={`/outcomes?week=${wk}`}
-                    className={`px-2.5 py-1 rounded-md border text-xs font-medium transition-colors ${
+                    className={`px-3 py-1 rounded-md border text-xs font-medium transition-colors ${
                       active
                         ? "bg-brand-shikho-indigo text-white border-brand-shikho-indigo"
                         : "bg-ink-paper text-ink-secondary border-ink-100 hover:border-brand-shikho-indigo hover:text-brand-shikho-indigo"
                     }`}
                   >
-                    {wk}
+                    {isLastWeek ? (
+                      <>
+                        <span>Last week</span>
+                        <span className={`ml-1.5 text-[10px] ${active ? "text-white/80" : "text-ink-muted"}`}>
+                          ({new Date(`${wk}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "Asia/Dhaka" })})
+                        </span>
+                      </>
+                    ) : (
+                      wk
+                    )}
                   </Link>
                 );
               })}
