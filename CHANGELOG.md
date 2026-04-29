@@ -1,5 +1,63 @@
 # Changelog
 
+## 2026-04-29 — Sprint P7 v3 + v3.5 (live validation, Plan selector unblocked, multi-line composite, weight sliders)
+
+Live triggers + cross-repo architectural unblock + v3.5 follow-ups
+shipped in one autonomous session. 8 commits across 2 repos:
+
+**Live validation:**
+- `25099892852` — first ever mid-week diagnosis run. Wrote
+  `engine="ai-midweek"` row for week_ending=2026-05-03 with the
+  PARTIAL_WEEK headline ("In this mid-week update, follower growth
+  accelerated…"). Caught a strategy-shouldn't-run-on-midweek bug
+  (strategy stage slipped through main.py's --mode midweek dispatch
+  because run() had no midweek_mode guard). Fixed in commit `f43e14f`
+  with explicit guard at strategy stage start.
+- `25104738385` — first weekly run after fix. Locking guards
+  validated: Content_Calendar + Plan_Narrative both correctly
+  reported "running-week locked, skipped write" on the 2nd
+  consecutive run. Strategy lock fired on 2nd-run too (existing
+  row's week_ending matched new write's; engine="ai" matched).
+
+**Plan selector unblocked (cross-repo Sprint P7 v3):**
+- Pipeline `f43e14f`: Content_Calendar writer changed from
+  clear+rewrite to APPEND-BY-WEEK. Each weekly run adds 7 new rows
+  for its target week; older weeks stay in place as historical
+  record. Lock check broadened (skip if any existing row matches
+  the new week's first Date). Strategy stage skipped on midweek mode.
+- Dashboard `6a24d95`: new `getCalendarByWeekStarting()` reader,
+  `listCalendarWeeks()` helper. Plan page wires `<WeekSelector>`
+  with `["this", "next", "last"]` choices. Subtitle/dateLabel adapt;
+  fallback "showing latest week" pill bridges the gap until the next
+  Monday cron lands historical rows.
+
+**v3.5 multi-line composite trend (`c34a01b`):**
+- new `<MultiLineTrendChart>` component plotting 2+ metrics on one
+  axis via per-series % of peak normalization. Raw values stay
+  in the tooltip; shapes are directly comparable.
+- Wired into Overview + Trends primary trend cards. Title flips
+  to "Composite Trend (N metrics, normalized)" when 2+ active.
+  Single-metric path unchanged.
+
+**v3.5 multi-metric weight sliders (`5766c85`):**
+- new URL param `?weights=W1,W2,...` (positional, matches active
+  metric set). When absent, equal-weight (Flavor B) — backward
+  compatible with current behavior.
+- `<MetricSelector>` renders a "Customize weights" disclosure
+  below the pills when 2+ metrics active. Each metric gets +/−
+  buttons (±10 points). Reset link drops the weights param.
+- `compositeScore` + `groupStatCompositeScore` + `sortByComposite`
+  all accept optional `weights` argument. `normalizeWeights()`
+  helper handles sum-normalization, all-zero edge case, negative
+  clamping.
+
+**v3.5 composite explainer primitive (`3eb4bb0`):**
+- new `<CompositeExplainer>` component as a reusable popover
+  primitive showing per-metric percentile + weight breakdown.
+- Not yet wired into specific charts — Recharts bar tooltip
+  customization for per-cell breakdowns is invasive. Component
+  ships as a tooling primitive for future per-cell wiring.
+
 ## 2026-04-28 — Sprint P7 Phase 3 QA pass (deep-wire metric selector across 5 pages)
 
 User QA caught that the page-level metric selector was visually present

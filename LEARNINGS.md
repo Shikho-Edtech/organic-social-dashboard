@@ -1,5 +1,53 @@
 # Learnings
 
+## 2026-04-29 — "Skip stage X on mode Y" needs an explicit guard at the stage, not just the mode dispatch
+
+When implementing `--mode midweek` for the Sprint P7 mid-week diagnosis
+cron, the dispatcher in main.py looked correct:
+
+    run(skip_calendar=True, skip_preagg=True, midweek_mode=True, ...)
+
+But strategy still ran. Why: `run()` doesn't have a `skip_strategy`
+parameter. Strategy is gated INSIDE the function body by other
+conditions (`insights_engine_used`, `skip_claude`, `claude_failed`,
+`diagnosis is None`). None of these matched mid-week mode, so
+strategy generated for the running week and clobbered the previous
+Monday's strategy.
+
+**Rule going forward:** when adding a new "mode that skips stage X",
+add an explicit `if mode_x: skip` guard AT THE TOP of stage X's
+block. Don't rely on the dispatcher to enumerate every skip flag.
+The dispatcher is correct in spirit ("--mode midweek skips strategy")
+but the actual stage code needs to opt out via its own conditional.
+
+Cost of this miss: one wasted live mid-week run that polluted
+Strategy_Log with a partial-week row. Recovered by adding an explicit
+`if midweek_mode: ... skip` block at the strategy stage start.
+
+## 2026-04-29 — Composite scoring needs a unit-mismatch normalizer; trend charts need a different one
+
+Two different composite-style problems on the dashboard with
+DIFFERENT solutions:
+
+**Composite ranking (across rows at one time)**: each metric
+percentile-rank within the population (0..1). Average percentiles
+across metrics. Why percentile: it's a ranking-among-peers question
+("how does this row compare to others on each metric"). Implemented
+in `compositeScore()` / `groupStatCompositeScore()`.
+
+**Composite trend chart (across time)**: percentile across time
+doesn't make sense ("this Tuesday's reach was at the 80th percentile
+across the period" is true but misleading — what users want is "did
+the metric trend up or down?"). Right answer: per-series % of own
+peak. Each metric peaks at 100% on its own scale; lines become
+shape-comparable while raw values stay in the tooltip. Implemented
+in `<MultiLineTrendChart>`.
+
+**Rule going forward:** composite math depends on the question.
+Ranking-among-peers → percentile rank. Trend-over-time → % of own
+peak. Don't reuse the wrong one — they look similar in the URL
+(`?metric=reach,interactions`) but the rendering math differs.
+
 ## 2026-04-28 — "Selector visible everywhere" ≠ "selector re-keys everything"
 
 When wiring the page-level MetricSelector, I shipped Trends/Timing/Reels
