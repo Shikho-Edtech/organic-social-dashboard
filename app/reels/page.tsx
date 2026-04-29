@@ -8,6 +8,7 @@ import KpiCard from "@/components/KpiCard";
 import BarChartBase from "@/components/BarChart";
 import TrendChart from "@/components/TrendChart";
 import PostReference from "@/components/PostReference";
+import MetricSelector, { parseMetricParam } from "@/components/MetricSelector";
 
 /**
  * TopReelList — ranked list replacement for BarChart on top-10 reels.
@@ -135,6 +136,12 @@ function retentionAt(curve: Record<number, number>, sec: number): number {
 
 export default async function ReelsPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   const range = resolveRange(searchParams);
+  // Sprint P7 Phase 3: page-level metric selector. Reels has reel-domain
+  // metrics (plays, watch time, follower-gain) that don't map cleanly
+  // to the 4 page-level metrics — selector renders for cross-page URL
+  // persistence. Deep wiring (e.g. switching the Top-10 ranking
+  // metric) is v3.5.
+  const activeMetrics = parseMetricParam(searchParams.metric);
   const [videos, posts, runStatus] = await Promise.all([getVideoMetrics(), getPosts(), getRunStatus()]);
 
   // Index posts by id so we can surface the caption + pillar/format next to each reel
@@ -356,6 +363,7 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
     return (
       <div>
         <PageHeader title="Reels" subtitle="Video watch time, retention, and follower conversion" dateLabel={`${range.label} · Bangladesh Time (UTC+6)`} lastScrapedAt={runStatus.last_run_at} />
+      <MetricSelector basePath="/reels" active={activeMetrics} preserve={searchParams} />
         <Card>
           <p className="text-sm text-slate-600">
             No reels in this date range. Try expanding the range or check that Raw_Video is populated.
@@ -368,6 +376,7 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
   return (
     <div>
       <PageHeader title="Reels" subtitle="Video watch time, retention, and follower conversion" dateLabel={`${range.label} · Bangladesh Time (UTC+6)`} />
+      <MetricSelector basePath="/reels" active={activeMetrics} preserve={searchParams} />
 
       {/* Canonical KPI strip (Batch 3d, #19). Previously two stacked
           strips (5 cards then 4) duplicated the hierarchy. The secondary

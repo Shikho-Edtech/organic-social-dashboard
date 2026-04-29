@@ -6,6 +6,7 @@ import PageHeader from "@/components/PageHeader";
 import { Card, ChartCard } from "@/components/Card";
 import Heatmap, { type HeatmapCell } from "@/components/Heatmap";
 import EmptyChart from "@/components/EmptyChart";
+import MetricSelector, { parseMetricParam } from "@/components/MetricSelector";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -25,6 +26,12 @@ type DayRow = {
 
 export default async function TimingPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   const range = resolveRange(searchParams);
+  // Sprint P7 Phase 3: page-level metric selector. Timing page already
+  // has both reach + engagement-rate heatmaps (the two primary signals
+  // for "when to post"); the selector renders for cross-page URL
+  // persistence + future v3.5 deep wiring (e.g. could show a third
+  // heatmap for shares/interactions when active).
+  const activeMetrics = parseMetricParam(searchParams.metric);
   const [posts, runStatus] = await Promise.all([getPosts(), getRunStatus()]);
   const inRange = filterPosts(posts, { start: range.start, end: range.end });
 
@@ -180,6 +187,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
   return (
     <div>
       <PageHeader title="Timing" subtitle="When to post for max reach and engagement" dateLabel={`${range.label} · Bangladesh Time (UTC+6)`} lastScrapedAt={runStatus.last_run_at} />
+      <MetricSelector basePath="/timing" active={activeMetrics} preserve={searchParams} />
 
       {/* Best slots summary — ranked by 95% CI lower bound */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">

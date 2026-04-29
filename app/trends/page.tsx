@@ -5,12 +5,19 @@ import PageHeader from "@/components/PageHeader";
 import { ChartCard } from "@/components/Card";
 import TrendChart from "@/components/TrendChart";
 import BarChartBase from "@/components/BarChart";
+import MetricSelector, { parseMetricParam } from "@/components/MetricSelector";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
 
 export default async function TrendsPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   const range = resolveRange(searchParams);
+  // Sprint P7 Phase 3: page-level metric selector. Trends already has
+  // multi-metric series (volume, reach, engagement rate) so the
+  // selector is more of a "highlight focus" cue here. Per-chart deep
+  // wiring is v3.5 — for v1 the selector renders for cross-page URL
+  // persistence.
+  const activeMetrics = parseMetricParam(searchParams.metric);
 
   const [posts, daily, runStatus] = await Promise.all([getPosts(), getDailyMetrics(), getRunStatus()]);
   const inRange = filterPosts(posts, { start: range.start, end: range.end });
@@ -65,6 +72,7 @@ export default async function TrendsPage({ searchParams }: { searchParams: Recor
   return (
     <div>
       <PageHeader title="Trends" subtitle="Time-based patterns across the period" dateLabel={range.label} lastScrapedAt={runStatus.last_run_at} />
+      <MetricSelector basePath="/trends" active={activeMetrics} preserve={searchParams} />
 
       <div className="grid lg:grid-cols-2 gap-4 mb-6">
         <ChartCard
