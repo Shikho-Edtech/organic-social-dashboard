@@ -1,5 +1,70 @@
 # Learnings
 
+## 2026-04-28 — When 2 metrics aren't comparable in raw units, percentile-rank first
+
+Tried to ship multi-metric ranking as "average the raw values" — but
+reach is in 10000s and engagement rate is 0.X%. A simple average puts
+all the weight on whichever metric has the larger numeric scale.
+
+Right move: percentile-rank each metric within the population first
+(0..1), then average. A row at the 90th percentile on reach and 80th
+percentile on engagement rate gets composite = 0.85, regardless of
+the underlying units.
+
+This is true for any "multi-criteria scoring" UI — OKR scorecards,
+real-estate listings ranked by price + proximity + size, etc. The
+unit mismatch problem is universal; percentile-rank is the universal
+fix. Reused in `compositeScore()` (per-row) and
+`groupStatCompositeScore()` (per-group) in lib/aggregate.ts.
+
+## 2026-04-28 — Server-rendered <Link> selectors are simpler than client state
+
+For URL-persistent selectors (WeekSelector, MetricSelector,
+FormatHourMetricPills), there are two implementations:
+
+A. **Client component**: useState for selection, useRouter().push() to
+   change URL on click, useSearchParams() to read.
+B. **Server component**: pills are <Link> elements that point to the
+   updated URL. The page server-renders with the new searchParams.
+   No client state at all.
+
+Picked B for all three Sprint P7 selectors. Why:
+- Zero client-side hydration cost (the pill bar is a few <a> tags).
+- The URL IS the state — refresh / share / back button all work
+  trivially without extra plumbing.
+- No "loading" state mid-toggle — Next.js handles the navigation +
+  re-render natively.
+- Code is shorter (no useState, no useRouter, no useSearchParams).
+
+The one caveat: clicking a pill triggers a full server re-render of
+the page. For pages that fetch heavy data, that's slower than a
+client-side toggle. We mitigate with `scroll={false}` on the <Link>
+so the viewport doesn't jump; revalidate=300 caches the data fetch
+for 5 min so successive toggles within that window are fast.
+
+## 2026-04-28 — `force-regenerate` CLI flag covers v1 unlock without UI work
+
+When implementing running-week locking on Strategy / Content_Calendar /
+Plan_Narrative writers, the immediate question was: "how does someone
+intentionally regenerate?" Two paths:
+
+A. v1 also ships a UI button on the dashboard that writes an unlock
+   flag to a sheet column. The pipeline reads it on next run, bypasses
+   the lock, then resets the flag.
+B. v1 ships a CLI-only `--force-regenerate` flag. UI button deferred
+   to v2.
+
+Picked B. Why: the lock + UI button are independent pieces. The lock
+provides the safety (default behavior). The UI button is a CONVENIENCE
+for when someone wants to override. Locking is the core feature; UI is
+ergonomics. Ship the safety now; ergonomics can be a 1-day v2 commit
+when we actually need it (haven't yet).
+
+`--force-regenerate` works via Actions UI workflow_dispatch (the
+weekly-analysis.yml + midweek-diagnosis.yml both expose it as an
+input). Power user can trigger a re-run with the flag set. That's
+already 90% of the unlock UX without any dashboard code.
+
 ## 2026-04-28 — Brand-audit baseline tracks file paths; `git mv` migrations need baseline edits too
 
 When renaming `app/strategy/page.tsx` → `app/diagnosis/page.tsx` via

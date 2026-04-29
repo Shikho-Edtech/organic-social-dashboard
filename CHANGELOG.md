@@ -1,5 +1,58 @@
 # Changelog
 
+## 2026-04-28 — Sprint P7 Phases 2 + 3 shipped (locking, mid-week diagnosis, week selectors, multi-metric ranking)
+
+Eleven commits land the rest of Sprint P7 across both repos in one
+autonomous session:
+
+**Phase 2 — pipeline (commit `22126be`):**
+- `--mode midweek` CLI flag in main.py routes Thursday cron to a
+  fetch+classify+diagnosis-only run with `engine="ai-midweek"` stamped
+  on the Weekly_Analysis row.
+- `generate_weekly_diagnosis(midweek_mode=True)` injects a PARTIAL_WEEK
+  banner so the model qualifies claims with "so far this week" rather
+  than definitive end-of-week language. DIAGNOSIS_PROMPT_VERSION
+  v1.8 → v1.9.
+- Running-week locking guards on `write_strategy`, `write_content_calendar`,
+  `write_plan_narrative`. Each writer reads existing rows, skips if a
+  matching week already has a clean AI write. Diagnosis exempt.
+  `--force-regenerate` CLI flag bypasses for ops recovery.
+- New `.github/workflows/midweek-diagnosis.yml` (Thursday 04:00 UTC =
+  10:00 BDT) with the same auto-Issue failure-notify pattern.
+
+**Phase 2 — dashboard (commits `8afde55`, `21c29b4`):**
+- New `<WeekSelector>` shared component (Diagnosis · Plan · Outcomes).
+  Server-rendered pills, URL param `?week=this|last|next|YYYY-MM-DD`
+  persistent across nav. `computeWeekEndings()` resolves semantic
+  shortcuts off `bdtNow()`.
+- `lib/sheets.ts::getDiagnosisByWeekPreferred()` handles
+  multi-row-per-week_ending: prefer="midweek" picks `engine="ai-midweek"`
+  first (with end-of-week fallback); prefer="full" inverts.
+- Diagnosis page: WeekSelector with This/Last; "Preliminary,
+  mid-week (Thu)" amber pill on this-week views; empty-state card for
+  Mon-Wed before mid-week cron fires.
+- Outcomes page: most-recent week pill now shows "Last week (Apr 26)"
+  semantic label.
+
+**Phase 3 — multi-metric ranking (commits `ae77a23`, `b1b5378`,
+`2b3435c`, `dc29464`):**
+- New `<MetricSelector>` component. Multi-select pills (Total reach ·
+  Interactions · Engagement rate · Shares). URL `?metric=reach,interactions`.
+  Equal-weight percentile-rank composite when 2+ active.
+- `lib/aggregate.ts` adds `RankingMetric` type, `compositeScore()`,
+  `percentileRankIn()`, `buildMetricSorts()`, `sortByComposite()`,
+  `dailyMetricTrend()`, `groupStatValue()`, `groupStatCompositeScore()`.
+- 6-page wiring: Overview (trend chart + pillar ranking deep-wired),
+  Explore (post ranking deep-wired), Trends/Timing/Reels (selector-only
+  for v1; per-chart deep wiring is v3.5). Engagement box-level was
+  Phase 1.4.
+
+**v3.5 deferrals** (post-Sprint-P7):
+- Multi-line composite trend chart on Overview/Trends
+- Reels Top-10 deep-wiring to active metric
+- Timing 3rd heatmap (shares/interactions) when active
+- Multi-metric weight sliders (Flavor A composite scoring)
+
 ## 2026-04-28 — Sprint P7 Phase 1 shipped (UI cleanup + Strategy→Diagnosis rename + Format×Hour metric selector)
 
 Four focused commits land the Phase 1 deliverables from the brand-team

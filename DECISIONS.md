@@ -1,5 +1,88 @@
 # Decisions
 
+## 2026-04-28 — Sprint P7 Phase 3: percentile-rank composite over weighted-sliders for v1
+
+Spec called for "multi-metric scoring composite" in v1 (originally
+deferred to v2 then promoted in the same review session). Two flavors:
+
+A. **Weighted sliders**: 4 sliders/inputs sum to 100; composite =
+   Σ(value_i × weight_i). Each metric's value pre-normalized somehow.
+B. **Equal-weight percentile-rank**: each metric's value is converted to
+   its percentile rank within the population (0..1), then averaged
+   with equal weight across selected metrics.
+
+Picked B for v1, A deferred to v3.5.
+
+**Why:**
+- Raw values across reach (10000s) and engagement rate (0.X%) aren't
+  comparable for averaging without normalization. Weighted sliders need
+  a normalization story BEFORE the weights matter — picking percentile
+  rank as the normalization step reuses the work and lets v1 ship
+  without sliders. v3.5 just adds sliders on top of the same normalizer.
+- Multi-select pills are simpler UX than slider-with-input-values.
+  Single-select still works (default = `?metric=reach`), so users who
+  want a "rank by reach only" view get the same 1-click experience as
+  before.
+- Percentile-rank averaging is a defensible, common composite scoring
+  approach (used in OKR scorecards, real-estate listing rank, etc.).
+  The "what does composite=78 mean" answer is "this row scored at the
+  78th percentile on average across the metrics you selected" — easier
+  to explain than a weighted sum on z-scores or normalized values.
+
+**Implementation:** lib/aggregate.ts: `percentileRankIn(value, sortedAsc)`
+binary-searches a pre-sorted population array; `buildMetricSorts()`
+pre-sorts once per page render (O(N log N) per metric); `compositeScore()`
++ `groupStatCompositeScore()` Schwartzian-transform sort posts /
+group rows by their composite descending. Single-metric short-circuit
+uses direct value sort (cheaper + exact ordering).
+
+## 2026-04-28 — Sprint P7 Phase 3 wiring scope: deep-wire 2 pages + selector-only on 3
+
+Spec asked for the page-level metric selector on 6 pages. Realistic
+scope check during build: Overview + Explore re-rank cleanly with the
+existing data shapes; Trends + Timing + Reels need bigger re-keying
+work to make every chart honor the active metric (multi-line trends,
+extra heatmaps, Top-10-by-active-metric).
+
+Picked: ship the selector on all 5 (Engagement was Phase 1.4 with
+box-level on Format×Hour) so URL persistence works cross-page; deep-wire
+Overview (trend chart + pillar ranking) and Explore (post ranking)
+because those are the highest-leverage rewires. Per-chart deep wiring
+on Trends/Timing/Reels documented as v3.5 follow-up commits in CHANGELOG.
+
+**Why this isn't a half-measure:** the selector being VISIBLE on every
+page was the real product win (consistent vocabulary, URL persistence
+when you click between pages with `?metric=` set). The per-chart
+re-keying work is incremental — each chart can flip independently
+without touching the selector plumbing.
+
+## 2026-04-28 — Sprint P7 Phase 2 locking guards over architectural archive
+
+Spec: "running-week artifacts shouldn't auto-overwrite". Two ways to
+implement:
+
+A. **Archive architecture**: Strategy / Content_Calendar / Plan_Narrative
+   evolve from clear+rewrite to append-by-week. Dashboard reader filters
+   by target week. Plan/Outcomes selectors get real history to show.
+B. **Skip-on-existing guards**: each writer reads existing rows; if a
+   row matches the running week with a clean engine, skip the write.
+   Storage stays single-row per artifact. Plan/Outcomes selectors still
+   only show the latest week.
+
+Picked B for v1, A deferred indefinitely.
+
+**Why:** A is a 2-3 day cross-repo refactor that affects every reader.
+B is a 30-line per-writer guard that ships the locking semantics the
+user actually asked for ("once this week's plan is created within a
+running week, that should not change unless the user specifically asks
+for it"). The history-aware view that A enables is a NICE-TO-HAVE; the
+running-week stability is the ACTUAL FEATURE. Ship the feature, defer
+the architecture.
+
+`--force-regenerate` CLI flag exists for ops recovery without needing
+A. The v2 "Unlock & regenerate this week" button on the dashboard would
+write a sheet flag that triggers the same path.
+
 ## 2026-04-28 — Cross-repo data shape evolution: dashboard normalizer over breaking schema change
 
 When evolving `what_happened` and `watch_outs` from bare strings to
