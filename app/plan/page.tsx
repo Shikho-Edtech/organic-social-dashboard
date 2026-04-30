@@ -12,6 +12,37 @@ import RegenerateThisWeekButton from "@/components/RegenerateThisWeekButton";
 import { STAGES } from "@/lib/stages";
 
 /**
+ * Sprint P7 v4.7 (2026-04-30, P1.8): glossary tooltips for slot pills.
+ * External stakeholders + new team members shouldn't have to hunt for
+ * what SSC / HSC / BOFU / MOFU / TOFU mean. Plain English on hover/tap.
+ */
+function slotAudienceTooltip(audience: string): string {
+  const map: Record<string, string> = {
+    SSC: "Secondary School Certificate (class 9-10 students preparing for the SSC exam)",
+    HSC: "Higher Secondary Certificate (class 11-12 students preparing for the HSC exam)",
+    "SSC '26": "Secondary School Certificate batch graduating in 2026",
+    "HSC '26": "Higher Secondary Certificate batch graduating in 2026",
+    JSC: "Junior School Certificate (class 8 — phased out but still surfaces in older tags)",
+    "Class 6-8": "Junior secondary students (class 6 through 8)",
+    "Class 9-10": "SSC candidates (class 9 and 10)",
+    "Class 11-12": "HSC candidates (class 11 and 12)",
+    Admission: "University admission test prep audience",
+    Mixed: "Cross-class content; not targeted to a single audience segment",
+  };
+  return map[audience] || `Audience segment: ${audience}`;
+}
+
+function slotFunnelTooltip(stage: string): string {
+  const upper = stage.toUpperCase();
+  const map: Record<string, string> = {
+    TOFU: "Top of Funnel — awareness content. Targets new viewers who don't know Shikho yet (explainer reels, free lessons, thought leadership).",
+    MOFU: "Middle of Funnel — consideration. Targets viewers who know Shikho but haven't bought (demos, student stories, course highlights).",
+    BOFU: "Bottom of Funnel — decision/conversion. Targets viewers ready to buy (pricing, discount, enrollment deadline, last-call posts).",
+  };
+  return map[upper] || `Funnel stage: ${stage}`;
+}
+
+/**
  * Sprint P7 v3 (2026-04-29): map a closing-Sunday week_ending (canonical
  * across the dashboard) to the corresponding Monday week_starting that
  * Content_Calendar rows live under. e.g. Sunday May 3 → Monday April 27.
@@ -452,16 +483,20 @@ export default async function PlanPage({ searchParams }: { searchParams: Record<
                                 </span>
                               </>
                             )}
+                            {/* Sprint P7 v4.7 (2026-04-30, P1.8): tooltip
+                                glossary on the abbreviation pills so external
+                                stakeholders + new team members don't have to
+                                hunt for what SSC/HSC/BOFU/MOFU/TOFU mean. */}
                             {slot.audience && (
                               <>
                                 <span className="text-slate-300">·</span>
-                                <span>{slot.audience}</span>
+                                <span title={slotAudienceTooltip(slot.audience)} className="cursor-help underline decoration-dotted decoration-slate-300 underline-offset-2">{slot.audience}</span>
                               </>
                             )}
                             {slot.funnel_stage && (
                               <>
                                 <span className="text-slate-300">·</span>
-                                <span className="text-slate-600 font-medium">{slot.funnel_stage}</span>
+                                <span title={slotFunnelTooltip(slot.funnel_stage)} className="text-slate-600 font-medium cursor-help underline decoration-dotted decoration-slate-300 underline-offset-2">{slot.funnel_stage}</span>
                               </>
                             )}
                             {/* Sprint P4 schema v2: hypothesis_id pill.
@@ -472,8 +507,8 @@ export default async function PlanPage({ searchParams }: { searchParams: Record<
                               <>
                                 <span className="text-ink-200">·</span>
                                 <span
-                                  className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider bg-brand-shikho-indigo/10 text-brand-shikho-indigo rounded px-1.5 py-0.5"
-                                  title="Strategy hypothesis this slot serves"
+                                  className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider bg-brand-shikho-indigo/10 text-brand-shikho-indigo rounded px-1.5 py-0.5 cursor-help"
+                                  title={`Hypothesis ${slot.hypothesis_id} — links this slot to one of the strategy's weekly bets (h0/h1/h2…). The Diagnosis page tracks which hypothesis the team is testing each week; the Outcomes page later grades each slot against its hypothesis's predicted lift.`}
                                 >
                                   {slot.hypothesis_id}
                                 </span>

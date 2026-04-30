@@ -50,6 +50,11 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
   const reachDelta = wowDelta(kpis.total_reach, prevKpis.total_reach).pct;
   const engDelta = wowDelta(kpis.avg_engagement_rate, prevKpis.avg_engagement_rate).pct;
   const postsDelta = wowDelta(kpis.posts, prevKpis.posts).pct;
+  // Sprint P7 v4.7 (2026-04-30, P1.1): AVG REACH/POST was the only KPI
+  // missing a delta — it's mathematically derivable from Total Reach
+  // and Posts but the user had no reason to do that math themselves.
+  // Now matches the other "flow" KPIs.
+  const avgReachPerPostDelta = wowDelta(kpis.avg_reach_per_post, prevKpis.avg_reach_per_post).pct;
 
   // Followers from daily metrics (filtered to range)
   const dailyInRange = daily.filter((d) => {
@@ -235,8 +240,17 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
         <KpiCard label="Posts" value={kpis.posts} delta={postsDelta} sublabel="vs prev" />
         <KpiCard label="Total Reach" value={kpis.total_reach} delta={reachDelta} sublabel="vs prev" />
         <KpiCard label="Engagement Rate" value={kpis.avg_engagement_rate.toFixed(2) + "%"} delta={engDelta} sublabel="vs prev · reach-weighted" />
-        <KpiCard label="Avg Reach/Post" value={kpis.avg_reach_per_post} />
-        <KpiCard label="Followers" value={currentFollowers} sublabel={`${netFollowers >= 0 ? "+" : ""}${netFollowers.toLocaleString()} in range`} />
+        <KpiCard label="Avg Reach/Post" value={kpis.avg_reach_per_post} delta={avgReachPerPostDelta} sublabel="vs prev" />
+        {/* Sprint P7 v4.7 (2026-04-30, P1.1): Followers card is a stock
+            (snapshot count), not a flow. The other 4 cards are flows.
+            "in range" sublabel + no delta-pill (we use a net-add string
+            instead) is intentional, but the visual treatment was
+            identical — adding the small `(stock)` tag clarifies. */}
+        <KpiCard
+          label="Followers"
+          value={currentFollowers}
+          sublabel={`${netFollowers >= 0 ? "+" : ""}${netFollowers.toLocaleString()} net in range · stock`}
+        />
       </div>
 
       {/* Primary chart: trend re-keys to active primary metric.

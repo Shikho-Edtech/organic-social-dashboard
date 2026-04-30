@@ -95,6 +95,13 @@ export default async function TrendsPage({ searchParams }: { searchParams: Recor
     }
     weekBuckets[weekKey].n += 1;
   }
+  // Sprint P7 v4.7 (2026-04-30, P1.10): mark the current (in-progress) ISO
+  // week so the bar can render visually distinct. Without this, an Apr
+  // 27-May 3 bar at 4 days into the week reads as "current week down
+  // sharply" when really it's just incomplete data. Pass 2 audit
+  // flagged this as a credibility hit on the chart.
+  const todayBdt = bdt(new Date().toISOString());
+  const currentWeekKey = `${todayBdt.getFullYear()}-W${String(getWeek(todayBdt)).padStart(2, "0")}`;
   const weeklyData = Object.entries(weekBuckets)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([week, v]) => ({
@@ -103,6 +110,10 @@ export default async function TrendsPage({ searchParams }: { searchParams: Recor
         primaryMetric === "engagement"
           ? (v.reach > 0 ? (v.ints / v.reach) * 100 : 0)
           : v.value,
+      // Faded color for in-progress week. BarChartBase's `color` prop on
+      // a row falls back to the chart-level color, but specifying it
+      // here lets us paint just the partial-week bar.
+      ...(week === currentWeekKey ? { color: "#A4ACD0" /* shikho-indigo-300, faded */, partial: true } : {}),
     }));
 
   return (
@@ -178,10 +189,10 @@ export default async function TrendsPage({ searchParams }: { searchParams: Recor
           }
           caption={
             primaryMetric === "engagement"
-              ? "Week-over-week stability indicates healthy audience relationship. Big drops warrant investigating what changed."
+              ? "Week-over-week stability indicates healthy audience relationship. Big drops warrant investigating what changed. The current (in-progress) ISO week may dip artificially because it's not yet complete."
               : primaryMetric === "shares"
-                ? "Shares are the strongest virality signal — they expand reach beyond the existing audience."
-                : `Weekly ${metricLabelLower[primaryMetric]} — useful for spotting multi-week trends that daily noise might obscure.`
+                ? "Shares are the strongest virality signal — they expand reach beyond the existing audience. The faded bar marks the current (in-progress) week — its value will rise as the rest of the week posts."
+                : `Weekly ${metricLabelLower[primaryMetric]} — useful for spotting multi-week trends that daily noise might obscure. The faded bar marks the current (in-progress) week — its value will rise as the rest of the week posts.`
           }
         >
           {primaryMetric === "engagement" ? (

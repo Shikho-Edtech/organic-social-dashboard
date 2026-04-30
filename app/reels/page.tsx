@@ -407,7 +407,14 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
     return (
       <div>
         <PageHeader title="Reels" subtitle="Video watch time, retention, and follower conversion" dateLabel={`${range.label} · Bangladesh Time (UTC+6)`} lastScrapedAt={runStatus.last_run_at} />
-      <MetricSelector basePath="/reels" active={activeMetrics} preserve={searchParams} />
+      {/* Sprint P7 v4.7 (2026-04-30, P1.9): MetricSelector hidden on
+          Reels because the page's metrics (Plays / Watch Time /
+          Followers Gained) are reel-domain and don't map to the four
+          page-level metrics (Total Reach / Interactions / ER / Shares).
+          Showing the pills here was decorative — they didn't change
+          anything on the page. URL params still respected for
+          cross-page nav consistency (e.g. preserved when bouncing
+          back to Overview). */}
         <Card>
           <p className="text-sm text-slate-600">
             No reels in this date range. Try expanding the range or check that Raw_Video is populated.
@@ -420,7 +427,14 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
   return (
     <div>
       <PageHeader title="Reels" subtitle="Video watch time, retention, and follower conversion" dateLabel={`${range.label} · Bangladesh Time (UTC+6)`} />
-      <MetricSelector basePath="/reels" active={activeMetrics} preserve={searchParams} />
+      {/* Sprint P7 v4.7 (2026-04-30, P1.9): MetricSelector hidden on
+          Reels because the page's metrics (Plays / Watch Time /
+          Followers Gained) are reel-domain and don't map to the four
+          page-level metrics (Total Reach / Interactions / ER / Shares).
+          Showing the pills here was decorative — they didn't change
+          anything on the page. URL params still respected for
+          cross-page nav consistency (e.g. preserved when bouncing
+          back to Overview). */}
 
       {/* Canonical KPI strip (Batch 3d, #19). Previously two stacked
           strips (5 cards then 4) duplicated the hierarchy. The secondary

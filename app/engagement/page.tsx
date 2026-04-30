@@ -366,6 +366,61 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           posts" line instead of a false precision number. The reliability
           label still gets a read so the user knows WHY nothing qualified
           (reads "no data" when count is zero). */}
+      {/* Sprint P7 v4.7 (2026-04-30, P1.3): hero-synthesis card above the
+          atomic Best-X cards. Pass 2 audit caught that 5 same-weight
+          cards laid out side-by-side fail the cold-read test — a new
+          user can't tell which dimension matters most or how the
+          winners combine. Hero card answers "what's the winning pattern
+          this period?" in one sentence; the Best-X strip below is the
+          supporting evidence. */}
+      {(bestFormat || bestPillar || bestHook || bestSpotlight || bestTone) && (
+        <Card className="mb-4 border-l-4 border-l-brand-shikho-indigo">
+          <div className="flex flex-col gap-1.5">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+              Winning pattern this period
+            </div>
+            <div className="text-base sm:text-lg leading-snug text-ink-primary">
+              {[
+                bestFormat && (
+                  <span key="f">
+                    <span style={{ color: canonicalColor("format", bestFormat.key) }} className="font-semibold">{bestFormat.key}</span>
+                  </span>
+                ),
+                bestPillar && (
+                  <span key="p">
+                    {" × "}
+                    <span style={{ color: canonicalColor("pillar", bestPillar.key) }} className="font-semibold">{bestPillar.key}</span>
+                  </span>
+                ),
+                bestTone && (
+                  <span key="t">
+                    {" × "}
+                    <span style={{ color: canonicalColor("tone", bestTone.key) }} className="font-semibold">{bestTone.key}</span>
+                  </span>
+                ),
+              ].filter(Boolean)}
+              {" tone, "}
+              {bestHook && (
+                <>
+                  hooked with{" "}
+                  <span style={{ color: canonicalColor("hook", bestHook.key) }} className="font-semibold">{bestHook.key}</span>
+                </>
+              )}
+              {bestSpotlight && (
+                <>
+                  , spotlighting{" "}
+                  <span style={{ color: canonicalColor("spotlight", bestSpotlight.key) }} className="font-semibold">{bestSpotlight.key.toLowerCase()}</span>
+                </>
+              )}
+              .
+            </div>
+            <div className="text-xs text-ink-muted">
+              Each dimension ranked independently by reach-weighted engagement, n≥{MIN_N}. The intersection of all five is untested — treat the synthesis as a hypothesis, not a guarantee. Per-dimension breakdowns below.
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* Best-X strip — compact variant. Prior pass used text-xl/2xl with
           `break-words` which let long winners ("Study Tips & Exam Prep",
           "Teacher Spotlight") wrap to 3+ lines, pushing each card to ~160px

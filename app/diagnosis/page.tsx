@@ -434,8 +434,15 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
                 ? postById.get(item.source_post_ids[0])
                 : undefined;
               const hasDetail = Boolean(body);
+              // Sprint P7 v4.7 (2026-04-30, P1.7): auto-expand the first
+              // (highest-priority) Key Finding so the user sees one
+              // actionable detail above the fold without clicking. Pass
+              // 2 audit caught that 4 collapsed Key Findings + 1 Top
+              // Performer + 1 Underperformer + 2 Watch-outs = 8 cards
+              // to expand. Auto-expanding #1 cuts the click cost while
+              // keeping the rest collapsed for scanability.
               return (
-                <details key={i} className="group bg-white border border-slate-200 rounded-xl hover:border-brand-cyan/40 transition-colors">
+                <details key={i} open={i === 0} className="group bg-white border border-slate-200 rounded-xl hover:border-brand-cyan/40 transition-colors">
                   <summary className="list-none cursor-pointer p-4">
                     <div className="flex items-start gap-3">
                       <div className="flex-shrink-0 w-7 h-7 rounded-full bg-brand-cyan/10 text-brand-cyan font-semibold text-xs flex items-center justify-center">
