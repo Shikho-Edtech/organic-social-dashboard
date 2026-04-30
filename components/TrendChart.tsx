@@ -49,13 +49,16 @@ function computeYDomain(
   const values = data.map((d) => d.value).filter((v) => v >= 0).sort((a, b) => a - b);
   if (values.length < 5) return undefined;
   const max = values[values.length - 1];
+  const p75 = values[Math.floor(values.length * 0.75)];
   const p90 = values[Math.floor(values.length * 0.9)];
   const p98 = values[Math.floor(values.length * 0.98)];
-  // Outlier present if max >= 2.5× p90 AND there's a meaningful gap
-  // between p98 and max (so we're not capping a smooth peak).
-  if (max >= p90 * 2.5 && max >= p98 * 1.4) {
-    // Cap at 1.1× p98 so the next-tallest non-outlier point sits clearly
-    // below the top.
+  // Sprint P7 v4.7 (2026-04-30, P2.18): loosened threshold to also catch
+  // datasets with two close-together peaks. v4.5 only fired on a single
+  // dominant outlier (max >= 2.5× p90); real-world Shikho data often has
+  // 1-2 viral days that together still squash the rest of the line.
+  // New rule: trigger if max >= 2× p75 (covers the two-peak case) AND
+  // max >= 1.4× p98 (still avoids capping smooth peaks).
+  if (max >= p75 * 2 && max >= p98 * 1.4) {
     const cap = Math.ceil(p98 * 1.1);
     return [0, cap];
   }

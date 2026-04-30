@@ -210,6 +210,46 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
       <PageHeader title="Timing" subtitle="When to post for max reach and engagement" dateLabel={`${range.label} · Bangladesh Time (UTC+6)`} lastScrapedAt={runStatus.last_run_at} />
       <MetricSelector basePath="/timing" active={activeMetrics} preserve={searchParams} />
 
+      {/* Sprint P7 v4.7 (2026-04-30, P2.21): synthesis hero above the 4
+          best-day/hour cards. Same pattern as Engagement P1.3: leads
+          with "what's the winning posting window" so the cold-read
+          test passes without scanning four cards. The cards below
+          stay as supporting per-metric evidence. */}
+      {(bestDayReach || bestDayEng || bestHourReach || bestHourEng) && (
+        <Card className="mb-4 border-l-4 border-l-brand-shikho-indigo">
+          <div className="flex flex-col gap-1.5">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+              Best posting window this period
+            </div>
+            <div className="text-base sm:text-lg leading-snug text-ink-primary">
+              {bestDayReach && bestDayEng && bestDayReach.label === bestDayEng.label ? (
+                <span className="font-semibold text-brand-shikho-indigo">{bestDayReach.label}s</span>
+              ) : (
+                <>
+                  {bestDayReach && (<><span className="font-semibold text-brand-cyan">{bestDayReach.label}s</span> for reach</>)}
+                  {bestDayReach && bestDayEng && bestDayReach.label !== bestDayEng.label && ", "}
+                  {bestDayEng && bestDayReach && bestDayReach.label !== bestDayEng.label && (<><span className="font-semibold text-brand-pink">{bestDayEng.label}s</span> for engagement</>)}
+                </>
+              )}
+              {(bestHourReach || bestHourEng) && " around "}
+              {bestHourReach && bestHourEng && bestHourReach.label === bestHourEng.label ? (
+                <span className="font-semibold text-brand-shikho-indigo">{bestHourReach.label} BDT</span>
+              ) : (
+                <>
+                  {bestHourReach && (<><span className="font-semibold text-brand-cyan">{bestHourReach.label} BDT</span> for reach</>)}
+                  {bestHourReach && bestHourEng && bestHourReach.label !== bestHourEng.label && ", "}
+                  {bestHourEng && bestHourReach && bestHourReach.label !== bestHourEng.label && (<><span className="font-semibold text-brand-pink">{bestHourEng.label} BDT</span> for engagement</>)}
+                </>
+              )}
+              .
+            </div>
+            <div className="text-xs text-ink-muted">
+              Each card below ranks by 95% CI lower bound — robust to single-post outliers. Heatmaps below break it out by day × hour cell.
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* Best slots summary — ranked by 95% CI lower bound */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <Card className="!p-5">

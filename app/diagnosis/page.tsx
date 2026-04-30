@@ -389,22 +389,42 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
           <p className="text-[15px] sm:text-base text-ink-800 leading-relaxed">
             {diagnosis.headline}
           </p>
-          {diagnosis.exam_alert && (
-            <div className="mt-3 flex items-start gap-2 bg-brand-shikho-coral/5 border border-brand-shikho-coral/20 rounded-md p-3">
-              <span className="flex-shrink-0 mt-0.5 text-brand-shikho-coral">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                  <line x1="16" y1="2" x2="16" y2="6"></line>
-                  <line x1="8" y1="2" x2="8" y2="6"></line>
-                  <line x1="3" y1="10" x2="21" y2="10"></line>
-                </svg>
-              </span>
-              <div className="text-xs text-brand-shikho-coral leading-relaxed">
-                <span className="font-semibold uppercase tracking-wider text-[11px]">Calendar alert · </span>
-                {diagnosis.exam_alert}
+          {/* Sprint P7 v4.7 (2026-04-30, P2.23): Calendar Alert visual
+              tone now adapts to the diagnosis engine. End-of-week (Monday)
+              verdict gets the original coral box (definitive). Mid-week
+              (Thursday) verdict gets an amber box (preliminary) so the
+              visual matches the "Preliminary, mid-week" pill above and
+              doesn't overstate certainty on partial-week data. */}
+          {diagnosis.exam_alert && (() => {
+            const isMidweek = diagnosis.engine === "ai-midweek";
+            const wrapClass = isMidweek
+              ? "mt-3 flex items-start gap-2 bg-brand-amber/5 border border-brand-amber/30 rounded-md p-3"
+              : "mt-3 flex items-start gap-2 bg-brand-shikho-coral/5 border border-brand-shikho-coral/20 rounded-md p-3";
+            const iconClass = isMidweek
+              ? "flex-shrink-0 mt-0.5 text-brand-amber"
+              : "flex-shrink-0 mt-0.5 text-brand-shikho-coral";
+            const textClass = isMidweek
+              ? "text-xs text-brand-amber leading-relaxed"
+              : "text-xs text-brand-shikho-coral leading-relaxed";
+            return (
+              <div className={wrapClass}>
+                <span className={iconClass}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                </span>
+                <div className={textClass}>
+                  <span className="font-semibold uppercase tracking-wider text-[11px]">
+                    Calendar alert{isMidweek ? " (mid-week, preliminary)" : ""} ·{" "}
+                  </span>
+                  {diagnosis.exam_alert}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       )}
 

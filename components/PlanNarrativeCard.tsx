@@ -55,21 +55,38 @@ export default function PlanNarrativeCard({ narrative, scope = "this" }: Props) 
   // Users saw them as clutter — the storyline paragraph alone answers
   // "what is the plan betting on this week?" The stripped fields
   // remain in Plan_Narrative for future programmatic use.
+  //
+  // Sprint P7 v4.7 (2026-04-30, P2.24): wrap in <details> so returning
+  // visitors who already know the week's storyline can scroll past to
+  // the per-day calendar grid without it eating fold space. Default
+  // open=true so first-time / weekly visitors still see the narrative
+  // by default. Storyline-missing path keeps the original card layout.
   return (
     <Card className="mb-4 border-l-4 border-l-brand-shikho-indigo">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-base font-semibold text-ink-primary">{title}</h2>
-        {storyline ? (
-          <p className="text-sm text-ink-primary leading-relaxed break-words">
+      {storyline ? (
+        <details open className="group">
+          <summary className="list-none cursor-pointer flex items-center justify-between gap-3">
+            <h2 className="text-base font-semibold text-ink-primary">{title}</h2>
+            <span className="text-[11px] text-ink-muted uppercase tracking-wider flex items-center gap-1.5">
+              <span className="hidden sm:inline">click to collapse</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-open:rotate-180">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </span>
+          </summary>
+          <p className="text-sm text-ink-primary leading-relaxed break-words mt-3">
             {storyline}
           </p>
-        ) : (
+        </details>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <h2 className="text-base font-semibold text-ink-primary">{title}</h2>
           <p className="text-sm text-ink-muted italic">
             Narrative storyline missing — calendar may have been generated
             with an older prompt version.
           </p>
-        )}
-      </div>
+        </div>
+      )}
     </Card>
   );
 }

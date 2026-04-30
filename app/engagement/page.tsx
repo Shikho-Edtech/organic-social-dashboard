@@ -205,11 +205,19 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
     value: Number(s.avg_engagement_rate.toFixed(2)),
     color: canonicalColor("format", s.key),
   }));
-  const formatShares = formatStats.map((s) => ({
-    label: s.key,
-    value: Math.round(inRange.filter((p) => p.format === s.key).reduce((sum, p) => sum + (p.shares || 0), 0) / s.count),
-    color: canonicalColor("format", s.key),
-  }));
+  // Sprint P7 v4.7 (2026-04-30, P2.25): Shares per Post is more
+  // outlier-sensitive than Engagement Rate (one viral carousel can
+  // produce "Carousel = 40 shares/post" with n=2). Bump the min-n to
+  // 5 specifically for this chart so a single viral post in a low-n
+  // format doesn't crown that format. Other charts keep MIN_N=2.
+  const SHARES_MIN_N = 5;
+  const formatShares = formatStats
+    .filter((s) => s.count >= SHARES_MIN_N)
+    .map((s) => ({
+      label: s.key,
+      value: Math.round(inRange.filter((p) => p.format === s.key).reduce((sum, p) => sum + (p.shares || 0), 0) / s.count),
+      color: canonicalColor("format", s.key),
+    }));
 
   // Pillar × engagement rate (top 12 for readability). Per-row colour from
   // canonicalColor("pillar", ...) means the same pillar keeps the same

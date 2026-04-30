@@ -5,9 +5,13 @@ type Props = {
   value: string | number;
   delta?: number;
   sublabel?: string;
+  /** Sprint P7 v4.7 (2026-04-30, P2.19): plain-English explainer shown on
+   *  hover/tap of the label. Useful for KPIs whose math isn't obvious
+   *  (e.g. reach-weighted ER vs naive average ER). */
+  labelTooltip?: string;
 };
 
-export default function KpiCard({ label, value, delta, sublabel }: Props) {
+export default function KpiCard({ label, value, delta, sublabel, labelTooltip }: Props) {
   // Shikho v1.0: emerald-500 for positive (brand-green preserved), coral-500
   // for negative (brand-red now maps to Shikho coral).
   const deltaColor = delta === undefined
@@ -21,7 +25,12 @@ export default function KpiCard({ label, value, delta, sublabel }: Props) {
   // signature "cool foundation" that the big number reads cleanly against.
   return (
     <Card className="!p-5 !bg-gradient-to-br from-ink-paper to-shikho-indigo-50/40">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-secondary">{label}</div>
+      <div
+        className={`text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-secondary ${labelTooltip ? "cursor-help underline decoration-dotted decoration-ink-200 underline-offset-2 inline-block" : ""}`}
+        title={labelTooltip}
+      >
+        {label}
+      </div>
       {/* text-2xl on mobile so 7-digit numbers don't overflow a 2-col grid.
           sm+ bumps to text-3xl. `break-words` is belt-and-braces for string
           values (e.g. "1,234,567" or short labels). */}

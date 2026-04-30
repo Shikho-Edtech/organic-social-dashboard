@@ -459,6 +459,7 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
           label="Hook Retention (3s)"
           value={`${hookRetention3s.toFixed(1)}%`}
           sublabel={reelsWithCurve ? `past 3s · ${reelsWithCurve}/${totalReels} reels with curves` : "no curve data in range"}
+          labelTooltip="Hook Retention = % of viewers still watching at the 3-second mark. Industry rough benchmark for ed-tech reels: 25-35% (anything above 30% means the opening 3s is doing real work; below 25% suggests the hook isn't earning the swipe). Computed from Meta's per-second retention curve, view-weighted across all reels with curve data this period."
         />
         <KpiCard label="Followers Gained" value={totalFollowersGained} sublabel="from reels" />
       </div>

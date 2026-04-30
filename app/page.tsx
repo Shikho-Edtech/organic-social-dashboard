@@ -239,7 +239,13 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
         <KpiCard label="Posts" value={kpis.posts} delta={postsDelta} sublabel="vs prev" />
         <KpiCard label="Total Reach" value={kpis.total_reach} delta={reachDelta} sublabel="vs prev" />
-        <KpiCard label="Engagement Rate" value={kpis.avg_engagement_rate.toFixed(2) + "%"} delta={engDelta} sublabel="vs prev · reach-weighted" />
+        <KpiCard
+          label="Engagement Rate"
+          value={kpis.avg_engagement_rate.toFixed(2) + "%"}
+          delta={engDelta}
+          sublabel="vs prev · reach-weighted"
+          labelTooltip="Reach-weighted: (Σ reactions + comments + shares across all posts) ÷ (Σ unique reach across all posts) × 100. Different from a naive per-post-rate average — a few high-reach posts dominate the signal, which matches what you actually want for top-of-funnel measurement. Consistent across Overview/Engagement/Trends/Timing."
+        />
         <KpiCard label="Avg Reach/Post" value={kpis.avg_reach_per_post} delta={avgReachPerPostDelta} sublabel="vs prev" />
         {/* Sprint P7 v4.7 (2026-04-30, P1.1): Followers card is a stock
             (snapshot count), not a flow. The other 4 cards are flows.
@@ -378,7 +384,15 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
                           </div>
                         </div>
                         <div className="text-sm font-semibold text-brand-green tabular-nums shrink-0">
-                          {m.pct > 0 ? "+" : ""}{m.pct.toFixed(1)}%
+                          {/* Sprint P7 v4.7 (2026-04-30, P2.22): when
+                              percent change is >= +300%, switch to a
+                              multiplier format ("12.7×") which reads
+                              cleaner than "+1169.7%". Fallers stay as
+                              percentages because negative multipliers
+                              don't read intuitively. */}
+                          {m.pct >= 300
+                            ? `${(1 + m.pct / 100).toFixed(1)}×`
+                            : `${m.pct > 0 ? "+" : ""}${m.pct.toFixed(1)}%`}
                         </div>
                       </li>
                     ))}
