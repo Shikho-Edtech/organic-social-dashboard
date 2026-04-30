@@ -1,5 +1,73 @@
 # Learnings
 
+## 2026-04-30 — Multi-line text in JSX fragments inside inline elements: SSR/CSR whitespace drift
+
+Second class of "build green, crash production" bug shipped (and hot-
+fixed) in v4.5. Pattern:
+
+```tsx
+<span>
+  {cond ? (
+    <>
+      Multi-line text with &apos; entities
+      that wraps across source lines.
+    </>
+  ) : (
+    <>
+      Different multi-line text with &apos; entities.
+    </>
+  )}
+</span>
+```
+
+This passed `npm run build` and worked in dev. In production it threw:
+- React error #425 (Hydration failed because the initial UI does not
+  match what was rendered on the server)
+- React error #422 (Suspense boundary hydration error)
+- Server Components render error → app/error.tsx fallback
+
+The /plan and /plan?week=last URLs both crashed (both render the
+fallback path that contained this JSX shape).
+
+Most likely root cause: JSX collapses multi-line text whitespace (tabs,
+newlines, leading spaces) using its own rules that can diverge between
+Server Component render and client hydration when the text is wrapped
+in a Fragment inside an inline element. Multiple `&apos;` entities in
+the text amplify the rendering surface area and increase the chance of
+a divergence. The combination — Fragment + inline element + multi-line
++ named entities — was enough to trip up SSR/CSR consistency.
+
+**Rule going forward:** for conditional text content inside inline
+elements, prefer a plain string ternary over JSX-fragment ternaries:
+
+```tsx
+// SAFE
+<span>{cond ? "string A" : "string B"}</span>
+
+// RISKY (works most of the time, fails unpredictably)
+<span>{cond ? <>multi-line text</> : <>other</>}</span>
+```
+
+If you need rich content (links, bold, etc.) inside the conditional,
+extract the branches into their own components and conditionally
+render the components — single component instances at the JSX level
+don't have the same fragment-whitespace ambiguity:
+
+```tsx
+<span>{cond ? <CopyA /> : <CopyB />}</span>
+```
+
+**Detection for future commits:** ripgrep `<>\s*\n\s*[A-Z]` inside
+.tsx files to find multi-line fragment opens. If the matched fragment
+is inside an inline-rendering element (`<span>`, `<p>`, `<a>`, `<em>`,
+`<strong>`), inspect for SSR/CSR risk.
+
+**Pairs with the v4.4 LEARNING** (function props can't cross the
+Server→Client boundary): both classes of bug ship build-green and
+crash only in production. Live QA on Vercel is the only sufficient
+verification for cross-boundary changes — local `npm run build` +
+local `npm run start` happy-path test is necessary but not sufficient.
+
 ## 2026-04-30 — Functions can't cross the Server→Client component prop boundary (Next.js 14)
 
 Sprint P7 v3.5 introduced `<MultiLineTrendChart>` for composite-mode
