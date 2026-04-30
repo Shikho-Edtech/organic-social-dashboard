@@ -305,11 +305,17 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
             choices={["this", "last"]}
             preserve={searchParams}
           />
-          {/* Sprint P7 v4 (2026-04-29): regenerate button only on
-              "Last week" view — that's where the end-of-week verdict
-              gets locked. "This week" verdicts are mid-week reads
-              that auto-refresh on the Thursday cron. */}
-          {isLastWeekView && <RegenerateThisWeekButton scope="weekly" />}
+          {/* Sprint P7 v4.4 (2026-04-29): regenerate button on "This
+              week" view with scope="midweek" — re-runs the Thursday
+              mid-week diagnosis the user is currently looking at. v4.2
+              originally placed this on Last-Week with scope="weekly",
+              but Diagnosis is exempt from running-week locking (per v3
+              spec — mid-week + Monday cycle is intentional dual-write),
+              so a "weekly" scope here regenerates Strategy/Calendar/
+              Plan_Narrative — content that's not visible on Diagnosis.
+              Confusing. The right action surface for Diagnosis is the
+              mid-week scope, on the running week. */}
+          {isThisWeekView && <RegenerateThisWeekButton scope="midweek" />}
         </div>
       )}
 
