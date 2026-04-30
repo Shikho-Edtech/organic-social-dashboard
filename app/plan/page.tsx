@@ -265,22 +265,39 @@ export default async function PlanPage({ searchParams }: { searchParams: Record<
         </div>
       )}
 
-      {/* Sprint P7 v3: when the week-scoped fetch returned 0 rows but the
-          tab has data, show a small note that we're showing the latest
-          available week as fallback. This is the bridge state right
-          after ship — once next Monday's append-by-week run lands,
-          fallback won't fire on the targeted week. */}
+      {/* Sprint P7 v3 + v4.5 (2026-04-30): when the week-scoped fetch
+          returned 0 rows but the tab has data, copy adapts to the view:
+          - Last-Week views show a "history not available" note WITHOUT
+            falling back to future content (which was confusing per
+            QA finding #5 — user requested last-week, got next-week).
+          - This/Next-Week views still get the bridge-state fallback
+            since history-accumulation is the v3 ship state and fallback
+            is more useful than empty when the running week hasn't
+            generated yet. */}
       {usingFallback && (
-        <div className="mb-4 inline-flex items-start gap-2 px-3 py-2 rounded-md bg-shikho-indigo-50 border border-shikho-indigo-100 text-shikho-indigo-700 text-xs">
+        <div className="mb-4 inline-flex items-start gap-2 px-3 py-2 rounded-md bg-shikho-indigo-50 border border-shikho-indigo-100 text-shikho-indigo-700 text-xs max-w-3xl">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 mt-0.5">
             <circle cx="12" cy="12" r="10"></circle>
             <line x1="12" y1="16" x2="12" y2="12"></line>
             <line x1="12" y1="8" x2="12.01" y2="8"></line>
           </svg>
           <span>
-            No calendar rows for the selected week yet — showing the most recent
-            calendar in the sheet as fallback. History accumulates from the
-            next weekly run forward.
+            {isLastWeekView ? (
+              <>
+                Last week&apos;s calendar wasn&apos;t archived — history
+                started accumulating from Sprint P7 v3 (append-by-week
+                writer, 2026-04-29). The slots below are the most recent
+                calendar in the sheet (a future week&apos;s plan), shown
+                so the page isn&apos;t empty. They are NOT last week&apos;s
+                actual posting plan.
+              </>
+            ) : (
+              <>
+                No calendar rows for the selected week yet — showing the most recent
+                calendar in the sheet as fallback. History accumulates from the
+                next weekly run forward.
+              </>
+            )}
           </span>
         </div>
       )}

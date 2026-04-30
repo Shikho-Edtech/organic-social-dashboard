@@ -1,5 +1,83 @@
 # Changelog
 
+## 2026-04-30 — Sprint P7 v4.5 (close out QA findings — multi-line on Explore + outlier-aware y-axis + copy fixes)
+
+Working through the open findings from the v4.4 QA report.
+
+**v4.5.1 — Explore composite-trend chart now multi-line (Finding #7):**
+- Was: single `TrendChart` plotting first active metric; caption
+  apologized "Multi-line composite trend is a v3.5 follow-up."
+- Now: composite mode (2+ metrics) renders `<MultiLineTrendChart>`
+  with each series normalized to % of own peak — same pattern as
+  Overview + Trends. Title flips to "Composite Trend (N metrics,
+  normalized)"; caption adapts.
+- Single-metric path unchanged.
+- `formatKind` discriminator (not function prop) — applied the v4.4
+  Server→Client lesson preemptively even though `ExploreClient.tsx`
+  is itself `"use client"`.
+
+**v4.5.2 — Plan Last-Week empty-state copy (Finding #5):**
+- Was: silent fallback to "most recent calendar in the sheet" — on
+  Last-Week view this meant showing future-week content with the
+  "showing fallback" note. Confusing.
+- Now: when `isLastWeekView && usingFallback`, copy is explicit:
+  "Last week's calendar wasn't archived — history started accumulating
+  from Sprint P7 v3 (append-by-week writer, 2026-04-29). The slots
+  below are the most recent calendar in the sheet (a future week's
+  plan), shown so the page isn't empty. They are NOT last week's
+  actual posting plan."
+- This/Next-Week views keep the existing fallback copy (where falling
+  back is more helpful than empty during the running week).
+
+**v4.5.3 — Outcomes pill labeling (Finding #6):**
+- Was: most-recent week pill labeled "Last week (May 4)" — but May 4 is
+  a Monday (the grading-run date), not the Sunday week-ending. Reads
+  like the past when it's actually the most-recent grading cycle.
+- Now: pill says "Most recent (May 4)"; rollup card header says
+  "Grading run: 2026-05-04" (was "Week ending 2026-05-04").
+- The grading-date vs week-end distinction is now explicit in copy.
+
+**v4.5.4 — Trend chart outlier-aware y-axis (Finding #8):**
+- Problem: when one viral day dominates (180k reach in a week of
+  10k-typical days), Recharts default auto y-domain caps at 180k and
+  the rest of the line hugs the baseline — chart looks empty.
+- Fix: new `computeYDomain()` helper. Triggers cap at 1.1× p98 only
+  when max ≥ 2.5× p90 AND max ≥ 1.4× p98 (i.e. a real outlier is
+  present, not just a smooth peak). The viral day clips through the
+  top — visually obvious as "this exceeds the chart" — and the rest
+  of the data gets proportional vertical space.
+- Tooltip shows the raw value (capping is purely visual). When values
+  are evenly distributed, the helper returns undefined → Recharts
+  uses its default auto-domain. Net: only fires when it would help.
+- Applied to all `<TrendChart>` instances (Overview reach trend,
+  Trends daily-metric, Explore single-metric trend).
+
+**v4.5.5 — DECISIONS entry: known limitations of browser-MCP QA
+(Findings #9 + #10):**
+- Recharts hover tooltips don't fire on programmatic mouse events
+  (synthetic mousemove via CDP doesn't reach Recharts' SVG hit-test).
+  Code review + real-mouse manual hover are the only sufficient
+  verifications.
+- `resize_window(360, 740)` sets OS window size, not viewport. Plus
+  DPR scaling. For true mobile QA: Chrome DevTools device-mode, real
+  device, or CSS-level review per the CLAUDE.md mobile checklist.
+
+**Findings #2 + #3 investigated, not bugs:**
+- #2 Question hook ER 1.63%: hook distribution healthy (113
+  classifications: 38% Announcement, 23% Question, 19% Stat). 1.63% is
+  highest within the hook dimension; lower than Best Format (5.50%)
+  because hook is a tertiary signal. Working as intended.
+- #3 99.2% retention reel: short reel artifact. With avg watch time
+  5.0s and 3s-retention defined as `curve[3]`, a ≤6s reel where most
+  viewers complete the first 3s legitimately scores ~100% retention-
+  at-3s. Not a bug.
+
+**One finding NOT shipped — depends on external action:**
+- "Theoritical" typo in calendar alert lives in the Knowledge team's
+  external academic calendar Google Sheet (sheet ID
+  `1dos36Slg2zDIRdcL_ZqL2PCcisssXp2CtflXQwj-c6s`). Pipeline reads it
+  verbatim. Fix requires editing that sheet directly.
+
 ## 2026-04-30 — Sprint P7 v4.4 hotfix pass (live QA caught composite crash + Diagnosis button placement)
 
 Live QA across all 9 dashboard pages turned up 2 ship-stopping bugs in

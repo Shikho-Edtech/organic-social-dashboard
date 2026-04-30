@@ -1,5 +1,49 @@
 # Decisions
 
+## 2026-04-30 — Known limitations of automated browser QA (and what to use instead)
+
+The v4.4 live QA pass uncovered two limitations in browser-MCP-driven
+testing that are worth codifying so they don't get re-discovered each
+time:
+
+**1. Recharts hover tooltips don't fire on programmatic mouse events.**
+Recharts uses its own internal hit-testing on Bar/Line/Area elements
+(SVG paths, not DOM nodes with onmouseover). MCP `computer.hover`
+sends a synthetic mousemove via Chrome DevTools Protocol — the event
+reaches the SVG, but Recharts' internal listeners are bound to React
+synthetic events triggered by the actual mouse cursor's pointer
+position over a Cell. Net: programmatic hover doesn't reliably show
+tooltips, so the v4.1 per-cell composite tooltip couldn't be
+visually verified by the browser-MCP harness.
+
+Mitigation: code review proves the wiring (`compositeBreakdown` prop
+threads through, custom `<Tooltip content>` render prop renders the
+right structure when invoked). For visual verification, real human
+mouse hover on the Vercel deploy is the only sufficient test.
+
+**2. `resize_window(360, 740)` sets the OS window, not the viewport.**
+Tested empirically during the v4.4 QA pass: setting browser window
+to 360×740 produced screenshots that rendered at ~986×880 with the
+desktop layout still visible. The OS-level window size includes
+chrome (tab bar, address bar, scrollbars) and the inner viewport
+ends up wider than expected, plus DPR scaling can inflate the
+captured PNG dimensions further.
+
+Mitigation: for true mobile-viewport QA, use one of:
+- Chrome DevTools device-mode (Cmd+Shift+M / Ctrl+Shift+M, pick
+  iPhone/Galaxy preset). Browser-MCP can drive this if you toggle
+  device mode in the Chrome extension's side panel first.
+- Real device — the primary author already checks Shikho on phone;
+  mobile bugs caught there are the highest-confidence signal.
+- CSS-level review: ripgrep for `flex-wrap`, missing
+  `max-w-[calc(100vw-2rem)]`, missing `break-words leading-tight`
+  per the CLAUDE.md mobile checklist.
+
+Don't trust `resize_window` for "this works on mobile" claims — it
+catches catastrophic overflow but misses the subtler mobile-only
+patterns (tap-target size, hover-only affordances, popup
+right-edge clipping).
+
 ## 2026-04-30 — Live QA over local-build QA for cross-boundary Next.js bugs
 
 The v4.4 hotfixes (composite-crash + Diagnosis-button-misplacement) both

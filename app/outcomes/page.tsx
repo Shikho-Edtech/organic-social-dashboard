@@ -193,12 +193,14 @@ export default async function OutcomesPage({
 
       {activeWeek && rows.length > 0 && (
         <>
-          {/* Week picker. Sprint P7 Phase 2 (2026-04-28): the most-recent
-              week now carries a "Last week" semantic label since Outcomes
-              are inherently for completed weeks (Outcome_Log scoring runs
-              Monday after the week closes, so "This week" makes no sense
-              here). Older weeks stay as raw YYYY-MM-DD date pills for
-              historical archive access. */}
+          {/* Week picker. Sprint P7 v4.5 (2026-04-30): semantic label
+              dropped — the data column stores the Monday-grading date
+              (when the weekly cron ran scoring), not the Sunday week-end,
+              so "Last week (May 4)" misled readers into thinking May 4
+              was a past Sunday. Now: most recent pill = "Most recent
+              ({date})", older pills = raw YYYY-MM-DD. The grading-date
+              vs week-end-date distinction is also clarified in the
+              rollup card header below. */}
           {allWeeks.length > 1 && (
             <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
@@ -206,10 +208,7 @@ export default async function OutcomesPage({
               </span>
               {allWeeks.map((wk, idx) => {
                 const active = wk === activeWeek;
-                // First pill is always the most recent week → label as
-                // "Last week (Apr 26)" for parity with Diagnosis/Plan
-                // selectors. Older weeks render as raw date pills.
-                const isLastWeek = idx === 0;
+                const isLatest = idx === 0;
                 return (
                   <Link
                     key={wk}
@@ -220,9 +219,9 @@ export default async function OutcomesPage({
                         : "bg-ink-paper text-ink-secondary border-ink-100 hover:border-brand-shikho-indigo hover:text-brand-shikho-indigo"
                     }`}
                   >
-                    {isLastWeek ? (
+                    {isLatest ? (
                       <>
-                        <span>Last week</span>
+                        <span>Most recent</span>
                         <span className={`ml-1.5 text-[10px] ${active ? "text-white/80" : "text-ink-muted"}`}>
                           ({new Date(`${wk}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "Asia/Dhaka" })})
                         </span>
@@ -241,7 +240,7 @@ export default async function OutcomesPage({
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
               <div>
                 <p className="text-xs uppercase tracking-wider text-ink-muted font-semibold">
-                  Week ending {activeWeek}
+                  Grading run: {activeWeek}
                 </p>
                 <h2 className="text-xl sm:text-2xl font-bold text-ink-primary mt-1 break-words leading-tight">
                   {rollup.hit_count} of {rollup.graded_count} slots beat their

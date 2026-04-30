@@ -4,6 +4,7 @@ import type { Post, DailyMetric } from "@/lib/types";
 import { computeKpis, filterPosts, dailyReach, dailyMetricTrend, groupStats, groupStatValue, groupStatCompositeScore, bdt, reach, engagementRate, daysAgo, sortByComposite, type RankingMetric } from "@/lib/aggregate";
 import { Card, ChartCard } from "@/components/Card";
 import TrendChart from "@/components/TrendChart";
+import MultiLineTrendChart, { type MultiSeries } from "@/components/MultiLineTrendChart";
 import BarChartBase from "@/components/BarChart";
 import PostReference from "@/components/PostReference";
 import { canonicalColor, type ColorField } from "@/lib/colors";
@@ -126,6 +127,29 @@ export default function ExploreClient({ posts, activeMetrics = ["reach"], active
     date: d.date.slice(5),
     value: d.value,
   }));
+  // Sprint P7 v4.5 (2026-04-30): multi-line composite trend on Explore.
+  // Same pattern as Overview/Trends — each series normalized to % of its
+  // own peak so unit-mismatched metrics share one y-axis. formatKind
+  // (not formatter — see LEARNINGS 2026-04-30 for why function props
+  // can't cross the Server→Client boundary; ExploreClient is a "use
+  // client" component but we keep the same pattern for consistency).
+  const METRIC_COLORS_EXPLORE: Record<RankingMetric, string> = {
+    reach: "#304090",
+    interactions: "#C02080",
+    engagement: "#1A8E78",
+    shares: "#E0A010",
+  };
+  const compositeTrendSeries: MultiSeries[] = isComposite
+    ? activeMetrics.map((m) => ({
+        name: metricLabelFull[m],
+        color: METRIC_COLORS_EXPLORE[m],
+        data: dailyMetricTrend(filtered, m).map((d) => ({
+          date: d.date.slice(5),
+          value: d.value,
+        })),
+        formatKind: m === "engagement" ? "percent" : "number",
+      }))
+    : [];
   // Full sorted list so pagination can walk past the top 10.
   // Sprint P7 Phase 3: composite-rank when 2+ metrics active. The
   // existing variable name `sortedByReach` keeps the diff small —
@@ -345,20 +369,32 @@ export default function ExploreClient({ posts, activeMetrics = ["reach"], active
 
           <div className="mb-6">
             <ChartCard
-              title={`${metricLabelFull[primaryMetric]} Over Time${isComposite ? " (primary metric)" : ""}`}
+              title={
+                isComposite
+                  ? `Composite Trend (${activeMetrics.length} metrics, normalized)`
+                  : `${metricLabelFull[primaryMetric]} Over Time`
+              }
               kind="observed"
-              subtitle={`Daily ${metricLabelLower[primaryMetric]} for the current filter set`}
+              subtitle={
+                isComposite
+                  ? "Each line normalized to % of its own peak — shapes are comparable, raw values shown in tooltip"
+                  : `Daily ${metricLabelLower[primaryMetric]} for the current filter set`
+              }
               caption={
                 isComposite
-                  ? `Trend shows ${metricLabelLower[primaryMetric]} (the first active metric of the composite). Multi-line composite trend is a v3.5 follow-up. Gaps indicate days with no qualifying posts.`
+                  ? "Shapes diverge → metrics tell different stories that day. Shapes track → metrics correlate. Gaps indicate days with no qualifying posts."
                   : `Trend of daily ${metricLabelLower[primaryMetric]} for the posts matching your filters. Gaps indicate days with no qualifying posts.`
               }
             >
-              <TrendChart
-                data={trend}
-                metricName={metricLabelFull[primaryMetric]}
-                valueAxisLabel={metricLabelFull[primaryMetric]}
-              />
+              {isComposite ? (
+                <MultiLineTrendChart series={compositeTrendSeries} />
+              ) : (
+                <TrendChart
+                  data={trend}
+                  metricName={metricLabelFull[primaryMetric]}
+                  valueAxisLabel={metricLabelFull[primaryMetric]}
+                />
+              )}
             </ChartCard>
           </div>
 

@@ -23,6 +23,45 @@ function makeFormatter(spec?: FormatSpec): (v: number) => string {
   return (v) => v.toLocaleString();
 }
 
+/**
+ * Sprint P7 v4.5 (2026-04-30): outlier-aware y-axis cap.
+ *
+ * QA finding #8 — when one viral day dominates, Recharts' default
+ * y-axis (auto: max value) makes the rest of the line hug the baseline
+ * and the chart looks empty. Real-world Shikho data has this pattern
+ * regularly: a 180k-reach viral day followed by 5-15k typical days.
+ *
+ * Strategy: cap the y-domain at p98 of values when the max is more than
+ * ~2.5× the p90 (a defensible "outlier present" heuristic). The viral
+ * day still shows as a peak that clips through the top — visually
+ * obvious as "this exceeds the chart" — and everything else gets
+ * proportional vertical space. Recharts renders values above the cap
+ * as clipped lines, but tooltip values stay accurate (the underlying
+ * data isn't modified).
+ *
+ * When values are evenly distributed, returns undefined → Recharts
+ * uses its default auto-domain. So this only fires when it would help.
+ */
+function computeYDomain(
+  data: { value: number }[],
+): [number, number | "auto"] | undefined {
+  if (data.length < 5) return undefined;
+  const values = data.map((d) => d.value).filter((v) => v >= 0).sort((a, b) => a - b);
+  if (values.length < 5) return undefined;
+  const max = values[values.length - 1];
+  const p90 = values[Math.floor(values.length * 0.9)];
+  const p98 = values[Math.floor(values.length * 0.98)];
+  // Outlier present if max >= 2.5× p90 AND there's a meaningful gap
+  // between p98 and max (so we're not capping a smooth peak).
+  if (max >= p90 * 2.5 && max >= p98 * 1.4) {
+    // Cap at 1.1× p98 so the next-tallest non-outlier point sits clearly
+    // below the top.
+    const cap = Math.ceil(p98 * 1.1);
+    return [0, cap];
+  }
+  return undefined;
+}
+
 export default function TrendChart({
   data,
   // Shikho indigo-600 — default trend line lands on brand identity.
@@ -48,13 +87,18 @@ export default function TrendChart({
 
   const margin = { top: 5, right: 10, left: valueAxisLabel ? 15 : 0, bottom: xAxisLabel ? 20 : 5 };
 
+  const yDomain = computeYDomain(data);
+  const yAxisDomainProp = yDomain
+    ? { domain: yDomain, allowDataOverflow: true }
+    : {};
+
   return (
     <ResponsiveContainer width="100%" height={height}>
       {variant === "line" ? (
         <LineChart data={data} margin={margin}>
           <CartesianGrid strokeDasharray="3 3" stroke="#E6E8F0" vertical={false} />
           <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#333A50" }} label={xAxisLabelProp} />
-          <YAxis axisLine={false} tickLine={false} tickFormatter={fmt} width={55} tick={{ fontSize: 11, fill: "#333A50" }} label={yAxisLabelProp} />
+          <YAxis axisLine={false} tickLine={false} tickFormatter={fmt} width={55} tick={{ fontSize: 11, fill: "#333A50" }} label={yAxisLabelProp} {...yAxisDomainProp} />
           <Tooltip
             contentStyle={{ backgroundColor: "white", border: "1px solid #E6E8F0", borderRadius: "12px", fontSize: "12px", boxShadow: "0 6px 14px rgba(16,22,54,0.08)" }}
             formatter={tooltipFormatter}
@@ -71,7 +115,7 @@ export default function TrendChart({
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="#E6E8F0" vertical={false} />
           <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#333A50" }} label={xAxisLabelProp} />
-          <YAxis axisLine={false} tickLine={false} tickFormatter={fmt} width={55} tick={{ fontSize: 11, fill: "#333A50" }} label={yAxisLabelProp} />
+          <YAxis axisLine={false} tickLine={false} tickFormatter={fmt} width={55} tick={{ fontSize: 11, fill: "#333A50" }} label={yAxisLabelProp} {...yAxisDomainProp} />
           <Tooltip
             contentStyle={{ backgroundColor: "white", border: "1px solid #E6E8F0", borderRadius: "12px", fontSize: "12px", boxShadow: "0 6px 14px rgba(16,22,54,0.08)" }}
             formatter={tooltipFormatter}
