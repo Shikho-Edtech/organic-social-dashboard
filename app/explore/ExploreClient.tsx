@@ -19,6 +19,10 @@ type Props = {
   /** Sprint P7 v3.5: optional positional weights from ?weights=... param.
    *  When omitted, equal-weight composite. */
   activeWeights?: number[];
+  /** Sprint P7 v4.6 (2026-04-30, P0 finding #2): pipeline last_run_at for
+   *  the "Data as of" stamp in the Explore header. Matches the rest of
+   *  the dashboard so users can reconcile cross-page KPI freshness. */
+  lastScrapedAt?: string;
 };
 type Preset = "7d" | "30d" | "90d" | "ytd" | "all" | "custom";
 
@@ -65,7 +69,7 @@ function uniqueValues(posts: Post[], key: keyof Post): string[] {
   return Array.from(set).sort();
 }
 
-export default function ExploreClient({ posts, activeMetrics = ["reach"], activeWeights }: Props) {
+export default function ExploreClient({ posts, activeMetrics = ["reach"], activeWeights, lastScrapedAt }: Props) {
   const [preset, setPreset] = useState<Preset>("30d");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
@@ -205,6 +209,15 @@ export default function ExploreClient({ posts, activeMetrics = ["reach"], active
               setCustomEnd={setCustomEnd}
             />
             <div className="text-xs text-slate-500">{rangeLabel}</div>
+            {/* Sprint P7 v4.6 (2026-04-30, P0 finding #2): "Data as of"
+                stamp matching the rest of the dashboard. Reconciles
+                cross-page KPI freshness when Overview/Explore caches are
+                hit at different times. */}
+            {lastScrapedAt && (
+              <div className="text-[11px] text-slate-500">
+                Data as of: <span className="font-medium">{new Date(lastScrapedAt).toLocaleString("en-GB", { timeZone: "Asia/Dhaka", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })} BDT</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

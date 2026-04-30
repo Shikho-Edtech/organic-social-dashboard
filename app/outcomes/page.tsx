@@ -170,7 +170,18 @@ export default async function OutcomesPage({
     <div>
       <PageHeader
         title="Outcomes"
-        subtitle="Last week's plan, graded slot by slot"
+        // Sprint P7 v4.6 (2026-04-30, P0 finding #3): subtitle adapts to
+        // grading state. Hardcoded "Last week's plan, graded slot by slot"
+        // misled users when ALL slots are still pending (the case for a
+        // forecast run before the week has fully elapsed). Now the page
+        // self-describes whether actuals exist yet.
+        subtitle={
+          rollup.graded_count > 0
+            ? "Plan graded slot by slot"
+            : rows.length > 0
+              ? "Forecasts logged, awaiting actuals"
+              : "Outcome log empty"
+        }
         dateLabel={
           generatedAt
             ? `Last graded ${fmtBDT(generatedAt)}`
@@ -243,8 +254,15 @@ export default async function OutcomesPage({
                   Grading run: {activeWeek}
                 </p>
                 <h2 className="text-xl sm:text-2xl font-bold text-ink-primary mt-1 break-words leading-tight">
-                  {rollup.hit_count} of {rollup.graded_count} slots beat their
-                  forecast
+                  {/* Sprint P7 v4.6 (2026-04-30, P0 finding #3):
+                      headline adapts to grading state. "0 of 0 slots
+                      beat their forecast" was technically accurate when
+                      everything is pending, but it made the page look
+                      broken. Now: forecast-state shows the slot count;
+                      graded-state shows the hit ratio. */}
+                  {rollup.graded_count > 0
+                    ? <>{rollup.hit_count} of {rollup.graded_count} slots beat their forecast</>
+                    : <>{rows.length} slots planned, awaiting actuals</>}
                 </h2>
                 <p className="text-sm text-ink-secondary mt-1">
                   {rollup.no_data_count > 0
@@ -359,8 +377,8 @@ export default async function OutcomesPage({
                           <th className="px-4 py-2 font-medium text-[11px] uppercase tracking-wider">
                             Format
                           </th>
-                          <th className="px-4 py-2 font-medium text-[11px] uppercase tracking-wider text-right">
-                            Forecast
+                          <th className="px-4 py-2 font-medium text-[11px] uppercase tracking-wider text-right" title="Forecast is computed at pillar level (using last-90d reach percentiles for that pillar). Slots within the same pillar that share format will display the same forecast — that's expected, not a copy-paste bug.">
+                            Forecast<span className="ml-1 text-ink-muted normal-case font-normal">(pillar-level)</span>
                           </th>
                           <th className="px-4 py-2 font-medium text-[11px] uppercase tracking-wider text-right">
                             Actual

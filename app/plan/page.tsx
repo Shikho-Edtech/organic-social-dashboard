@@ -265,25 +265,43 @@ export default async function PlanPage({ searchParams }: { searchParams: Record<
         </div>
       )}
 
-      {/* Sprint P7 v3 + v4.5.1 (2026-04-30): copy adapts to the view.
-          v4.5 attempt #1 used a JSX-fragment ternary inside a <span>
-          and crashed Plan in production (Server Components render
-          error, build was green). Reverted to a plain conditional
-          string assignment — same UX, no fragment-in-span risk. */}
-      {usingFallback && (
-        <div className="mb-4 inline-flex items-start gap-2 px-3 py-2 rounded-md bg-shikho-indigo-50 border border-shikho-indigo-100 text-shikho-indigo-700 text-xs max-w-3xl">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 mt-0.5">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="16" x2="12" y2="12"></line>
-            <line x1="12" y1="8" x2="12.01" y2="8"></line>
-          </svg>
-          <span>
-            {isLastWeekView
-              ? "Last week's calendar wasn't archived — history started accumulating from Sprint P7 v3 (append-by-week writer, 2026-04-29). The slots below are the most recent calendar in the sheet (a future week's plan), shown so the page isn't empty. They are NOT last week's actual posting plan."
-              : "No calendar rows for the selected week yet — showing the most recent calendar in the sheet as fallback. History accumulates from the next weekly run forward."}
-          </span>
-        </div>
-      )}
+      {/* Sprint P7 v4.6 (2026-04-30, P0 finding #4): banner is now
+          explicit about which week's plan is being shown vs which week
+          was requested. The fallback can land you on next-week content
+          when you're viewing this-week, or vice versa — copy now spells
+          that out so the user never silently reads the wrong plan.
+
+          Implementation note: avoid JSX fragments inside <span> here —
+          v4.5 attempt #1 hit a SSR/CSR hydration drift bug (LEARNINGS
+          2026-04-30). Plain string ternary is the safe pattern. */}
+      {usingFallback && (() => {
+        // First slot's date IS the Monday of the displayed week (calendar
+        // rows are written in day-order Mon-Sun by the pipeline). No
+        // helper needed.
+        const fallbackWeekStarting = fallbackLatestCalendar[0]?.date || "";
+        const requestedWeekDesc = isLastWeekView
+          ? "last week"
+          : isNextWeekView
+            ? "next week"
+            : "this week";
+        const showingDateRange = fallbackWeekStarting
+          ? ` (week of ${fallbackWeekStarting})`
+          : "";
+        return (
+          <div className="mb-4 inline-flex items-start gap-2 px-3 py-2 rounded-md bg-shikho-indigo-50 border border-shikho-indigo-100 text-shikho-indigo-700 text-xs max-w-3xl">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 mt-0.5">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            <span>
+              {isLastWeekView
+                ? `Last week's calendar wasn't archived — history started accumulating from Sprint P7 v3 (append-by-week writer, 2026-04-29). The slots below are the most recent calendar in the sheet${showingDateRange}, shown so the page isn't empty. They are NOT last week's actual posting plan.`
+                : `No calendar rows for ${requestedWeekDesc} yet — showing the most recent calendar in the sheet${showingDateRange} as fallback. The slot dates above tell you which week's plan you're actually viewing. History accumulates from the next weekly run forward.`}
+            </span>
+          </div>
+        );
+      })()}
 
       {calendar.length === 0 && (
         <Card className="text-center py-12">

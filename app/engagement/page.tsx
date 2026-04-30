@@ -222,7 +222,14 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
   }));
 
   // Hook type effectiveness
-  const hookStats = groupStats(inRangeConfident, "hook_type").filter((s) => s.count >= MIN_N).slice(0, 10);
+  // Sprint P7 v4.6 (2026-04-30, P0 finding #1): exclude classifier "None"
+  // and "Unknown" buckets from Best Hook + Recommendation cards. The
+  // taxonomy uses "None" to mean "no clear hook detected"; surfacing it
+  // as the recommended hook is anti-actionable ("use no hook"). Same
+  // pattern as spotlightStats above.
+  const hookStats = groupStats(inRangeConfident, "hook_type")
+    .filter((s) => s.count >= MIN_N && s.key && s.key !== "None" && s.key !== "Unknown")
+    .slice(0, 10);
   const hookER = hookStats.map((s) => ({
     label: s.key,
     value: Number(s.avg_engagement_rate.toFixed(2)),
@@ -234,8 +241,9 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
   // / Informational / Celebratory / Urgent-FOMO). Same MIN_N gate + canonical
   // palette as the other dimensions — so "Educational" renders in the same
   // indigo wherever it appears across pages.
+  // Sprint P7 v4.6: same defensive None-exclusion as hookStats.
   const toneStats = groupStats(inRangeConfident, "caption_tone")
-    .filter((s) => s.count >= MIN_N && s.key && s.key !== "Unknown");
+    .filter((s) => s.count >= MIN_N && s.key && s.key !== "None" && s.key !== "Unknown");
   const toneER = toneStats.map((s) => ({
     label: s.key,
     value: Number(s.avg_engagement_rate.toFixed(2)),
@@ -619,9 +627,11 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
                 <span>·</span>
                 <span>Dashed outline = no posts in that cell</span>
                 <span>·</span>
-                <span>Faded fill = fewer than {MATRIX_MIN_N} posts (low confidence)</span>
+                {/* Sprint P7 v4.6 (2026-04-30): MIN_N=2 means faded = exactly
+                    n=1, not "fewer than 2." Wording was off. */}
+                <span>Faded fill = {MATRIX_MIN_N === 2 ? "1 post" : `fewer than ${MATRIX_MIN_N} posts`} (low confidence)</span>
                 <span>·</span>
-                <span>BDT 10:00\u201324:00</span>
+                <span>BDT 10:00–24:00</span>
               </div>
             </div>
           </ChartCard>
