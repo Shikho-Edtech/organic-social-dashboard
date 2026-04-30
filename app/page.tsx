@@ -84,8 +84,9 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
           date: d.date.slice(5),
           value: d.value,
         })),
-        formatter: (v: number) =>
-          m === "engagement" ? `${v.toFixed(2)}%` : Math.round(v).toLocaleString(),
+        // Sprint P7 v4.4: serializable kind (was a function — crashed on
+        // server→client prop boundary in Next.js 14).
+        formatKind: m === "engagement" ? "percent" : "number",
       }))
     : [];
 

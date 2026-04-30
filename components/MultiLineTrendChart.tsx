@@ -20,9 +20,17 @@ export type MultiSeries = {
   color: string;
   /** Time-aligned data points; same dates across all series */
   data: { date: string; value: number }[];
-  /** Original-units formatter for tooltip values */
-  formatter: (v: number) => string;
+  /** Format kind for the raw tooltip value. Server Components cannot pass
+   *  function props across the client boundary (Next.js 14), so we accept
+   *  a serializable discriminator and resolve to a formatter inside this
+   *  client component. Sprint P7 v4.4 (2026-04-29) fix for the live crash
+   *  on `?metric=reach,interactions` Overview/Trends. */
+  formatKind: "percent" | "number";
 };
+
+function formatRaw(kind: "percent" | "number", v: number): string {
+  return kind === "percent" ? `${v.toFixed(2)}%` : Math.round(v).toLocaleString();
+}
 
 type Props = {
   series: MultiSeries[];
@@ -130,7 +138,7 @@ export default function MultiLineTrendChart({ series, height = 240 }: Props) {
             const rawValue = props.payload?.[`raw_${seriesName}`];
             const seriesDef = series.find((s) => s.name === seriesName);
             const rawDisplay = rawValue !== undefined && seriesDef
-              ? seriesDef.formatter(rawValue)
+              ? formatRaw(seriesDef.formatKind, rawValue)
               : "";
             return [
               `${(value * 100).toFixed(0)}% of peak  (${rawDisplay})`,
