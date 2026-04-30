@@ -1,5 +1,53 @@
 # Changelog
 
+## 2026-04-30 — Sprint P7 v4.4 hotfix pass (live QA caught composite crash + Diagnosis button placement)
+
+Live QA across all 9 dashboard pages turned up 2 ship-stopping bugs in
+the v4 work that the build gate didn't catch. Both fixed in flight.
+
+**v4.4 hotfix #1 — composite mode crashed Overview + Trends (`a5e1dfc`):**
+- Symptom: any URL with 2+ active metrics (`?metric=reach,interactions`,
+  etc.) threw "Something went wrong loading this page" with a Server
+  Components render error in the production logs.
+- Root cause: `MultiLineTrendChart`'s `MultiSeries` type accepted a
+  `formatter: (v: number) => string` function prop. v3.5 commits c34a01b
+  (Overview) and the Trends page constructed series with inline
+  formatter closures and passed them to the client component. Next.js 14
+  forbids passing functions across the Server→Client component prop
+  boundary; the build was green (no type-level violation) but the
+  server threw at request time on every composite-mode request.
+- Fix: replaced `formatter` with a serializable
+  `formatKind: "percent" | "number"` discriminator. `formatRaw(kind, v)`
+  helper now lives inside `MultiLineTrendChart.tsx` (the client component
+  side). Identical tooltip output, no behavior change for end users.
+- Files: `components/MultiLineTrendChart.tsx`, `app/page.tsx`,
+  `app/trends/page.tsx`.
+
+**v4.4 hotfix #2 — Diagnosis regenerate button on wrong view (`e3c40f3`):**
+- Symptom: `<RegenerateThisWeekButton scope="weekly" />` showed on
+  Diagnosis Last-Week view. But Diagnosis is exempt from running-week
+  locking (per Sprint P7 v3 spec — mid-week + Monday cycle is intentional
+  dual-write), and `scope="weekly"` regenerates Strategy/Calendar/
+  Plan_Narrative — content not visible on Diagnosis. Net: button did
+  nothing useful from the user's POV.
+- Fix: moved button to Diagnosis This-Week view with `scope="midweek"`
+  so it re-runs the Thursday mid-week diagnosis the user is currently
+  reading. Disclosure copy updated to reflect the midweek scope.
+- File: `app/diagnosis/page.tsx`.
+
+**QA pass coverage:** Overview, Trends, Engagement, Timing, Reels,
+Diagnosis, Plan, Outcomes, Explore at desktop (1280) + mobile (360).
+Pipeline-side Graph API v25 fetch validated end-to-end (31 posts +
+16 videos + 7 days page_daily, 0 failures, 33.4s).
+
+**Lower-severity findings logged but not yet shipped** (see
+DECISIONS for the prioritization rationale): "Theoritical" typo in
+diagnosis prompt output; Plan narrative card title hardcoded; Plan
+Last-Week fallback shows future calendar; Outcomes "Last week" pill
+ambiguous; Explore composite-trend chart is single-line (v3.5
+follow-up not yet adopted on Explore); single-metric trend charts
+hug the y-axis baseline when one viral day dominates.
+
 ## 2026-04-29 — Sprint P7 v4 (per-cell explainer wired, regenerate UI button, Graph API v25 bump)
 
 Three v4 follow-up items pulled forward in one session. Closes the

@@ -1,5 +1,39 @@
 # Decisions
 
+## 2026-04-30 — Live QA over local-build QA for cross-boundary Next.js bugs
+
+The v4.4 hotfixes (composite-crash + Diagnosis-button-misplacement) both
+landed during a live QA pass on the Vercel deploy. Build was green and
+local manual smoke tests had passed before the v4 commits shipped.
+
+This drives a rule going forward:
+
+For any change that crosses the **Server Component → Client Component
+prop boundary** OR depends on **runtime state shipped from sheets**
+(week-view conditionals, lock state, midweek vs end-of-week diagnosis
+routing), the pre-commit gate is necessary but **not sufficient**.
+The truth-test is:
+
+1. `npm run build` (compiler-level)
+2. Hit the live URL with the URL params that exercise the new path
+   (`?metric=reach,interactions`, `?week=last`, etc.)
+3. Walk every page that imports the changed component, even ones the
+   commit didn't intend to touch — the v3.5 composite crash hit Trends
+   too because it shared the bug-carrying component.
+
+The v3.5 commit shipped with "Verified at 360/768/1280" in the message
+but the verification was done in single-metric mode, where the
+function-prop didn't cross the boundary. The composite path went
+straight to production untested.
+
+**Concrete addition to the QA gate (CLAUDE.md perspective #2):** "Data
+extremes" already lists empty / single-row / max-realistic. Add: "URL
+param extremes" — every URL param the route reads gets exercised. For
+this project that's `?metric=...` (1, 2, 3, 4 metrics), `?weights=...`,
+`?week=this|last|next`, `?range=...`. If any of those throws, fix
+before commit. The full URL-param matrix is small and finite — there's
+no excuse for shipping a broken composite path or broken last-week path.
+
 ## 2026-04-29 — Sprint P7 v4.2: zero-config link-out for "Regenerate this week" over PAT-route
 
 The `force_regenerate` CLI bypass for running-week locking was already

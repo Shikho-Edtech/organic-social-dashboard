@@ -302,7 +302,10 @@ export default async function PlanPage({ searchParams }: { searchParams: Record<
           cards. Hidden in archival mode (narrative archive doesn't
           exist yet) and hidden when there are no slots to frame. */}
       {!isArchival && calendar.length > 0 && (
-        <PlanNarrativeCard narrative={planNarrative} />
+        <PlanNarrativeCard
+          narrative={planNarrative}
+          scope={isLastWeekView ? "last" : isNextWeekView ? "next" : "this"}
+        />
       )}
 
       <div className="space-y-3">

@@ -17,16 +17,26 @@ import { Card } from "@/components/Card";
 
 type Props = {
   narrative: PlanNarrative | null;
+  /** Sprint P7 v4.4 (2026-04-30): which week scope the parent is rendering.
+   *  Drives the card title so Last-Week / Next-Week views don't read
+   *  "This Week's Plan" misleadingly. Defaults to "this" for back-compat. */
+  scope?: "this" | "last" | "next";
 };
 
-export default function PlanNarrativeCard({ narrative }: Props) {
+const SCOPE_TITLE: Record<NonNullable<Props["scope"]>, string> = {
+  this: "This Week's Plan",
+  last: "Last Week's Plan",
+  next: "Next Week's Plan",
+};
+
+export default function PlanNarrativeCard({ narrative, scope = "this" }: Props) {
+  const title = SCOPE_TITLE[scope];
+
   if (!narrative) {
     return (
       <Card className="mb-4 border-l-4 border-l-brand-shikho-indigo">
         <div className="flex flex-col gap-2">
-          <h2 className="text-base font-semibold text-ink-primary">
-            This Week&apos;s Plan
-          </h2>
+          <h2 className="text-base font-semibold text-ink-primary">{title}</h2>
           <p className="text-sm text-ink-muted">
             No narrative arc has been written yet. The next weekly pipeline
             run (PLN-06) will populate the week-level summary here — the
@@ -48,9 +58,7 @@ export default function PlanNarrativeCard({ narrative }: Props) {
   return (
     <Card className="mb-4 border-l-4 border-l-brand-shikho-indigo">
       <div className="flex flex-col gap-2">
-        <h2 className="text-base font-semibold text-ink-primary">
-          This Week&apos;s Plan
-        </h2>
+        <h2 className="text-base font-semibold text-ink-primary">{title}</h2>
         {storyline ? (
           <p className="text-sm text-ink-primary leading-relaxed break-words">
             {storyline}

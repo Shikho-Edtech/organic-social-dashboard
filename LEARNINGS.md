@@ -1,5 +1,56 @@
 # Learnings
 
+## 2026-04-30 — Functions can't cross the Server→Client component prop boundary (Next.js 14)
+
+Sprint P7 v3.5 introduced `<MultiLineTrendChart>` for composite-mode
+dashboards. Its `MultiSeries` type accepted a `formatter: (v: number) => string`
+function prop. Two callers (Overview, Trends) — both Server Components —
+constructed series objects with inline formatter closures and passed
+them as props.
+
+**`npm run build` passed.** No type error, no lint warning, no
+Vercel-build failure. The page even rendered fine in single-metric
+mode (where `compositeTrendSeries` was an empty array and no formatter
+crossed any boundary).
+
+**It crashed on every composite-mode page load in production.** Server
+threw `An error occurred in the Server Components render` (digest only;
+specific message redacted in prod). The user got the
+`app/error.tsx` fallback ("Something went wrong loading this page").
+
+**Why:** Next.js App Router serializes Server Component output → HTML +
+JSON-encoded props for hydration. JSON can't encode functions.
+Server-passed function props throw at render time, not at build time.
+
+**Trap mechanics:**
+- Type system says it's fine: a function-typed prop is structurally
+  valid TypeScript. Build passes.
+- Single-metric path didn't pass the function (`compositeTrendSeries = []`).
+  So `npm run build` + `npm run start` + happy-path manual test all
+  succeeded. The bug shipped.
+- Live QA caught it because production runs the full Server Component
+  pipeline; dev mode is more forgiving.
+
+**Rule going forward:** when defining a prop type for a `"use client"`
+component, never type a field as a function if a Server Component might
+construct that prop. Use a serializable discriminator
+(`kind: "percent" | "number"`) and resolve to a function inside the
+client component. The compiler can't enforce this — it's a code-review
+checklist item.
+
+**Detection pattern:** ripgrep for `:\s*\([^)]*\)\s*=>\s*[a-zA-Z]` or
+`formatter:|onClick:|render:|callback:` in `components/` Props types,
+then check whether each field is constructed by a Server Component
+caller. If yes → swap to discriminator.
+
+**Why we missed it on the original commit (c34a01b):** the v3.5
+"verified" claim was based on `npm run build` green + manual eyeball
+of the rendered chart in single-metric mode. The composite-mode path
+shipped untested in production.
+
+**Fix landed in commit `a5e1dfc`** — formatter→formatKind discriminator,
+no end-user-visible behavior change.
+
 ## 2026-04-29 — Deprecation registry vs live fetch: check both before panicking on a Graph API bump
 
 When validating the v21→v25 Graph API bump, an early smoke test
