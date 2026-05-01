@@ -1,17 +1,18 @@
-// Sprint P7 Phase 2 (2026-04-28): shared week selector for time-bucketed
-// pages (Diagnosis · Plan · Outcomes). Each option resolves to an
-// underlying YYYY-MM-DD week_ending Sunday, computed from `bdtNow()` so
-// "This week" / "Last week" / "Next week" are always consistent with the
-// dashboard's BDT calendar.
+// Sprint P7 Phase 2 (2026-04-28) + v4.13 unification (2026-05-01):
+// shared week selector for time-bucketed pages (Diagnosis · Plan ·
+// Outcomes). Each option resolves to an underlying YYYY-MM-DD running
+// MONDAY (the canonical Mon-anchor key the pipeline writes to all the
+// per-week tabs: Content_Calendar.Week Ending, Plan_Narrative.Week
+// Ending, Weekly_Analysis.Week Ending, Outcome_Log.Week Ending).
 //
-// Render: pills above the page content, mirroring the visual vocabulary
-// of FormatHourMetricPills (engagement page) and the existing /outcomes
-// week list. Server-rendered: pills are <Link>s that change ?week=...,
-// page re-renders with the new week's data on next request.
+// Pre-v4.13 the selector returned the closing SUNDAY which produced
+// two pathologies: (a) lookups against the Mon-anchored data returned
+// nothing → empty pages, and (b) date labels showed "Apr 26" while
+// the data tables showed "2026-04-27" → user confusion.
 //
-// Why not <select>: Tailwind pills are easier to scan at a glance, work
-// on touch devices without OS-style picker chrome, and match the rest
-// of the dashboard's selector pattern (FormatHourMetricPills, etc.).
+// `this_` / `last` / `next` field names are kept for back-compat
+// (consumers shouldn't need to change), but they now carry the Monday
+// that STARTS the week, not the Sunday that ends it.
 
 import Link from "next/link";
 import { bdtNow } from "@/lib/aggregate";
@@ -23,28 +24,32 @@ export type WeekOption = {
   href: string;
   /** Human label rendered in the pill */
   label: string;
-  /** Optional sub-label (e.g. resolved date "Apr 26") shown below the label */
+  /** Optional sub-label (e.g. resolved range "Apr 27 – May 3") */
   subLabel?: string;
   /** Whether this is the active selection */
   active: boolean;
 };
 
 /**
- * Compute the YYYY-MM-DD Sunday closing the BDT week containing `now`.
- * Sundays return their own date (Sunday is the closing day).
+ * Compute the YYYY-MM-DD Monday opening the BDT week containing `now`.
+ * Mondays return their own date.
  */
-function closingSunday(now: Date): string {
+function runningMonday(now: Date): string {
   const dow = now.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
-  const daysToSun = dow === 0 ? 0 : 7 - dow;
-  const sun = new Date(now);
-  sun.setDate(sun.getDate() + daysToSun);
-  sun.setHours(0, 0, 0, 0);
-  return sun.toISOString().slice(0, 10);
+  // Walk back to Monday. Sun (0) → 6 days back; Mon (1) → 0; … Sat (6) → 5.
+  const back = dow === 0 ? 6 : dow - 1;
+  const mon = new Date(now);
+  mon.setDate(mon.getDate() - back);
+  mon.setHours(0, 0, 0, 0);
+  return mon.toISOString().slice(0, 10);
 }
 
 /**
- * Build the canonical week-ending dates for "this / last / next" relative
- * to BDT now. Returns ISO date strings (YYYY-MM-DD) for each.
+ * Build the canonical week-anchor (Monday) dates for "this / last / next"
+ * relative to BDT now. Returns ISO date strings (YYYY-MM-DD).
+ *
+ * Naming preserved (`this_` / `last` / `next`) for caller compatibility,
+ * but values are now the Monday-anchor of each week, not the Sunday-end.
  */
 export function computeWeekEndings(): {
   this_: string;
@@ -52,16 +57,10 @@ export function computeWeekEndings(): {
   next: string;
 } {
   const now = bdtNow();
-  // "This week" = the BDT Mon-Sun containing today; closing Sunday.
-  // E.g. on Tuesday April 28, this resolves to Sunday May 3.
-  const this_ = closingSunday(now);
-  // "Last week" = the just-completed Mon-Sun. Closing Sunday is 7 days
-  // before this week's closing Sunday.
+  const this_ = runningMonday(now);
   const lastDate = new Date(`${this_}T00:00:00`);
   lastDate.setDate(lastDate.getDate() - 7);
   const last = lastDate.toISOString().slice(0, 10);
-  // "Next week" = the upcoming Mon-Sun. Closing Sunday is 7 days after
-  // this week's closing Sunday.
   const nextDate = new Date(`${this_}T00:00:00`);
   nextDate.setDate(nextDate.getDate() + 7);
   const next = nextDate.toISOString().slice(0, 10);
@@ -69,7 +68,7 @@ export function computeWeekEndings(): {
 }
 
 /**
- * Format an ISO date as "Mon DD" (e.g. "Apr 26") for sub-labels.
+ * Format an ISO date as "Mon DD" (e.g. "Apr 27") for sub-labels.
  */
 export function shortDate(iso: string): string {
   if (!iso) return "";
@@ -81,6 +80,25 @@ export function shortDate(iso: string): string {
     day: "numeric",
     timeZone: "Asia/Dhaka",
   });
+}
+
+/**
+ * Format the Mon-Sun range for a week given its Mon-anchor.
+ * E.g. "2026-04-27" → "Apr 27 – May 3".
+ */
+export function weekRange(mondayIso: string): string {
+  if (!mondayIso) return "";
+  const mon = new Date(`${mondayIso}T12:00:00`);
+  if (isNaN(mon.getTime())) return "";
+  const sun = new Date(mon);
+  sun.setDate(mon.getDate() + 6);
+  const fmt = (d: Date) =>
+    d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      timeZone: "Asia/Dhaka",
+    });
+  return `${fmt(mon)} – ${fmt(sun)}`;
 }
 
 /**
@@ -166,6 +184,7 @@ export default function WeekSelector({
                 ? "bg-brand-shikho-indigo text-white border-brand-shikho-indigo"
                 : "bg-ink-paper text-ink-secondary border-ink-100 hover:border-brand-shikho-indigo hover:text-brand-shikho-indigo"
             }`}
+            title={`Mon-Sun BDT: ${weekRange(iso)} (week starts ${iso})`}
           >
             <span>{label}</span>
             <span
@@ -173,7 +192,7 @@ export default function WeekSelector({
                 isActive ? "text-white/80" : "text-ink-muted"
               }`}
             >
-              ({shortDate(iso)})
+              ({weekRange(iso)})
             </span>
           </Link>
         );

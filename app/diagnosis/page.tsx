@@ -1,5 +1,5 @@
 import { getPosts, getLatestDiagnosis, getDiagnosisByWeek, getDiagnosisByWeekPreferred, getRunStatus, computeStaleness, getStageEngine, getPlanNarrative } from "@/lib/sheets";
-import WeekSelector, { computeWeekEndings } from "@/components/WeekSelector";
+import WeekSelector, { computeWeekEndings, weekRange } from "@/components/WeekSelector";
 import RegenerateThisWeekButton from "@/components/RegenerateThisWeekButton";
 import { filterPosts } from "@/lib/aggregate";
 import { resolveRange } from "@/lib/daterange";
@@ -236,7 +236,7 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
   // to render the no-date variant of the copy — never leak the raw param
   // (which produced "week ending true" in the earlier build).
   const archiveDateLabel = isArchival && diagnosis?.week_ending
-    ? new Date(diagnosis.week_ending).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    ? weekRange(diagnosis.week_ending)
     : "";
 
   // When the AI diagnosis stage is deliberately off AND we're NOT in archival
@@ -388,7 +388,7 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
               Weekly verdict
             </span>
             <span className="text-[11px] text-ink-muted">
-              {diagnosis.week_ending ? `week ending ${diagnosis.week_ending}` : "latest weekly run"}
+              {diagnosis.week_ending ? `Mon–Sun BDT · ${weekRange(diagnosis.week_ending)}` : "latest weekly run"}
             </span>
             {/* Sprint P7 v4.13 (2026-05-01): hypothesis chips for the
                 diagnosed week. Tooltip on each chip surfaces the actual

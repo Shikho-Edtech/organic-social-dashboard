@@ -7,7 +7,7 @@ import AIDisabledEmptyState from "@/components/AIDisabledEmptyState";
 import ArchivalLine from "@/components/ArchivalLine";
 import PlanNarrativeCard from "@/components/PlanNarrativeCard";
 import AcademicContextStrip from "@/components/AcademicContextStrip";
-import WeekSelector, { computeWeekEndings } from "@/components/WeekSelector";
+import WeekSelector, { computeWeekEndings, weekRange } from "@/components/WeekSelector";
 import RegenerateThisWeekButton from "@/components/RegenerateThisWeekButton";
 import { STAGES } from "@/lib/stages";
 
@@ -43,16 +43,22 @@ function slotFunnelTooltip(stage: string): string {
 }
 
 /**
- * Sprint P7 v3 (2026-04-29): map a closing-Sunday week_ending (canonical
- * across the dashboard) to the corresponding Monday week_starting that
- * Content_Calendar rows live under. e.g. Sunday May 3 → Monday April 27.
+ * Sprint P7 v4.13 (2026-05-01): the dashboard week convention was
+ * unified to Mon-anchor (matching the pipeline's storage convention).
+ * `targetWeekEnding` IS the Monday — passing it as the week_starting
+ * argument is a no-op identity. Helper kept for back-compat with any
+ * caller that historically passed a Sunday; it now Mon-snaps any input
+ * by walking back to the prior Monday so misuse degrades to identity
+ * for already-Mon inputs.
  */
 function weekStartingFromEnding(weekEnding: string): string {
   if (!weekEnding) return "";
-  const sun = new Date(`${weekEnding}T12:00:00`);
-  if (isNaN(sun.getTime())) return "";
-  const mon = new Date(sun);
-  mon.setDate(mon.getDate() - 6);
+  const d = new Date(`${weekEnding}T12:00:00`);
+  if (isNaN(d.getTime())) return "";
+  const dow = d.getDay(); // 0=Sun..6=Sat
+  const back = dow === 0 ? 6 : dow - 1;
+  const mon = new Date(d);
+  mon.setDate(mon.getDate() - back);
   return mon.toISOString().slice(0, 10);
 }
 
@@ -266,7 +272,7 @@ export default async function PlanPage({ searchParams }: { searchParams: Record<
               : isNextWeekView
                 ? "Next week's content calendar"
                 : "Last week's content calendar (historical)")}
-        dateLabel={isArchival ? "Archived snapshot" : `Week starting ${targetWeekStarting}`}
+        dateLabel={isArchival ? "Archived snapshot" : `Mon–Sun BDT · ${weekRange(targetWeekStarting)}`}
         showPicker={false}
         lastScrapedAt={runStatus.last_run_at}
       />

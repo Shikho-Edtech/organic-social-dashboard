@@ -22,6 +22,7 @@ import {
   computeOutcomeRollup,
   getPlanNarrative,
 } from "@/lib/sheets";
+import { weekRange } from "@/components/WeekSelector";
 import type { OutcomeLogEntry, OutcomeVerdict } from "@/lib/types";
 import { Card } from "@/components/Card";
 import PageHeader from "@/components/PageHeader";
@@ -249,11 +250,11 @@ export default async function OutcomesPage({
                       <>
                         <span>Most recent</span>
                         <span className={`ml-1.5 text-[10px] ${active ? "text-white/80" : "text-ink-muted"}`}>
-                          ({new Date(`${wk}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "Asia/Dhaka" })})
+                          ({weekRange(wk)})
                         </span>
                       </>
                     ) : (
-                      wk
+                      <span>{weekRange(wk)}</span>
                     )}
                   </Link>
                 );
@@ -266,7 +267,7 @@ export default async function OutcomesPage({
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
               <div>
                 <p className="text-xs uppercase tracking-wider text-ink-muted font-semibold">
-                  Grading run: {activeWeek}
+                  Mon–Sun BDT · {weekRange(activeWeek)}
                 </p>
                 <h2 className="text-xl sm:text-2xl font-bold text-ink-primary mt-1 break-words leading-tight">
                   {/* Sprint P7 v4.6 (2026-04-30, P0 finding #3):
