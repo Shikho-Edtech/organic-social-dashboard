@@ -294,8 +294,8 @@ export default async function OutcomesPage({
                       broken. Now: forecast-state shows the slot count;
                       graded-state shows the hit ratio. */}
                   {rollup.graded_count > 0
-                    ? <>{rollup.hit_count} of {rollup.graded_count} slots beat their forecast</>
-                    : <>{rows.length} slots planned, awaiting actuals</>}
+                    ? <>{rollup.hit_count} of {rollup.graded_count} slots beat their <span className="text-ink-secondary">unique-reach</span> forecast</>
+                    : <>{rows.length} slots planned, awaiting <span className="text-ink-secondary">unique-reach</span> actuals</>}
                 </h2>
                 <p className="text-sm text-ink-secondary mt-1">
                   {rollup.no_data_count > 0
@@ -410,14 +410,14 @@ export default async function OutcomesPage({
                           <th className="px-4 py-2 font-medium text-[11px] uppercase tracking-wider">
                             Format
                           </th>
-                          <th className="px-4 py-2 font-medium text-[11px] uppercase tracking-wider text-right" title="Forecast is computed at pillar level (using last-90d reach percentiles for that pillar). Slots within the same pillar that share format will display the same forecast — that's expected, not a copy-paste bug.">
-                            Forecast<span className="ml-1 text-ink-muted normal-case font-normal">(pillar-level)</span>
+                          <th className="px-4 py-2 font-medium text-[11px] uppercase tracking-wider text-right" title="Unique reach forecast (post_total_media_view_unique). Computed at pillar × format × season level from 90-day priors. Slots in the same pillar+format display the same forecast — that's expected.">
+                            Reach Forecast<span className="ml-1 text-ink-muted normal-case font-normal">(unique · pillar-level)</span>
                           </th>
-                          <th className="px-4 py-2 font-medium text-[11px] uppercase tracking-wider text-right">
-                            Actual
+                          <th className="px-4 py-2 font-medium text-[11px] uppercase tracking-wider text-right" title="Unique reach actually delivered by the matched post (Facebook insights post_total_media_view_unique).">
+                            Actual Reach<span className="ml-1 text-ink-muted normal-case font-normal">(unique)</span>
                           </th>
-                          <th className="px-4 py-2 font-medium text-[11px] uppercase tracking-wider text-right">
-                            Score
+                          <th className="px-4 py-2 font-medium text-[11px] uppercase tracking-wider text-right" title="Score = actual / forecast_mid. >1 = above forecast, <1 = below. Hit/Miss verdict is computed against the full CI band, not this ratio.">
+                            Score<span className="ml-1 text-ink-muted normal-case font-normal">(actual ÷ mid)</span>
                           </th>
                           <th className="px-4 py-2 font-medium text-[11px] uppercase tracking-wider">
                             Verdict
@@ -471,20 +471,31 @@ export default async function OutcomesPage({
                               {s.format || "—"}
                             </td>
                             <td className="px-4 py-2 text-right tabular-nums text-ink-primary">
-                              {fmtNum(s.forecast_mid)}
+                              <div className="inline-flex items-baseline gap-1 justify-end">
+                                <span>{fmtNum(s.forecast_mid)}</span>
+                                <span className="text-[10px] text-ink-muted font-normal lowercase">reach</span>
+                              </div>
                               {s.forecast_low !== null &&
                                 s.forecast_high !== null && (
                                   <div className="text-[11px] text-ink-muted">
-                                    {fmtNum(s.forecast_low)}–
-                                    {fmtNum(s.forecast_high)}
+                                    {fmtNum(s.forecast_low)}–{fmtNum(s.forecast_high)}
+                                    <span className="ml-0.5 text-[9px] uppercase tracking-wider">CI</span>
                                   </div>
                                 )}
                             </td>
                             <td className="px-4 py-2 text-right tabular-nums text-ink-primary font-semibold">
-                              {fmtNum(s.actual_reach)}
+                              {s.actual_reach !== null ? (
+                                <div className="inline-flex items-baseline gap-1 justify-end">
+                                  <span>{fmtNum(s.actual_reach)}</span>
+                                  <span className="text-[10px] text-ink-muted font-normal lowercase">reach</span>
+                                </div>
+                              ) : (
+                                <span className="text-ink-muted font-normal">—</span>
+                              )}
                             </td>
                             <td className="px-4 py-2 text-right tabular-nums text-ink-secondary">
                               {fmtNum(s.score, 2)}
+                              <span className="ml-1 text-[10px] text-ink-muted font-normal">×</span>
                             </td>
                             <td className="px-4 py-2">
                               <VerdictPill verdict={s.verdict} />
@@ -543,27 +554,41 @@ export default async function OutcomesPage({
                           </div>
                           <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
                             <div>
-                              <div className="text-ink-muted text-[10px] uppercase tracking-wider">
-                                Forecast
+                              <div className="text-ink-muted text-[10px] uppercase tracking-wider" title="Unique reach forecast (post_total_media_view_unique)">
+                                Reach Forecast
                               </div>
                               <div className="tabular-nums text-ink-primary">
-                                {fmtNum(s.forecast_mid)}
+                                <span>{fmtNum(s.forecast_mid)}</span>
+                                <span className="ml-1 text-[10px] text-ink-muted font-normal lowercase">reach</span>
                               </div>
+                              {s.forecast_low !== null && s.forecast_high !== null && (
+                                <div className="text-[10px] text-ink-muted mt-0.5">
+                                  {fmtNum(s.forecast_low)}–{fmtNum(s.forecast_high)}
+                                  <span className="ml-0.5 text-[9px] uppercase tracking-wider">CI</span>
+                                </div>
+                              )}
                             </div>
                             <div>
-                              <div className="text-ink-muted text-[10px] uppercase tracking-wider">
-                                Actual
+                              <div className="text-ink-muted text-[10px] uppercase tracking-wider" title="Actual unique reach delivered by the matched post">
+                                Actual Reach
                               </div>
                               <div className="tabular-nums text-ink-primary font-semibold">
-                                {fmtNum(s.actual_reach)}
+                                {s.actual_reach !== null ? (
+                                  <>
+                                    <span>{fmtNum(s.actual_reach)}</span>
+                                    <span className="ml-1 text-[10px] text-ink-muted font-normal lowercase">reach</span>
+                                  </>
+                                ) : (
+                                  <span className="text-ink-muted font-normal">—</span>
+                                )}
                               </div>
                             </div>
                             <div>
-                              <div className="text-ink-muted text-[10px] uppercase tracking-wider">
-                                Score
+                              <div className="text-ink-muted text-[10px] uppercase tracking-wider" title="actual ÷ forecast_mid. >1 = above forecast, <1 = below.">
+                                Score (actual ÷ mid)
                               </div>
                               <div className="tabular-nums text-ink-primary">
-                                {fmtNum(s.score, 2)}
+                                {fmtNum(s.score, 2)}<span className="ml-1 text-[10px] text-ink-muted font-normal">×</span>
                               </div>
                             </div>
                           </div>
@@ -587,10 +612,21 @@ export default async function OutcomesPage({
           the hero. Kept short; full methodology lives in DECISIONS.md. */}
       {rows.length > 0 && (
         <p className="mt-6 text-[11px] text-ink-muted leading-relaxed">
-          Hit rate = (hit + exceeded) ÷ (hit + exceeded + missed).
-          Exam-confounded slots are excluded from the rate because an active
-          exam window distorts organic reach unpredictably. Pending slots have
-          not yet published or Meta insights have not caught up.
+          <strong className="text-ink-secondary">Metric:</strong> all forecast
+          and actual numbers on this page are <em>unique reach</em>
+          (Facebook&apos;s <code className="text-[10px] px-1 py-0.5 rounded bg-ink-50">post_total_media_view_unique</code>{" "}
+          insight — distinct viewers per post, not impressions, engagement, or
+          shares). Forecast band is the 80% CI from
+          Priors_Pillar × Priors_Format × Priors_AcademicSeason; band is
+          stamped at plan time and never recomputed.{" "}
+          <br />
+          <strong className="text-ink-secondary">Hit rate</strong> ={" "}
+          (hit + exceeded) ÷ (hit + exceeded + missed). Exam-confounded slots
+          are excluded — an active exam window distorts reach unpredictably.
+          Preliminary rows (post &lt; 7 days old) show their verdict but are
+          excluded from Calibration_Log. Pending = post hasn&apos;t been
+          published yet, or no published post matched the slot&apos;s
+          (date, format, pillar) join.
         </p>
       )}
     </div>
