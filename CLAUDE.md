@@ -214,6 +214,36 @@ change is better than O(N) component churn.
 
 ---
 
+## Live-check discipline (added 2026-04-30)
+
+Two QA tools live alongside the build / brand-audit / mobile checklist:
+
+1. **[`docs/LIVE_CHECK_POVS.md`](docs/LIVE_CHECK_POVS.md)** — master list
+   of QA points-of-view, tiered:
+   - **Tier 1** (10 items, ~30 min) — required gate after every
+     UI/data-touching commit. Caught 75% of all fixes shipped in v4.x.
+   - **Tier 2** (38 more items, ~3 hours total) — quarterly deep audit
+     or post-major-sprint.
+   - **Tier 3** (~120 items) — specialty index, walked when a specific
+     concern arises (a11y, perf, locale, bias, etc.).
+
+2. **[`docs/LIVE_CHECK_DISCOVERIES.md`](docs/LIVE_CHECK_DISCOVERIES.md)** —
+   append-only log of new POVs found during real QA work. When a bug
+   surfaces that no existing POV would have caught, capture the new POV
+   here. Quarterly review promotes generalized ones into Tier 2.
+
+**Workflow:**
+- Post-deploy: walk Tier 1 → if anything fails, fix → re-walk → ship
+- Major sprint: walk Tier 1 + Tier 2 → log to discoveries any new POVs
+  that emerged
+- Specific concern (a11y / perf / etc.): walk the relevant Tier 3 category
+- Quarterly: promote / demote / archive per `LIVE_CHECK_POVS.md` Part F
+
+The list is built from real bug catches across our 2 password-gated
+live checks. Every "proven" POV points to a v4.x fix in git history.
+
+---
+
 ## Pre-commit QA gate — multi-perspective pass
 
 `npm run build` is necessary but **not sufficient**. Every commit that changes
