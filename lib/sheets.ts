@@ -1202,34 +1202,42 @@ export async function getOutcomeLogByWeek(
  * the /outcomes page rather than showing a full calendar of no-data rows.
  */
 export async function getLatestGradedOutcomeWeek(): Promise<string | null> {
+  // Sprint P7 v4.12 (2026-05-01): pick the NEWEST week (by ISO date, since
+  // week_ending is a Mon-anchor YYYY-MM-DD) that has at least one graded
+  // verdict. Pre-v4.12 this iterated in append order and returned the
+  // OLDEST graded week — meaning the Outcomes page landed on stale weeks
+  // forever. Now reverses the iteration so the most-recently-graded
+  // week wins.
   const all = await getOutcomeLog();
+  const weeksWithGrade = new Set<string>();
   for (const row of all) {
     if (
+      row.week_ending &&
       row.verdict &&
       row.verdict !== "no-data" &&
       row.verdict !== "unavailable"
     ) {
-      return row.week_ending;
+      weeksWithGrade.add(row.week_ending);
     }
   }
-  return null;
+  if (weeksWithGrade.size === 0) return null;
+  return Array.from(weeksWithGrade).sort().reverse()[0];
 }
 
 /**
- * List every distinct week_ending present in Outcome_Log, newest-first.
+ * List every distinct week_ending present in Outcome_Log, NEWEST-first.
  * Empty array when the tab is empty. Useful for a week picker on /outcomes.
  */
 export async function listOutcomeWeeks(): Promise<string[]> {
   const all = await getOutcomeLog();
   const seen = new Set<string>();
-  const out: string[] = [];
   for (const r of all) {
-    if (r.week_ending && !seen.has(r.week_ending)) {
-      seen.add(r.week_ending);
-      out.push(r.week_ending);
-    }
+    if (r.week_ending) seen.add(r.week_ending);
   }
-  return out;
+  // Sprint P7 v4.12 (2026-05-01): sort newest-first by ISO. Pre-v4.12 used
+  // encounter order which depended on sheet-write sequence — confusing
+  // when the picker is supposed to surface the most recent week first.
+  return Array.from(seen).sort().reverse();
 }
 
 /**
