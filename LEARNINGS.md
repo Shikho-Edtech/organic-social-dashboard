@@ -1,5 +1,76 @@
 # Learnings
 
+## 2026-05-02 — Schema migration that runs at write time fails open silently
+
+`write_outcome_log` adds new columns via `ws.update_cell(1, next_pos, name)` lazily — only when a write fires. If a run skips the outcome stage (no calendar generated, AI off, etc.) the new columns never appear in the sheet. Symptom: dashboard reads empty values for `Matched Post ID` / `Slot Target Metric` and conditionally-rendered drill-down icons silently disappear from rows that should have them.
+
+**Lesson:** lazy schema migrations only work if a guaranteed-fires write follows the schema bump. For tabs that ship new columns, either (a) trigger an explicit migration step at run start, or (b) have a force-rewrite path that doesn't depend on the AI stage outputting fresh data.
+
+**Workaround applied:** the next pipeline run with `force_regenerate=true` re-fires every Outcome_Log write through `_read_calendars_from_sheet` → all archived weeks get rewritten with the new column values.
+
+**Detection rule for next time:** after committing a `*_HEADERS` change, run `python -c "from src.sheets import OUTCOME_LOG_HEADERS; print(len(OUTCOME_LOG_HEADERS))"` against the live sheet via a one-off audit script BEFORE assuming the dashboard will pick up the new fields. If sheet column count < code header count, the migration hasn't fired yet.
+
+---
+
+## 2026-05-02 — Closed-loop edge: structured suggestions feeding the next prompt is the cheapest leverage we found
+
+`System_Suggestions` (auto-derived prescriptions) → strategy prompt context block. Single-line prompt change. Doesn't auto-apply anything. But it converts "did h1 hold?" prose adherence into "h2 failed 3 weeks running, system flagged retire" hard evidence. The AI sees the data layer's read of itself instead of re-deriving lessons every run.
+
+**Why it works:** the AI is a stochastic compressor of its prompt. If the prompt contains the deterministic conclusion ("calibration drift detected on pillar X"), the AI's output is grounded in that conclusion. If the prompt forces the AI to *derive* the conclusion from raw rollups, the conclusion drifts run-to-run.
+
+**Pattern to repeat:** any time we add an evaluator (calibration, experiment-pass-rate, drift detector), wire its output back into the next strategy prompt as a structured block. Cheap; massive compounding effect.
+
+---
+
+## Plan-algorithm decomposition (permanent reference — used by every algorithm-touching commit)
+
+This is the canonical map of every plan dimension and how it gets decided. **Read before proposing any change to plan generation, calibration, or outcome scoring.** Pair with `docs/PLAN_ALGORITHM_AUDIT.md` for the deeper multi-POV critique.
+
+### Per-dimension decision logic (current state, post Tier 1 + 1.5)
+
+| Dimension | What decides it | Strength | Weakness | Tier addressed |
+|---|---|---|---|---|
+| Slot count | `recommend_weekly_slot_count()` median posts/day on top-tercile-by-reach days × 7 | Data-driven, falls back to 28-30 below 14-day coverage | Sample sensitive in low-coverage windows | Tier 1.5 ✅ |
+| Pillar mix | Strategy emits weights summing to 1.0; calendar enforces ≥85% adherence | Auditable, forces explicit choice | AI gut-feel within prompt; no objective function | Tier 1 partial (System_Suggestions feedback) |
+| Format mix | Strategy weights (Reel/Video/Photo/Carousel) | Same as pillar | Same | Tier 1 partial |
+| Day-of-week | `Priors_WeekdaySeasonality` consulted; AI distributes within constraints | 90-day grounded | No substitution modeling | Tier 2 (joint priors / counterfactual MC) |
+| Time of day | `Priors_SlotTime` best historical hour per format | Empirical anchor | Per-cell n<10, noise dominates | Tier 6 (hierarchical Bayes) |
+| Hook line | `validate_hook_freshness`: same-pillar 6w block, cross-pillar 2w block | Avoids fatigue, context-conditioned | Top-quartile selection still unconditional on context | Tier 1.5 ✅ |
+| Spotlight | Strategy `teacher_rotation` ordered list | Explicit accountability | Recency bias — viral post dominates rotation | Tier 5 (propensity scoring) |
+| Pillar × format pairing | AI judgment | Flexible | Joint gaps not surfaced | Tier 2 (joint priors) |
+| Visual + key message | AI per slot | Specific + creative | Not measurable | Tier 5+ (engagement experiments) |
+| CTA / funnel stage | `validate_funnel_balance`: TOFU≥20%, MOFU≥30%, BOFU≥20% with ceilings | Forces balanced funnel | None at default thresholds | Tier 1.5 ✅ |
+| Forecast band | `Priors_Pillar × Priors_Format × Priors_AcademicSeason` (multiplicative marginals) | Reproducible, immutable | Independence assumption (interactions ignored) | Tier 2 (joint priors) |
+| Hypothesis | `Experiment_Log` — pre-registered numeric metric → deterministic pass/fail | Forces falsifiability | First closed-loop primitive in the system | Tier 1 ✅ |
+
+### Coverage status
+
+- **Fully closed: 4/12** — hypothesis, slot count, funnel balance, hook freshness
+- **Partially closed: 4/12** — pillar/format mix, spotlight, pillar×format pairing (via System_Suggestions feedback)
+- **Pending Tier 2-7:** 4/12 — day-of-week substitution, time-of-day power, visual prose measurability, forecast band independence
+
+### Tier roadmap (`docs/PLAN_ALGORITHM_AUDIT.md` §2 has full detail)
+
+1. **Tier 1** ✅ — Calibration_Log + Experiment_Log + System_Suggestions + decay-aware scoring + closed-loop edge
+2. **Tier 1.5** ✅ — slot count from data, funnel balance validator, conditional hook freshness
+3. **Tier 2** — joint priors, A/B framework, regime-change KS-test, counterfactual MC, hypothesis grammar
+4. **Tier 3** — bandits, Bayesian online updates, audience segmentation
+5. **Tier 4** — north-star metric + utility function (team decision, not engineering)
+6. **Tier 5** — pre-registered experiments, propensity scoring, DiD, holdout days
+7. **Tier 6** — hierarchical Bayes, GBT, walk-forward backtest, calibration plots
+8. **Tier 7** — adversarial hardening
+9. **Tier 8** — multi-page generalization
+
+### Discipline (always)
+
+- Tier N+1 cannot be evaluated without Tier N's measurement infra
+- No auto-applied changes — every closed-loop output is advisory at L0.5
+- Calibration before model improvements (cheap floor before Bayesian/GBT)
+- North-star metric is a team decision; engineering can't pick it
+- Every shipped tier names which §1 assumption it undoes
+
+---
+
 ## 2026-05-01 — Plan generation algorithm decomposition + factor decision logic (per-dimension audit)
 
 Asked: "for a given week, what algorithm decides format / hook / spotlight /

@@ -291,3 +291,152 @@ fallback runs cleanly, if it returns the *wrong shape* of data, it's
 a bug.
 
 ---
+
+## 2026-05-02 — Convention conflict between two pipeline halves (Sun-end vs Mon-anchor)
+
+**Meta-lens:** 4 (code-vs-copy alignment) + 5 (time-window honesty)
+
+**Bug that surfaced this POV:**
+Diagnosis This-Week tab rendered as empty even though Weekly_Analysis
+had 4 rows for the running week. Plus pill subLabel said "Apr 26"
+while the data table said "Apr 27" right next to it. Root cause:
+WeekSelector's `closingSunday(now)` returned `2026-05-03`; data was
+keyed under Mon `2026-04-27`. Lookup with the wrong key returned null;
+date displays drew from two different sources (computed Sun vs stored Mon).
+
+A single architectural choice — "what string is THE week" — was inconsistent
+across two halves of the system. Symptom space was huge: empty tabs,
+mismatched labels, "all 3 plans look identical" via fallback. One
+convention bug, many symptoms.
+
+**Commit / fix reference:**
+dashboard `741bb35` — `closingSunday` → `runningMonday`, propagated to
+all WeekSelector consumers + headers + pill subLabels.
+
+**Generalization test:**
+
+Applied the underlying POV — "any cross-half-of-the-system shared key
+must be defined ONCE and never re-derived" — to:
+
+- **Plan page Last/This/Next.** YES caught this. After fix all 3 weeks
+  populate independently with no fallback contamination.
+- **Outcomes page picker.** YES caught — same WeekSelector convention
+  feeds it. Now uniform.
+- **Diagnosis page picker.** YES caught — `getDiagnosisByWeekPreferred`
+  was already searching by `Week Ending`; just needed the right key.
+- **Pillar names across Classifications / Plan / Outcomes.** No
+  conflict — single string convention since v1. Stable.
+- **Format names.** Caught earlier (T1.12 vocabulary alignment).
+
+**Promotion status:** **promoted to Tier 1 immediately.**
+
+Suggested addition to Tier 1:
+
+> **T1.14 — Cross-half convention audit.** When data flows through two
+> system halves (pipeline write + dashboard read; or AI generation +
+> deterministic post-process), every shared key/identifier MUST be
+> defined in exactly one place. If the dashboard re-derives a key the
+> pipeline already stamped, you have a convention bug waiting to fire.
+> Audit: pick any `Week Ending` / `id` / `key` column. Does the dashboard
+> compute its match value from `now()` or read it from the row? If the
+> former, you can produce mismatches.
+
+---
+
+## 2026-05-02 — Drill-down icon silently disappears when migrated column is empty
+
+**Meta-lens:** 9 (failure-mode coverage) + 4 (code-vs-copy alignment)
+
+**Bug that surfaced this POV:**
+After shipping the Outcomes per-row PostReference drill-down, the user
+screenshot showed Hit rows on Outcomes with NO post-link icon. Code
+was correct: `{s.matched_post_id && (...)}` — but `matched_post_id` was
+empty on every row because the schema migration that adds the
+`Matched Post ID` column runs lazily inside `write_outcome_log` and
+no run had fired since the v4.14 commit.
+
+The conditional silently rendered nothing. No error, no fallback
+indicator, no warning. The user's perfectly-reasonable read was
+"the feature shipped but doesn't work."
+
+**Commit / fix reference:**
+Triggered a force_regenerate run after the v4.14b commit; in parallel
+captured the failure pattern in LEARNINGS as "schema migration that
+runs at write time fails open silently."
+
+**Generalization test:**
+
+Applied the underlying POV — "any UI element conditionally rendered
+on optional data should have a visible 'data not yet available'
+state, not silently disappear" — to:
+
+- **Hypothesis chips on Plan slots.** Already has fallback: tooltip
+  reads "not yet resolved (older week or status-quo)" when `hypotheses_map[id]`
+  is empty. ✓
+- **Source-post drill-down on Diagnosis findings.** Falls through
+  to no-icon when `source_post_ids` is empty — no fallback message.
+  Same class of bug. Marked for future fix.
+- **PlanNarrativeCard hypothesis chips.** Already has fallback: shows
+  the id alone with explanatory tooltip when map is empty. ✓
+- **Outcomes Target Metric column.** Has fallback: shows "not stated"
+  italic text when both target_metric and expected_reach_range are
+  empty. ✓ (added in same v4.14b commit)
+
+**Promotion status:** **promoted to Tier 1 immediately.**
+
+Suggested addition to Tier 1:
+
+> **T1.15 — Conditional render must have empty-data state.** Any UI
+> chip / icon / link that's gated on optional data (`{maybe && <X/>}`)
+> must have a visible empty-data fallback OR document why disappearance
+> is the right behavior. Silent disappearance after a migration looks
+> identical to "feature broken." Empty-state copy ("not yet matched",
+> "data pending", "post not archived") tells the user the feature is
+> alive but the data isn't ready.
+
+---
+
+## 2026-05-02 — Schema migration only fires on a write that actually happens
+
+**Meta-lens:** 9 (failure-mode coverage)
+
+**Bug that surfaced this POV:**
+`write_outcome_log` adds new columns via `ws.update_cell()` lazily —
+runs only when an outcome write fires. Three failure modes:
+1. `force_regenerate=false` + running-week lock → write skipped → migration skipped
+2. AI calendar stage failed → no calendar dict → no outcome write → no migration
+3. Pipeline crashed mid-run before the outcome step → migration skipped
+
+Result: code says new column exists, sheet doesn't, dashboard reads
+empty. Hours debugging a "rendering bug" that's a migration timing bug.
+
+**Commit / fix reference:**
+LEARNINGS entry "Schema migration that runs at write time fails open
+silently" — captures the rule.
+
+**Generalization test:**
+
+Applied "schema migrations need a guaranteed-fires path, not just a
+write-time hook" to:
+
+- **Content_Calendar Week Ending column.** Same pattern — works
+  because we backfill via target_week. Vulnerable in same scenario.
+- **Plan_Narrative Hypotheses Map (JSON).** Same pattern. Vulnerable.
+- **Experiment_Log + System_Suggestions + Calibration_Log** (newly added).
+  These ARE created from scratch on first write so they always have the
+  full schema. Different pattern, more robust.
+
+**Promotion status:** **promoted to Tier 1 immediately.**
+
+Suggested addition to Tier 1:
+
+> **T1.16 — Schema migration validation step.** After committing a
+> `*_HEADERS` change, before assuming the dashboard will render new
+> columns, run an audit script comparing live sheet header count to
+> code header count. If different, the migration hasn't fired yet —
+> the next run with a write to that tab will fire it. For tabs whose
+> writes are conditional (skipped on AI off, locked on running week,
+> etc.), require an explicit migration step or `force_regenerate` run
+> to push the schema forward.
+
+---

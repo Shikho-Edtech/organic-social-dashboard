@@ -1,5 +1,88 @@
 # Decisions
 
+## 2026-05-02 — Closed-loop self-improvement: L0.5 discipline (advisory only, never auto-applied)
+
+We added a closed-loop self-improvement layer (Tier 1 of
+`docs/PLAN_ALGORITHM_AUDIT.md`) but bounded it deliberately. Three
+levels of automation considered, only L0.5 shipped:
+
+- **L0 — observability:** log everything, human reads + tunes. Was already in.
+- **L0.5 — structured suggestions:** system writes deterministic
+  prescriptions to `System_Suggestions`; strategy prompt reads them as
+  context for next week's bet. **Auto Applied is invariant FALSE.**
+- **L1+ — auto-tuning:** thresholds adjust forecast bands / hook windows
+  / slot count without human approval. Explicitly **deferred** until
+  ≥4 weeks of `Calibration_Log` data exist to set thresholds against.
+
+Three rules apply at L0.5+:
+1. Every auto-decision logs the rule that fired and the evidence.
+2. Every auto-decision has a workflow-input kill switch.
+3. Every auto-decision is read at the start of the next run, not
+   silently injected — operators see "system applied X" before relying
+   on the result.
+
+This trades immediate cleverness for compounding learnability. The
+bandit / online-Bayesian / auto-prompt-rewrite paths remain reachable
+but require Tier 4's north-star metric first; without an objective
+function, "improvement" is unfalsifiable.
+
+---
+
+## 2026-05-02 — Mon-anchor week convention everywhere
+
+Every per-week tab uses the **running Monday in BDT** as its canonical
+key (`Week Ending` column, despite the name). Pipeline normalizes at
+write; dashboard filters at read; all date copy on the page renders the
+Mon-Sun range ("Apr 27 – May 3"), never just one date.
+
+Pre-v4.13 the dashboard's `WeekSelector` returned closing-Sunday strings
+while the pipeline stored Mon-anchor — the mismatch caused empty
+Diagnosis This-Week tabs and "Apr 26" pills next to "Apr 27" data
+tables. Symptom space was huge; root cause was a single convention
+conflict.
+
+Rule going forward: **anything that references "the week" stores or
+displays the running Monday.** No mixing. No Sunday-end labels on UI
+even if some legacy data uses them — read with a Mon-snap helper.
+
+---
+
+## 2026-05-02 — Past-week plan immutability + closed-loop scoring contract
+
+Once a Monday rolls over, that week's `Content_Calendar` rows are
+**immutable**. The writer refuses to overwrite past weeks unless
+`force_regenerate=True` is explicitly set (intentional backfill only).
+
+Why: `Outcome_Log` scores actuals against the forecast band that was
+stamped at plan time. If the plan can be silently rewritten after the
+week starts, the verdict contract breaks — Hit/Miss becomes meaningless.
+The lock is the structural guarantee that Hit today reads as Hit a
+month from now.
+
+Implication: live runs only ever modify the upcoming week's plan
+(`target_week=next`, the cron default). Backfills are a one-time
+operator action with both flags set explicitly.
+
+---
+
+## 2026-05-02 — Decay-aware Outcome scoring (Preliminary verdict)
+
+Posts <7 days old emit a verdict but are flagged `Preliminary=TRUE`.
+`Calibration_Log` excludes them from the calibration tally. Reach
+decays for ~7-14 days; scoring a 3-day-old post against the 80% CI
+over-fires "missed" verdicts because reach hasn't accumulated yet.
+
+The Outcomes UI shows the verdict + "Prelim" amber chip so operators
+see the data without it polluting the calibration trace. Final
+verdicts (post age ≥7 days) are what feeds the closed-loop signal.
+
+Trade-off: graded coverage drops temporarily (a Friday-published post
+won't score until following Friday) but the calibration measurement is
+honest. Without this, every prior-shift change would have been
+indistinguishable from natural decay variance.
+
+---
+
 ## 2026-04-30 — Known limitations of automated browser QA (and what to use instead)
 
 The v4.4 live QA pass uncovered two limitations in browser-MCP-driven

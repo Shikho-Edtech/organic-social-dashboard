@@ -1,5 +1,68 @@
 # Changelog
 
+## 2026-05-02 — v4.14b: Outcomes Target Metric column + per-row drill-down
+
+User feedback: "both forecast and actual columns should reflect the
+metric being targeted for each row." Honest answer is priors-based
+scoring only supports unique reach (only dimension with 90-day priors)
+but the slot's stated success_metric IS real intent. Surfacing it lets
+the user see what the slot was AIMED at vs what the deterministic
+verdict can measure.
+
+Pipeline (`65cbd1a`): Outcome_Log gets two new columns — Slot Target
+Metric (the slot's success_metric string) + Slot Expected Reach Range
+(human-readable forecast string). Schema migration appends both
+in-place on existing tabs. Fired with `force_regenerate=true` to
+backfill all existing rows.
+
+Dashboard (`332f009`): new Target Metric column between Format and
+Reach Forecast on desktop table; mobile gets a target-metric block
+above the 3-stat grid. Shows the slot's stated bet + expected reach
+range + a yellow "scored on reach" warning when target ≠ reach (so
+user knows the verdict columns aren't measuring the same metric).
+
+## 2026-05-01 → 2026-05-02 — v4.13 + v4.14: hypothesis tooltips, Mon-anchor unification, Outcomes drill-down, Diagnosis polish, Tier 1 + 1.5 self-improvement infra
+
+Major sprint covering 12 commits. The full per-dimension breakdown +
+roadmap lives in `LEARNINGS.md` (permanent reference) +
+`docs/PLAN_ALGORITHM_AUDIT.md` (deeper critique). Highlights:
+
+**Coherence + correctness fixes (the original symptom space):**
+- Per-week archive on Content_Calendar (Week Ending column, retains 12 weeks)
+- Past-week immutability lock — `Outcome_Log` scores against the band that was stamped at plan time
+- Format vocabulary alignment (`_format_bucket` collapses Reel/Video to one matcher bucket because FB API only emits "video")
+- `_post_reach()` flat-dict fix — was reading nested Graph API form, every post returned reach=0
+- Diagnosis Week Ending normalized to running-Monday (10 legacy rows rewritten in-place)
+- Outcome matcher iterates ALL Content_Calendar weeks, not just the run's target week
+- Diagnosis multi-row resolver picks newest by generated_at (was returning oldest match)
+- Outcomes weeks sorted newest-first in picker
+
+**Convention unification (one source of all date-display bugs):**
+- WeekSelector switched from closing-Sunday to running-Monday everywhere
+- Page headers + pill subLabels show full Mon-Sun range ("Apr 27 – May 3") uniformly
+- `weekStartingFromEnding` generalized to Mon-snap any input
+
+**Visual + structural polish:**
+- Plan slot rows + Plan narrative card + Outcomes rows + Diagnosis verdict header all have hypothesis chips with tooltips reading from `Plan_Narrative.hypotheses_map` (active week)
+- Outcomes rows: PostReference iconOnly per row, hover-preview + Facebook permalink (mirrors Reels/Explore/Diagnosis pattern), Prelim chip on <7d posts
+- Outcomes columns explicitly labeled with metric (unique reach + CI band + score-as-ratio); footer note defines `post_total_media_view_unique`
+- Diagnosis: gradient stripe on verdict card, gradient-filled section headers (8x8 with shadow), hover-lift cards everywhere, quick-stat strip below headline
+- Plan: per-week empty state with honest explanation (no silent cross-week fallback)
+
+**Closed-loop self-improvement infra (Tier 1 + 1.5):**
+- `Calibration_Log` weekly post-process — hit-rate inside CI + sharpness + per-pillar/format breakdown + regime marker
+- `Experiment_Log` — pre-registered numeric success metric per `experiments_to_run[]`; deterministic pass/fail at ≥7-day decay
+- `System_Suggestions` — auto-derived prescriptions (calibration drift, hypothesis retire, pillar over/underperform), advisory NEVER auto-applied
+- Strategy prompt closed-loop edge: reads `Experiment_Log[-8w]` resolved + System_Suggestions for the upcoming week
+- `recommend_weekly_slot_count` — replaces hardcoded 28-30 floor with median posts/day on top-tercile-by-reach days × 7
+- `validate_funnel_balance` + `validate_hook_freshness` validators wired into `validate_plan` (PLN-08 rejects + retries on violation)
+- Decay-aware Outcome scoring: `Preliminary` flag on posts <7 days old, excluded from Calibration_Log
+
+**See:**
+- `docs/PLAN_ALGORITHM_AUDIT.md` — multi-POV critique + Tier 1-8 roadmap
+- `LEARNINGS.md` — permanent per-dimension decision-logic reference + Tier coverage status
+- `DECISIONS.md` — Mon-anchor convention, past-week immutability, closed-loop discipline (L0.5 advisory only)
+
 ## 2026-05-01 — Plan-algorithm audit + roadmap recorded
 
 Decomposed how the calendar / strategy stages choose every dimension

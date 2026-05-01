@@ -214,6 +214,23 @@ change is better than O(N) component churn.
 
 ---
 
+## Algorithm-change discipline (added 2026-05-02)
+
+**Before proposing any change to plan generation, calibration, or outcome scoring, read [`docs/PLAN_ALGORITHM_AUDIT.md`](docs/PLAN_ALGORITHM_AUDIT.md) §1 and `LEARNINGS.md` "Plan-algorithm decomposition (permanent reference)".**
+
+Three rules apply:
+
+1. **Tier N+1 cannot be evaluated without Tier N's measurement infra.**
+   Don't ship Tier 2 changes (joint priors, A/B framework, hypothesis grammar) before Tier 1 (`Calibration_Log`, `Experiment_Log`) has ≥4 weeks of data. Without that data every later change is opinion-vs-opinion.
+
+2. **No auto-applied closed-loop changes.** `System_Suggestions` is advisory; `Auto Applied` column is invariant FALSE. Changes that would auto-tune forecast bands, auto-rewrite prompts, or auto-allocate slots via bandits require Tier 4 north-star metric + walk-forward backtest framework (Tier 6) FIRST.
+
+3. **Every shipped tier names which §1 assumption it undoes.** Commit messages and CHANGELOG entries should say which weakness from `LEARNINGS.md` decomposition table the change closes. If a change doesn't map to a named weakness, it's premature.
+
+If a proposed change skips ahead, push back. Quoting `PLAN_ALGORITHM_AUDIT.md §5`: "stop adding prose-quality to AI outputs; stop tuning the strategy prompt without a calibration target; stop expanding pillar/format/hook taxonomies; stop conflating 'the AI agreed' with 'the data agreed.'"
+
+---
+
 ## Live-check discipline (added 2026-04-30)
 
 Two QA tools live alongside the build / brand-audit / mobile checklist:
