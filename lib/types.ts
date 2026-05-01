@@ -276,6 +276,13 @@ export interface OutcomeLogEntry {
   exam_adjusted_used: boolean;
   exam_adjusted_mid: number | null;
   generated_at: string;
+  // Sprint P7 v4.14 Tier 1 (2026-05-01): decay + drill-down fields.
+  // preliminary = post < 7 days old (reach hasn't decayed; verdict shown
+  // but Calibration_Log excludes it). matched_post_id enables hover-
+  // preview + Facebook permalink drill-down on the Outcomes table.
+  preliminary: boolean;
+  matched_post_id: string;
+  age_days: number | null;
 }
 
 // Aggregated rollup across a set of outcome rows (typically one week).

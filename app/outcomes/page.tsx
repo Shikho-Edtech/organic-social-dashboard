@@ -21,11 +21,13 @@ import {
   listOutcomeWeeks,
   computeOutcomeRollup,
   getPlanNarrative,
+  getPosts,
 } from "@/lib/sheets";
 import { weekRange } from "@/components/WeekSelector";
 import type { OutcomeLogEntry, OutcomeVerdict } from "@/lib/types";
 import { Card } from "@/components/Card";
 import PageHeader from "@/components/PageHeader";
+import PostReference from "@/components/PostReference";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -158,6 +160,21 @@ export default async function OutcomesPage({
   const rows = activeWeek ? await getOutcomeLogByWeek(activeWeek) : [];
   const rollup = computeOutcomeRollup(rows, activeWeek);
   const generatedAt = rows[0]?.generated_at || "";
+
+  // Sprint P7 v4.14 Tier 1.5 (2026-05-01): post-drill-down enabler.
+  // Build a lookup of {post_id → {message, permalink_url}} so the table
+  // can render a PostReference next to each row whose Matched Post ID
+  // is set. Mirrors the pattern from Reels / Explore / Diagnosis.
+  const allPosts = await getPosts();
+  const postById = new Map<string, { message?: string; permalink_url?: string }>();
+  for (const p of allPosts) {
+    if (p.id) {
+      postById.set(p.id, {
+        message: (p as any).message || "",
+        permalink_url: (p as any).permalink_url || "",
+      });
+    }
+  }
 
   // Sprint P7 v4.13 (2026-05-01): pull the active week's hypotheses_map so
   // each slot row's H1/H2 chip can render the actual hypothesis statement
@@ -414,15 +431,41 @@ export default async function OutcomesPage({
                             className="border-t border-ink-100"
                           >
                             <td className="px-4 py-2 text-ink-primary">
-                              {s.pillar || "—"}
-                              {s.hypothesis_id && (
-                                <span
-                                  className="ml-1.5 text-[10px] font-bold uppercase tracking-wider bg-brand-shikho-indigo/10 text-brand-shikho-indigo rounded px-1.5 py-0.5 cursor-help"
-                                  title={hypothesisTip(s.hypothesis_id)}
-                                >
-                                  {s.hypothesis_id}
-                                </span>
-                              )}
+                              <span className="inline-flex items-center gap-1.5">
+                                <span>{s.pillar || "—"}</span>
+                                {s.hypothesis_id && (
+                                  <span
+                                    className="text-[10px] font-bold uppercase tracking-wider bg-brand-shikho-indigo/10 text-brand-shikho-indigo rounded px-1.5 py-0.5 cursor-help"
+                                    title={hypothesisTip(s.hypothesis_id)}
+                                  >
+                                    {s.hypothesis_id}
+                                  </span>
+                                )}
+                                {/* Sprint P7 v4.14 Tier 1.5 (2026-05-01):
+                                    matched-post drill-down. Hover/tap reveals
+                                    the actual post the matcher tied to this
+                                    plan slot; click opens the post on
+                                    Facebook. Shows only when a post matched. */}
+                                {s.matched_post_id && (() => {
+                                  const m = postById.get(s.matched_post_id);
+                                  return (
+                                    <PostReference
+                                      iconOnly
+                                      caption={m?.message || ""}
+                                      permalinkUrl={m?.permalink_url || ""}
+                                      iconLabel={`View matched post (${s.matched_post_id})`}
+                                    />
+                                  );
+                                })()}
+                                {s.preliminary && (
+                                  <span
+                                    className="text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 rounded px-1.5 py-0.5"
+                                    title={`Post is ${s.age_days ?? "<7"} days old; reach hasn't fully decayed. Verdict shown but excluded from Calibration_Log.`}
+                                  >
+                                    Prelim
+                                  </span>
+                                )}
+                              </span>
                             </td>
                             <td className="px-4 py-2 text-ink-primary">
                               {s.format || "—"}
@@ -462,14 +505,33 @@ export default async function OutcomesPage({
                         <li key={s.outcome_key} className="px-4 py-3">
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
-                              <div className="text-sm font-semibold text-ink-primary break-words">
-                                {s.pillar || "—"}
+                              <div className="text-sm font-semibold text-ink-primary break-words flex items-center gap-1.5 flex-wrap">
+                                <span>{s.pillar || "—"}</span>
                                 {s.hypothesis_id && (
                                   <span
-                                    className="ml-1.5 text-[10px] font-bold uppercase tracking-wider bg-brand-shikho-indigo/10 text-brand-shikho-indigo rounded px-1.5 py-0.5 cursor-help"
+                                    className="text-[10px] font-bold uppercase tracking-wider bg-brand-shikho-indigo/10 text-brand-shikho-indigo rounded px-1.5 py-0.5 cursor-help"
                                     title={hypothesisTip(s.hypothesis_id)}
                                   >
                                     {s.hypothesis_id}
+                                  </span>
+                                )}
+                                {s.matched_post_id && (() => {
+                                  const m = postById.get(s.matched_post_id);
+                                  return (
+                                    <PostReference
+                                      iconOnly
+                                      caption={m?.message || ""}
+                                      permalinkUrl={m?.permalink_url || ""}
+                                      iconLabel={`View matched post (${s.matched_post_id})`}
+                                    />
+                                  );
+                                })()}
+                                {s.preliminary && (
+                                  <span
+                                    className="text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 rounded px-1.5 py-0.5"
+                                    title={`Post is ${s.age_days ?? "<7"} days old; verdict preliminary.`}
+                                  >
+                                    Prelim
                                   </span>
                                 )}
                               </div>

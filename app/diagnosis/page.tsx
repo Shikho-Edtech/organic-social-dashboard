@@ -382,12 +382,20 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
           rendered inline below if present. Eyebrow pill retained so the
           section is still identifiable. */}
       {diagnosis?.headline && (
-        <div className="mb-6 rounded-xl border border-ink-100 bg-ink-paper p-4 sm:p-5">
-          <div className="flex items-center gap-2 flex-wrap mb-3">
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-brand-shikho-indigo text-white">
+        <div className="mb-6 relative overflow-hidden rounded-xl border border-shikho-indigo-100 bg-gradient-to-br from-shikho-indigo-50/40 via-ink-paper to-ink-paper p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
+          {/* Sprint P7 v4.14 (2026-05-01): visual polish — gradient band on
+              left edge frames the verdict as the page's "lead headline."
+              No data changes; pure presentation. */}
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-brand-shikho-indigo via-brand-shikho-magenta to-brand-shikho-coral" aria-hidden="true"></div>
+          <div className="flex items-center gap-2 flex-wrap mb-4">
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-brand-shikho-indigo text-white shadow-sm">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M9 11l3 3L22 4"></path>
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+              </svg>
               Weekly verdict
             </span>
-            <span className="text-[11px] text-ink-muted">
+            <span className="text-[11px] text-ink-muted font-medium">
               {diagnosis.week_ending ? `Mon–Sun BDT · ${weekRange(diagnosis.week_ending)}` : "latest weekly run"}
             </span>
             {/* Sprint P7 v4.13 (2026-05-01): hypothesis chips for the
@@ -423,9 +431,33 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
               );
             })()}
           </div>
-          <p className="text-[15px] sm:text-base text-ink-800 leading-relaxed">
+          <p className="text-[16px] sm:text-[17px] text-ink-primary leading-relaxed font-medium">
             {diagnosis.headline}
           </p>
+          {/* Quick-stat strip: posts + avg engagement at a glance */}
+          {(diagnosis.posts_this_week || diagnosis.avg_engagement) && (
+            <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 pt-3 border-t border-shikho-indigo-100/60">
+              {diagnosis.posts_this_week ? (
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-lg font-bold text-brand-shikho-indigo tabular-nums">{diagnosis.posts_this_week}</span>
+                  <span className="text-[11px] uppercase tracking-wider text-ink-muted font-semibold">posts</span>
+                </div>
+              ) : null}
+              {diagnosis.avg_engagement ? (
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-lg font-bold text-brand-shikho-magenta tabular-nums">
+                    {(diagnosis.avg_engagement * 100).toFixed(2)}%
+                  </span>
+                  <span className="text-[11px] uppercase tracking-wider text-ink-muted font-semibold">avg engagement</span>
+                </div>
+              ) : null}
+              {diagnosis.engine && (
+                <div className="ml-auto text-[10px] uppercase tracking-wider text-ink-muted font-semibold">
+                  Engine · {diagnosis.engine}
+                </div>
+              )}
+            </div>
+          )}
           {/* Sprint P7 v4.7 (2026-04-30, P2.23): Calendar Alert visual
               tone now adapts to the diagnosis engine. End-of-week (Monday)
               verdict gets the original coral box (definitive). Mid-week
@@ -473,16 +505,19 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
       {/* Key findings */}
       {whatHappened.length > 0 && (
         <div className="mb-6">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-5 h-5 rounded-full bg-brand-cyan/15 text-brand-cyan flex items-center justify-center">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          <div className="flex items-center gap-2.5 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-cyan to-brand-shikho-indigo text-white flex items-center justify-center shadow-sm">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10"></circle>
                 <line x1="12" y1="16" x2="12" y2="12"></line>
                 <line x1="12" y1="8" x2="12.01" y2="8"></line>
               </svg>
             </div>
-            <h3 className="text-base font-semibold text-slate-800">Key Findings</h3>
-            <span className="text-[11px] text-slate-500 uppercase tracking-wider">{whatHappened.length} · click any to expand</span>
+            <h3 className="text-lg font-semibold text-ink-primary">Key Findings</h3>
+            <span className="inline-flex items-center text-[11px] font-bold text-brand-cyan bg-brand-cyan/10 px-2 py-0.5 rounded-full">
+              {whatHappened.length}
+            </span>
+            <span className="text-[11px] text-ink-muted uppercase tracking-wider hidden sm:inline">click any to expand</span>
           </div>
           <div className="grid md:grid-cols-2 gap-3">
             {whatHappened.map((item, i) => {
@@ -499,10 +534,10 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
               // to expand. Auto-expanding #1 cuts the click cost while
               // keeping the rest collapsed for scanability.
               return (
-                <details key={i} open={i === 0} className="group bg-white border border-slate-200 rounded-xl hover:border-brand-cyan/40 transition-colors">
+                <details key={i} open={i === 0} className="group bg-ink-paper border border-ink-100 rounded-xl shadow-sm hover:shadow-md hover:border-brand-cyan/50 hover:-translate-y-0.5 transition-all duration-200">
                   <summary className="list-none cursor-pointer p-4">
                     <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-brand-cyan/10 text-brand-cyan font-semibold text-xs flex items-center justify-center">
+                      <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-brand-cyan/15 to-brand-cyan/5 text-brand-cyan font-bold text-xs flex items-center justify-center ring-1 ring-brand-cyan/20">
                         {String(i + 1).padStart(2, "0")}
                       </div>
                       <div className="flex-1 min-w-0 text-sm text-slate-700 font-medium leading-snug line-clamp-2 group-open:line-clamp-none">
@@ -556,14 +591,18 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
       <div className="grid lg:grid-cols-2 gap-4 mb-6">
         {/* Top */}
         <div>
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-5 h-5 rounded-full bg-brand-green/15 text-brand-green flex items-center justify-center">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          <div className="flex items-center gap-2.5 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-green to-emerald-600 text-white flex items-center justify-center shadow-sm">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="18 15 12 9 6 15"></polyline>
               </svg>
             </div>
-            <h3 className="text-base font-semibold text-slate-800">Top Performers</h3>
-            <span className="text-[11px] text-slate-500 uppercase tracking-wider">click to expand</span>
+            <h3 className="text-lg font-semibold text-ink-primary">Top Performers</h3>
+            {topPerformers.length > 0 && (
+              <span className="inline-flex items-center text-[11px] font-bold text-brand-green bg-brand-green/10 px-2 py-0.5 rounded-full">
+                {Math.min(topPerformers.length, 3)}
+              </span>
+            )}
           </div>
           <div className="space-y-2.5">
             {topPerformers.length === 0 && (
@@ -585,13 +624,13 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
               const primarySrc = sourceIds.length > 0 ? postById.get(sourceIds[0]) : undefined;
               const hasDetail = Boolean(body || tp.why_it_worked || tp.replicable_elements || sourceIds.length);
               return (
-                <details key={i} className="group bg-white border border-slate-200 rounded-xl border-l-4 !border-l-brand-green hover:border-brand-green/40 transition-colors">
+                <details key={i} className="group bg-ink-paper border border-ink-100 rounded-xl border-l-4 !border-l-brand-green shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-brand-green/50 transition-all duration-200">
                   <summary className="list-none cursor-pointer p-4">
                     <div className="flex items-center gap-3">
-                      <div className="flex-shrink-0 w-6 h-6 rounded-md bg-brand-green/10 text-brand-green font-bold text-xs flex items-center justify-center">
+                      <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-gradient-to-br from-brand-green/15 to-brand-green/5 text-brand-green font-bold text-xs flex items-center justify-center ring-1 ring-brand-green/20">
                         {i + 1}
                       </div>
-                      <div className="flex-1 min-w-0 text-sm text-slate-700 font-medium leading-snug line-clamp-1 group-open:line-clamp-none">
+                      <div className="flex-1 min-w-0 text-sm text-ink-primary font-medium leading-snug line-clamp-1 group-open:line-clamp-none">
                         <HeadlineWithMetrics text={head} metricClass="text-brand-green" />
                       </div>
                       {primarySrc && (
@@ -662,14 +701,18 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
 
         {/* Under */}
         <div>
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-5 h-5 rounded-full bg-brand-red/15 text-brand-red flex items-center justify-center">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          <div className="flex items-center gap-2.5 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-red to-rose-600 text-white flex items-center justify-center shadow-sm">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="6 9 12 15 18 9"></polyline>
               </svg>
             </div>
-            <h3 className="text-base font-semibold text-slate-800">Underperformers</h3>
-            <span className="text-[11px] text-slate-500 uppercase tracking-wider">click to expand</span>
+            <h3 className="text-lg font-semibold text-ink-primary">Underperformers</h3>
+            {underperformers.length > 0 && (
+              <span className="inline-flex items-center text-[11px] font-bold text-brand-red bg-brand-red/10 px-2 py-0.5 rounded-full">
+                {Math.min(underperformers.length, 3)}
+              </span>
+            )}
           </div>
           <div className="space-y-2.5">
             {underperformers.length === 0 && (
@@ -687,10 +730,10 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
               const primarySrc = sourceIds.length > 0 ? postById.get(sourceIds[0]) : undefined;
               const hasDetail = Boolean(body || up.why_it_failed || up.lesson || sourceIds.length);
               return (
-                <details key={i} className="group bg-white border border-slate-200 rounded-xl border-l-4 !border-l-brand-red hover:border-brand-red/40 transition-colors">
+                <details key={i} className="group bg-ink-paper border border-ink-100 rounded-xl border-l-4 !border-l-brand-red shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-brand-red/50 transition-all duration-200">
                   <summary className="list-none cursor-pointer p-4">
                     <div className="flex items-center gap-3">
-                      <div className="flex-shrink-0 w-6 h-6 rounded-md bg-brand-red/10 text-brand-red font-bold text-xs flex items-center justify-center">
+                      <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-gradient-to-br from-brand-red/15 to-brand-red/5 text-brand-red font-bold text-xs flex items-center justify-center ring-1 ring-brand-red/20">
                         {i + 1}
                       </div>
                       <div className="flex-1 min-w-0 text-sm text-slate-700 font-medium leading-snug line-clamp-1 group-open:line-clamp-none">
@@ -767,16 +810,19 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
       {/* Watch-outs */}
       {watchOuts.length > 0 && (
         <div>
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-5 h-5 rounded-full bg-brand-amber/15 text-brand-amber flex items-center justify-center">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          <div className="flex items-center gap-2.5 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-amber to-amber-600 text-white flex items-center justify-center shadow-sm">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
                 <line x1="12" y1="9" x2="12" y2="13"></line>
                 <line x1="12" y1="17" x2="12.01" y2="17"></line>
               </svg>
             </div>
-            <h3 className="text-base font-semibold text-slate-800">Watch-outs</h3>
-            <span className="text-[11px] text-slate-500 uppercase tracking-wider">{watchOuts.length} · click any to expand</span>
+            <h3 className="text-lg font-semibold text-ink-primary">Watch-outs</h3>
+            <span className="inline-flex items-center text-[11px] font-bold text-brand-amber bg-brand-amber/10 px-2 py-0.5 rounded-full">
+              {watchOuts.length}
+            </span>
+            <span className="text-[11px] text-ink-muted uppercase tracking-wider hidden sm:inline">click any to expand</span>
           </div>
           <div className="grid md:grid-cols-2 gap-3">
             {watchOuts.map((item, i) => {
@@ -786,7 +832,7 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
                 : undefined;
               const hasDetail = Boolean(body);
               return (
-                <details key={i} className="group bg-amber-50/30 border border-amber-200/60 rounded-xl hover:border-amber-300/80 transition-colors">
+                <details key={i} className="group bg-gradient-to-br from-amber-50/40 to-amber-50/10 border border-amber-200/50 rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-amber-300/80 transition-all duration-200">
                   <summary className="list-none cursor-pointer p-4">
                     <div className="flex items-start gap-3">
                       <div className="flex-shrink-0 w-7 h-7 rounded-full bg-brand-amber/15 text-brand-amber flex items-center justify-center">

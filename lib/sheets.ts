@@ -1155,6 +1155,9 @@ function outcomeLogFromRow(row: Record<string, any>): OutcomeLogEntry {
     exam_adjusted_used: toBool(row["Exam Adjusted Used"]),
     exam_adjusted_mid: _numOrNull(row["Exam Adjusted Mid"]),
     generated_at: String(row["Generated At"] || ""),
+    preliminary: toBool(row["Preliminary"]),
+    matched_post_id: String(row["Matched Post ID"] || "").trim(),
+    age_days: _numOrNull(row["Age Days"]),
   };
 }
 
