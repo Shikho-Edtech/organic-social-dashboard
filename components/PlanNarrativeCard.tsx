@@ -61,13 +61,45 @@ export default function PlanNarrativeCard({ narrative, scope = "this" }: Props) 
   // the per-day calendar grid without it eating fold space. Default
   // open=true so first-time / weekly visitors still see the narrative
   // by default. Storyline-missing path keeps the original card layout.
+  // Sprint P7 v4.13 (2026-05-01): hypothesis chips beside the title. Each
+  // chip in the week's hypothesis_list (h1, h2, …) renders with a tooltip
+  // surfacing the actual statement from hypotheses_map. Empty map → chips
+  // still render (id only), so the user can see WHICH hypotheses the
+  // storyline references even on legacy weeks before the map landed.
+  const hypothesisIds = (narrative.hypothesis_list || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const hypothesesMap = narrative.hypotheses_map || {};
+  const tipFor = (id: string): string => {
+    const text = hypothesesMap[id];
+    return text
+      ? `${id.toUpperCase()}: ${text}`
+      : `${id.toUpperCase()} — hypothesis statement not yet resolved (older week or status-quo). Run the next weekly pipeline to populate.`;
+  };
+
   return (
     <Card className="mb-4 border-l-4 border-l-brand-shikho-indigo">
       {storyline ? (
         <details open className="group">
           <summary className="list-none cursor-pointer flex items-center justify-between gap-3">
-            <h2 className="text-base font-semibold text-ink-primary">{title}</h2>
-            <span className="text-[11px] text-ink-muted uppercase tracking-wider flex items-center gap-1.5">
+            <div className="flex items-center gap-2 flex-wrap min-w-0">
+              <h2 className="text-base font-semibold text-ink-primary">{title}</h2>
+              {hypothesisIds.length > 0 && (
+                <div className="flex items-center gap-1 flex-wrap">
+                  {hypothesisIds.map((id) => (
+                    <span
+                      key={id}
+                      className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider bg-brand-shikho-indigo/10 text-brand-shikho-indigo rounded px-1.5 py-0.5 cursor-help"
+                      title={tipFor(id)}
+                    >
+                      {id}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+            <span className="text-[11px] text-ink-muted uppercase tracking-wider flex items-center gap-1.5 flex-shrink-0">
               <span className="hidden sm:inline">click to collapse</span>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-open:rotate-180">
                 <polyline points="6 9 12 15 18 9"></polyline>

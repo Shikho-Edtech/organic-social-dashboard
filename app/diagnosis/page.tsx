@@ -1,4 +1,4 @@
-import { getPosts, getLatestDiagnosis, getDiagnosisByWeek, getDiagnosisByWeekPreferred, getRunStatus, computeStaleness, getStageEngine } from "@/lib/sheets";
+import { getPosts, getLatestDiagnosis, getDiagnosisByWeek, getDiagnosisByWeekPreferred, getRunStatus, computeStaleness, getStageEngine, getPlanNarrative } from "@/lib/sheets";
 import WeekSelector, { computeWeekEndings } from "@/components/WeekSelector";
 import RegenerateThisWeekButton from "@/components/RegenerateThisWeekButton";
 import { filterPosts } from "@/lib/aggregate";
@@ -176,13 +176,18 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
           isThisWeekView ? "midweek" : "full",
         );
 
-  const [posts, liveDiagnosis, archivedDiagnosis, weekDiagnosis, runStatus, diagnosisEngine] = await Promise.all([
+  const [posts, liveDiagnosis, archivedDiagnosis, weekDiagnosis, runStatus, diagnosisEngine, planNarrative] = await Promise.all([
     getPosts(),
     isArchival ? Promise.resolve(null) : getLatestDiagnosis(),
     isArchival ? getDiagnosisByWeek(archivedParam) : Promise.resolve(null),
     weekScopedDiagnosisP,
     getRunStatus(),
     getStageEngine("diagnosis"),
+    // Sprint P7 v4.13 (2026-05-01): pull the active week's hypotheses map
+    // so the diagnosis page can surface the H1/H2 chips beside the verdict.
+    // Same scope as the diagnosis row → tooltip statement matches the week
+    // being diagnosed.
+    !isArchival && targetWeek ? getPlanNarrative(targetWeek) : Promise.resolve(null),
   ]);
   // Diagnosis row priority: archival → week-scoped (when selector active)
   // → latest. weekDiagnosis is null when isArchival is true OR no row
@@ -385,6 +390,38 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
             <span className="text-[11px] text-ink-muted">
               {diagnosis.week_ending ? `week ending ${diagnosis.week_ending}` : "latest weekly run"}
             </span>
+            {/* Sprint P7 v4.13 (2026-05-01): hypothesis chips for the
+                diagnosed week. Tooltip on each chip surfaces the actual
+                statement that the week was pursuing — pulled from
+                Plan_Narrative.hypotheses_map for the same Mon-anchor.
+                Empty list when this week predates the v4.11 migration. */}
+            {(() => {
+              const ids = (planNarrative?.hypothesis_list || "")
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+              const map = planNarrative?.hypotheses_map || {};
+              if (ids.length === 0) return null;
+              return (
+                <div className="flex items-center gap-1 flex-wrap">
+                  {ids.map((id) => {
+                    const text = map[id];
+                    const tip = text
+                      ? `${id.toUpperCase()}: ${text}`
+                      : `${id.toUpperCase()} — hypothesis statement not yet resolved (older week or status-quo).`;
+                    return (
+                      <span
+                        key={id}
+                        className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider bg-brand-shikho-indigo/10 text-brand-shikho-indigo rounded px-1.5 py-0.5 cursor-help"
+                        title={tip}
+                      >
+                        {id}
+                      </span>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
           <p className="text-[15px] sm:text-base text-ink-800 leading-relaxed">
             {diagnosis.headline}

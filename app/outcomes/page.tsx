@@ -20,6 +20,7 @@ import {
   getLatestGradedOutcomeWeek,
   listOutcomeWeeks,
   computeOutcomeRollup,
+  getPlanNarrative,
 } from "@/lib/sheets";
 import type { OutcomeLogEntry, OutcomeVerdict } from "@/lib/types";
 import { Card } from "@/components/Card";
@@ -156,6 +157,20 @@ export default async function OutcomesPage({
   const rows = activeWeek ? await getOutcomeLogByWeek(activeWeek) : [];
   const rollup = computeOutcomeRollup(rows, activeWeek);
   const generatedAt = rows[0]?.generated_at || "";
+
+  // Sprint P7 v4.13 (2026-05-01): pull the active week's hypotheses_map so
+  // each slot row's H1/H2 chip can render the actual hypothesis statement
+  // on hover/tap. Plan_Narrative is keyed by Mon-anchor (same key as
+  // Outcome_Log.week_ending in v4.12). Empty {} when this week predates
+  // the v4.11 schema migration.
+  const planNarrative = activeWeek ? await getPlanNarrative(activeWeek) : null;
+  const hypothesesMap = planNarrative?.hypotheses_map || {};
+  const hypothesisTip = (id: string): string => {
+    const text = hypothesesMap[id];
+    return text
+      ? `${id.toUpperCase()}: ${text}`
+      : `${id.toUpperCase()} — hypothesis statement not yet resolved (older week or status-quo). Run the next weekly pipeline to populate.`;
+  };
 
   // Group by day for stacked presentation (mirrors /plan's per-day cards)
   const byDay: Record<string, OutcomeLogEntry[]> = {};
@@ -400,7 +415,10 @@ export default async function OutcomesPage({
                             <td className="px-4 py-2 text-ink-primary">
                               {s.pillar || "—"}
                               {s.hypothesis_id && (
-                                <span className="ml-1.5 text-[11px] text-ink-muted font-mono">
+                                <span
+                                  className="ml-1.5 text-[10px] font-bold uppercase tracking-wider bg-brand-shikho-indigo/10 text-brand-shikho-indigo rounded px-1.5 py-0.5 cursor-help"
+                                  title={hypothesisTip(s.hypothesis_id)}
+                                >
                                   {s.hypothesis_id}
                                 </span>
                               )}
@@ -446,7 +464,10 @@ export default async function OutcomesPage({
                               <div className="text-sm font-semibold text-ink-primary break-words">
                                 {s.pillar || "—"}
                                 {s.hypothesis_id && (
-                                  <span className="ml-1.5 text-[11px] text-ink-muted font-mono">
+                                  <span
+                                    className="ml-1.5 text-[10px] font-bold uppercase tracking-wider bg-brand-shikho-indigo/10 text-brand-shikho-indigo rounded px-1.5 py-0.5 cursor-help"
+                                    title={hypothesisTip(s.hypothesis_id)}
+                                  >
                                     {s.hypothesis_id}
                                   </span>
                                 )}
