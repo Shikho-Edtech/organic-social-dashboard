@@ -628,8 +628,10 @@ export async function getCalendarByWeekStarting(weekStarting: string): Promise<C
   if (!weekStarting) return [];
   const rows = await readTab("Content_Calendar");
   const objects = rowsToObjects(rows);
-  // Build the 7-day Mon-Sun set in BDT — the canonical sheet stores
-  // ISO YYYY-MM-DD dates so simple string match works.
+  // Sprint P7 v4.11 (2026-05-01): canonical filter is now the explicit
+  // "Week Ending" column written by the pipeline (= the Monday that starts
+  // the 7-day Mon-Sun window). Fall back to inferring from "Date" for any
+  // legacy rows written before the schema migration.
   const wkStart = new Date(`${weekStarting}T00:00:00`);
   if (isNaN(wkStart.getTime())) return [];
   const dayKeys = new Set<string>();
@@ -639,8 +641,11 @@ export async function getCalendarByWeekStarting(weekStarting: string): Promise<C
     dayKeys.add(d.toISOString().slice(0, 10));
   }
   const matching = objects.filter((r) => {
+    // Prefer canonical Week Ending column.
+    const we = String(r["Week Ending"] || "").trim();
+    if (we) return we === weekStarting;
+    // Legacy row fallback: derive week from Date.
     const dateRaw = String(r["Date"] || "").trim();
-    // Try ISO match first (canonical), then permissive parse fallback.
     if (dayKeys.has(dateRaw)) return true;
     const parsed = new Date(dateRaw);
     if (isNaN(parsed.getTime())) return false;
@@ -1025,9 +1030,29 @@ export interface PlanNarrative {
   risk_flag_count: number;
   contingency_count: number;
   generated_at: string;
+  /** Sprint P7 v4.11 (2026-05-01): hypothesis_id → human-readable text.
+   *  Powers the Plan page slot tooltip — previously the H1/H2 chip showed
+   *  generic "process" copy explaining what hypothesis_id means; now it
+   *  renders the actual hypothesis statement. Empty {} when the row
+   *  predates the migration. */
+  hypotheses_map: Record<string, string>;
 }
 
 function planNarrativeFromRow(r: Record<string, any>): PlanNarrative {
+  let hypotheses_map: Record<string, string> = {};
+  const rawMap = String(r["Hypotheses Map (JSON)"] || "").trim();
+  if (rawMap) {
+    try {
+      const parsed = JSON.parse(rawMap);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        for (const [k, v] of Object.entries(parsed)) {
+          if (typeof v === "string") hypotheses_map[k] = v;
+        }
+      }
+    } catch {
+      // Malformed JSON — leave map empty, tooltip falls back to id.
+    }
+  }
   return {
     week_ending: String(r["Week Ending"] || "").trim(),
     storyline: String(r["Narrative Storyline"] || "").trim(),
@@ -1038,6 +1063,7 @@ function planNarrativeFromRow(r: Record<string, any>): PlanNarrative {
     risk_flag_count: toNumber(r["Risk Flag Count"]),
     contingency_count: toNumber(r["Contingency Count"]),
     generated_at: String(r["Generated At"] || "").trim(),
+    hypotheses_map,
   };
 }
 

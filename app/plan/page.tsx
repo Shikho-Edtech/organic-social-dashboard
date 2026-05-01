@@ -163,31 +163,34 @@ export default async function PlanPage({ searchParams }: { searchParams: Record<
   const targetWeekEnding = isThisWeekView ? thisWeekEnding : isLastWeekView ? lastWeekEnding : isNextWeekView ? nextWeekEnding : weekParam;
   const targetWeekStarting = weekStartingFromEnding(targetWeekEnding);
 
-  const [archivedCalendar, weekCalendar, fallbackLatestCalendar, runStatus, calendarEngine, planNarrative] = await Promise.all([
+  const [archivedCalendar, weekCalendar, runStatus, calendarEngine, planNarrative] = await Promise.all([
     isArchival ? getCalendarByRunId(archivedParam) : Promise.resolve([] as Awaited<ReturnType<typeof getCalendar>>),
     isArchival || !targetWeekStarting
       ? Promise.resolve([] as Awaited<ReturnType<typeof getCalendar>>)
       : getCalendarByWeekStarting(targetWeekStarting),
-    // Fallback: if the target week has no rows yet (e.g. Last week view
-    // before history accumulates), getCalendar() shows whatever's in
-    // the sheet so the page isn't empty.
-    isArchival ? Promise.resolve([] as Awaited<ReturnType<typeof getCalendar>>) : getCalendar(),
     getRunStatus(),
     getStageEngine("calendar"),
     // PLN-07: read the week-level narrative summary the pipeline (PLN-06)
     // writes on every successful calendar generation. Skipped in archival
     // mode since we don't have week-indexed narrative archival yet.
-    isArchival ? Promise.resolve(null) : getPlanNarrative(),
+    // Sprint P7 v4.11: scope Plan_Narrative read to the requested week so
+    // the tooltip's hypotheses_map matches the calendar being shown. Older
+    // call passed no arg → always returned the newest row, which mismatched
+    // when viewing Last Week. Note: pipeline keys Plan_Narrative.Week Ending
+    // off the running-Monday string (despite the column name), same as
+    // Content_Calendar.Week Ending.
+    isArchival ? Promise.resolve(null) : getPlanNarrative(targetWeekStarting),
   ]);
-  // Calendar selection priority:
-  //   1. archival mode (?archived=<runId>) → legacy archive
-  //   2. week-scoped fetch returned rows → use those
-  //   3. fallback to whatever's in the live Content_Calendar tab
-  //      (graceful for the period between v3 ship + first new write)
-  const calendar = isArchival
-    ? archivedCalendar
-    : (weekCalendar.length > 0 ? weekCalendar : fallbackLatestCalendar);
-  const usingFallback = !isArchival && weekCalendar.length === 0 && fallbackLatestCalendar.length > 0;
+  // Sprint P7 v4.11 (2026-05-01): the silent cross-week fallback was
+  // removed. Previously, when "Last week" or "Next week" had no rows in
+  // Content_Calendar, the page silently rendered the most recent calendar
+  // in the sheet — making all three weekly views look identical. That hid
+  // the actual data state ("we don't have a plan for this week") behind
+  // a misleading copy of another week's plan. Now the page shows an
+  // honest empty state when the requested week has no rows; outcomes
+  // measurement remains valid because the matcher only ever scores the
+  // week the plan was actually written for.
+  const calendar = isArchival ? archivedCalendar : weekCalendar;
   const staleness = computeStaleness("calendar", runStatus);
   const aiDisabled = calendarEngine === "native" || calendarEngine === "off";
   const byDay: Record<string, typeof calendar> = {};
@@ -296,53 +299,22 @@ export default async function PlanPage({ searchParams }: { searchParams: Record<
         </div>
       )}
 
-      {/* Sprint P7 v4.6 (2026-04-30, P0 finding #4): banner is now
-          explicit about which week's plan is being shown vs which week
-          was requested. The fallback can land you on next-week content
-          when you're viewing this-week, or vice versa — copy now spells
-          that out so the user never silently reads the wrong plan.
-
-          Implementation note: avoid JSX fragments inside <span> here —
-          v4.5 attempt #1 hit a SSR/CSR hydration drift bug (LEARNINGS
-          2026-04-30). Plain string ternary is the safe pattern. */}
-      {usingFallback && (() => {
-        // First slot's date IS the Monday of the displayed week (calendar
-        // rows are written in day-order Mon-Sun by the pipeline). No
-        // helper needed.
-        const fallbackWeekStarting = fallbackLatestCalendar[0]?.date || "";
-        const requestedWeekDesc = isLastWeekView
-          ? "last week"
-          : isNextWeekView
-            ? "next week"
-            : "this week";
-        const showingDateRange = fallbackWeekStarting
-          ? ` (week of ${fallbackWeekStarting})`
-          : "";
-        return (
-          <div className="mb-4 inline-flex items-start gap-2 px-3 py-2 rounded-md bg-shikho-indigo-50 border border-shikho-indigo-100 text-shikho-indigo-700 text-xs max-w-3xl">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 mt-0.5">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="16" x2="12" y2="12"></line>
-              <line x1="12" y1="8" x2="12.01" y2="8"></line>
-            </svg>
-            <span>
-              {isLastWeekView
-                ? `Last week's calendar wasn't archived — history started accumulating from Sprint P7 v3 (append-by-week writer, 2026-04-29). The slots below are the most recent calendar in the sheet${showingDateRange}, shown so the page isn't empty. They are NOT last week's actual posting plan.`
-                : `No calendar rows for ${requestedWeekDesc} yet — showing the most recent calendar in the sheet${showingDateRange} as fallback. The slot dates above tell you which week's plan you're actually viewing. History accumulates from the next weekly run forward.`}
-            </span>
-          </div>
-        );
-      })()}
-
-      {calendar.length === 0 && (
+      {/* Sprint P7 v4.11 (2026-05-01): honest per-week empty state.
+          Previously a silent cross-week fallback caused all three weekly
+          views to look identical when only one week's data was in
+          Content_Calendar. Now each week stands on its own — the empty
+          state tells the user which week is missing and why. */}
+      {calendar.length === 0 && !isArchival && (
         <Card className="text-center py-12">
-          <p className="text-slate-700 font-medium">No calendar generated yet</p>
-          <p className="text-slate-500 text-sm mt-2">
+          <p className="text-ink-primary font-medium">
+            No calendar for {isLastWeekView ? "last week" : isNextWeekView ? "next week" : "this week"} yet
+          </p>
+          <p className="text-ink-muted text-sm mt-2 max-w-xl mx-auto">
             {isLastWeekView
-              ? "No calendar rows for last week. History accumulates from the next weekly run forward."
+              ? `Content_Calendar has no rows for week starting ${targetWeekStarting}. Past plans are immutable — they only land here when the corresponding Monday cron runs (or has run). If this week was before the per-week archive landed (Sprint P7 v3, 2026-04-29), it was never preserved.`
               : isNextWeekView
-                ? "Next week's calendar will be generated by the upcoming Monday cron."
-                : "The next weekly pipeline run will populate this week's plan."}
+                ? `Next week's calendar will be generated by the upcoming Monday cron (${targetWeekStarting}). You can also trigger it manually via the Regenerate Week button — only the upcoming week is regenerable; past + running weeks are locked so Outcomes can score against the original forecast.`
+                : `This week's calendar will populate when the next weekly pipeline run lands. The running week's plan is locked once written so Outcomes can score actuals against the original forecast.`}
           </p>
         </Card>
       )}
@@ -503,17 +475,29 @@ export default async function PlanPage({ searchParams }: { searchParams: Record<
                                 Links this slot to the strategy's weekly
                                 hypothesis set. h0/h1/h2/... Renders only
                                 when present; pre-schema-v2 rows skip it. */}
-                            {slot.hypothesis_id && (
-                              <>
-                                <span className="text-ink-200">·</span>
-                                <span
-                                  className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider bg-brand-shikho-indigo/10 text-brand-shikho-indigo rounded px-1.5 py-0.5 cursor-help"
-                                  title={`Hypothesis ${slot.hypothesis_id} — links this slot to one of the strategy's weekly bets (h0/h1/h2…). The Diagnosis page tracks which hypothesis the team is testing each week; the Outcomes page later grades each slot against its hypothesis's predicted lift.`}
-                                >
-                                  {slot.hypothesis_id}
-                                </span>
-                              </>
-                            )}
+                            {slot.hypothesis_id && (() => {
+                              // Sprint P7 v4.11 (2026-05-01): tooltip now binds
+                              // to the actual hypothesis statement (resolved
+                              // server-side by the pipeline into Plan_Narrative.
+                              // Hypotheses Map). Falls back to a short generic
+                              // line when the map is missing for that id (older
+                              // weeks pre-migration, or h0 status-quo).
+                              const text = planNarrative?.hypotheses_map?.[slot.hypothesis_id];
+                              const tip = text
+                                ? `${slot.hypothesis_id.toUpperCase()}: ${text}`
+                                : `${slot.hypothesis_id.toUpperCase()} — hypothesis statement not yet resolved (older week or status-quo). Run the next weekly pipeline to populate.`;
+                              return (
+                                <>
+                                  <span className="text-ink-200">·</span>
+                                  <span
+                                    className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider bg-brand-shikho-indigo/10 text-brand-shikho-indigo rounded px-1.5 py-0.5 cursor-help"
+                                    title={tip}
+                                  >
+                                    {slot.hypothesis_id}
+                                  </span>
+                                </>
+                              );
+                            })()}
                           </div>
                           {/* Hook */}
                           <div className="text-[15px] text-slate-800 font-medium leading-snug">{slot.hook_line}</div>
