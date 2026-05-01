@@ -138,7 +138,7 @@ return (
 
 Why this exists: the pipeline has a graceful-degradation layer
 (Day 2M/2O in `facebook-pipeline/IMPROVEMENTS.md`) that falls back to
-cached data when Anthropic credits run out or the API errors. Without
+cached data when LLM credits (any provider) run out or the API errors. Without
 a banner, the dashboard silently shows week-old verdicts + calendar
 as if they were fresh. Any new page that reads Claude output inherits
 that failure mode and must wire in the same banner.
