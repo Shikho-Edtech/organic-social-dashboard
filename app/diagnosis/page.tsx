@@ -1,4 +1,6 @@
 import { getPosts, getLatestDiagnosis, getDiagnosisByWeek, getDiagnosisByWeekPreferred, getRunStatus, computeStaleness, getStageEngine, getPlanNarrative } from "@/lib/sheets";
+import { totalReach, totalQualityEngagement, totalShares, totalComments, wowDelta, formatWowDelta, deltaColorClass } from "@/lib/qualityEngagement";
+import { bdt as bdtParse, dateStr as dateIso } from "@/lib/aggregate";
 import WeekSelector, { computeWeekEndings, weekRange } from "@/components/WeekSelector";
 import RegenerateThisWeekButton from "@/components/RegenerateThisWeekButton";
 import { filterPosts } from "@/lib/aggregate";
@@ -494,6 +496,85 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
           <p className="text-[16px] sm:text-[17px] text-ink-primary leading-relaxed font-medium">
             {diagnosis.headline}
           </p>
+          {/* Sprint P7 v4.16 (2026-05-02): dual-metric strip — Reach +
+              Quality Engagement displayed in parallel for the diagnosed
+              week. Q2 finisher per DECISIONS 2026-05-02. Both numbers
+              shown with WoW delta vs prior week (same Mon-Sun length).
+              No anchor declared — Reach is the current scoring metric;
+              QE is a candidate north-star. After 4-8 weeks of
+              North_Star_Trace data we pick the winner. Until then the
+              dashboard surfaces both honestly. */}
+          {diagnosis.week_ending && (() => {
+            try {
+              const wkStart = new Date(`${diagnosis.week_ending}T00:00:00`);
+              if (isNaN(wkStart.getTime())) return null;
+              const wkEnd = new Date(wkStart);
+              wkEnd.setDate(wkEnd.getDate() + 7);
+              const priorStart = new Date(wkStart);
+              priorStart.setDate(priorStart.getDate() - 7);
+              const inWeek = (p: any) => {
+                if (!p.created_time) return false;
+                const d = bdtParse(p.created_time);
+                return d >= wkStart && d < wkEnd;
+              };
+              const inPriorWeek = (p: any) => {
+                if (!p.created_time) return false;
+                const d = bdtParse(p.created_time);
+                return d >= priorStart && d < wkStart;
+              };
+              const weekPosts = posts.filter(inWeek);
+              const priorPosts = posts.filter(inPriorWeek);
+              if (weekPosts.length === 0) return null;
+              const reach = totalReach(weekPosts);
+              const priorReach = totalReach(priorPosts);
+              const qe = totalQualityEngagement(weekPosts);
+              const priorQe = totalQualityEngagement(priorPosts);
+              const reachDelta = wowDelta(reach, priorReach);
+              const qeDelta = wowDelta(qe, priorQe);
+              const sharesN = totalShares(weekPosts);
+              const commentsN = totalComments(weekPosts);
+              const fmtCompact = (n: number) => {
+                if (!Number.isFinite(n) || n === 0) return "0";
+                if (Math.abs(n) < 1000) return String(Math.round(n));
+                if (Math.abs(n) < 1_000_000) return `${(n / 1000).toFixed(n < 10000 ? 1 : 0)}K`;
+                return `${(n / 1_000_000).toFixed(1)}M`;
+              };
+              return (
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-shikho-indigo-100/60">
+                  <div className="rounded-md border border-ink-100 bg-ink-paper px-3 py-2.5">
+                    <div className="text-[10px] uppercase tracking-wider text-ink-muted font-semibold">
+                      Reach <span className="normal-case font-normal">(scoring anchor)</span>
+                    </div>
+                    <div className="flex items-baseline gap-1.5 mt-0.5">
+                      <span className="text-lg font-bold text-brand-shikho-indigo tabular-nums">
+                        {fmtCompact(reach)}
+                      </span>
+                      <span className="text-[10px] text-ink-muted font-normal">unique</span>
+                      <span className={`ml-auto text-[11px] font-semibold ${deltaColorClass(reachDelta)}`}>
+                        {formatWowDelta(reachDelta)} WoW
+                      </span>
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-shikho-indigo-100 bg-gradient-to-br from-shikho-indigo-50/30 to-ink-paper px-3 py-2.5">
+                    <div className="text-[10px] uppercase tracking-wider text-ink-muted font-semibold">
+                      Quality Engagement <span className="normal-case font-normal">candidate</span>
+                    </div>
+                    <div className="flex items-baseline gap-1.5 mt-0.5">
+                      <span className="text-lg font-bold text-brand-shikho-magenta tabular-nums">
+                        {fmtCompact(qe)}
+                      </span>
+                      <span className="text-[10px] text-ink-muted font-normal">{sharesN}s + {commentsN}c</span>
+                      <span className={`ml-auto text-[11px] font-semibold ${deltaColorClass(qeDelta)}`}>
+                        {formatWowDelta(qeDelta)} WoW
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            } catch {
+              return null;
+            }
+          })()}
           {/* Quick-stat strip: posts + avg engagement at a glance */}
           {(diagnosis.posts_this_week || diagnosis.avg_engagement) && (
             <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 pt-3 border-t border-shikho-indigo-100/60">

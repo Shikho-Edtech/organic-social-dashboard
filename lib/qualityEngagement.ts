@@ -22,10 +22,17 @@ import type { Post } from "@/lib/types";
 export const SHARES_WEIGHT = 2;
 export const COMMENTS_WEIGHT = 1;
 
+/** Resolve a post's unique reach using the dashboard's canonical field
+ * (lib/aggregate.ts uses `unique_views || media_views`). Centralized so
+ * every page agrees on what "reach" means. */
+export function postReach(p: Post): number {
+  return Number(p.unique_views || 0) || Number(p.media_views || 0) || 0;
+}
+
 /** Compute Quality Engagement for a single post. */
 export function qualityEngagementForPost(p: Post): number {
-  const shares = Number((p as any).shares_count || 0);
-  const comments = Number((p as any).comments_count || 0);
+  const shares = Number(p.shares || 0);
+  const comments = Number(p.comments || 0);
   return shares * SHARES_WEIGHT + comments * COMMENTS_WEIGHT;
 }
 
@@ -36,23 +43,17 @@ export function totalQualityEngagement(posts: Post[]): number {
 
 /** Sum raw shares across posts. */
 export function totalShares(posts: Post[]): number {
-  return posts.reduce((acc, p) => acc + Number((p as any).shares_count || 0), 0);
+  return posts.reduce((acc, p) => acc + Number(p.shares || 0), 0);
 }
 
 /** Sum raw comments across posts. */
 export function totalComments(posts: Post[]): number {
-  return posts.reduce((acc, p) => acc + Number((p as any).comments_count || 0), 0);
+  return posts.reduce((acc, p) => acc + Number(p.comments || 0), 0);
 }
 
-/** Sum reach across posts (post_total_media_view_unique). */
+/** Sum reach across posts. */
 export function totalReach(posts: Post[]): number {
-  return posts.reduce((acc, p) => {
-    const r =
-      Number((p as any).reach || 0) ||
-      Number((p as any).post_total_media_view_unique || 0) ||
-      0;
-    return acc + r;
-  }, 0);
+  return posts.reduce((acc, p) => acc + postReach(p), 0);
 }
 
 /** Compute % delta between current and prior. Returns null when prior is 0. */

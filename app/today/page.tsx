@@ -20,6 +20,7 @@ import {
   getOutcomeLog,
   getRunStatus,
   computeStaleness,
+  getPlanNarrative,
 } from "@/lib/sheets";
 import { bdt, bdtNow, dateStr, startOfWeekBDT } from "@/lib/aggregate";
 import {
@@ -31,11 +32,13 @@ import {
   formatWowDelta,
   deltaColorClass,
   qualityEngagementForPost,
+  postReach,
 } from "@/lib/qualityEngagement";
 import PageHeader from "@/components/PageHeader";
 import { Card } from "@/components/Card";
 import StalenessBanner from "@/components/StalenessBanner";
 import PostReference from "@/components/PostReference";
+import HypothesisChip from "@/components/HypothesisChip";
 import Link from "next/link";
 import { weekRange } from "@/components/WeekSelector";
 
@@ -63,13 +66,15 @@ export default async function TodayPage() {
   priorWeekStart.setDate(priorWeekStart.getDate() - 7);
   const priorWeekStartIso = dateStr(priorWeekStart);
 
-  const [posts, calendar, outcomeLog, runStatus] = await Promise.all([
+  const [posts, calendar, outcomeLog, runStatus, planNarrative] = await Promise.all([
     getPosts(),
     getCalendar(),
     getOutcomeLog(),
     getRunStatus(),
+    getPlanNarrative(weekStartIso),
   ]);
   const staleness = computeStaleness("calendar", runStatus);
+  const hypothesesMap = planNarrative?.hypotheses_map || {};
 
   // -------- TODAY's plan slots (from Content_Calendar) --------
   const todaysSlots = calendar.filter((s) => s.date === today);
@@ -171,7 +176,7 @@ export default async function TodayPage() {
   };
   const slotPublishStatus = todaysSlotsByTime.map((slot) => {
     const candidates = todaysPosts.filter((p) => {
-      const ptype = formatBucket((p as any).type || "");
+      const ptype = formatBucket(p.type || "");
       return ptype === formatBucket(slot.format);
     });
     return {
@@ -257,12 +262,10 @@ export default async function TodayPage() {
                     {published ? "✓" : "⏰"}
                   </span>
                   <div className="min-w-0">
-                    <div className="text-sm text-ink-primary font-medium">
-                      {slot.time_bdt || "—"} · {slot.format} · {slot.pillar}
+                    <div className="text-sm text-ink-primary font-medium flex items-center gap-1.5 flex-wrap">
+                      <span>{slot.time_bdt || "—"} · {slot.format} · {slot.pillar}</span>
                       {slot.hypothesis_id && (
-                        <span className="ml-1.5 text-[10px] font-bold uppercase tracking-wider bg-brand-shikho-indigo/10 text-brand-shikho-indigo rounded px-1.5 py-0.5">
-                          {slot.hypothesis_id}
-                        </span>
+                        <HypothesisChip id={slot.hypothesis_id} map={hypothesesMap} />
                       )}
                     </div>
                     {slot.hook_line && (
@@ -276,8 +279,8 @@ export default async function TodayPage() {
                   {published && matchedPost && (
                     <PostReference
                       iconOnly
-                      caption={(matchedPost as any).message || ""}
-                      permalinkUrl={(matchedPost as any).permalink_url || ""}
+                      caption={matchedPost.message || ""}
+                      permalinkUrl={matchedPost.permalink_url || ""}
                       iconLabel="View today's matched post on Facebook"
                     />
                   )}
@@ -319,10 +322,7 @@ export default async function TodayPage() {
               .sort((a, b) => new Date(b.created_time).getTime() - new Date(a.created_time).getTime())
               .slice(0, 6)
               .map((p, i) => {
-                const reach =
-                  Number((p as any).reach || 0) ||
-                  Number((p as any).post_total_media_view_unique || 0) ||
-                  0;
+                const reach = postReach(p);
                 const qe = qualityEngagementForPost(p);
                 const outcome = outcomeByPostId.get(p.id);
                 const verdict = outcome?.verdict || "";
@@ -338,19 +338,19 @@ export default async function TodayPage() {
                       </span>
                       <div className="min-w-0">
                         <div className="text-sm text-ink-primary truncate">
-                          {(p as any).type ? `${(p as any).type[0].toUpperCase()}${(p as any).type.slice(1)}` : "—"} ·
-                          {" "}{((p as any).message || "").slice(0, 60) || "(no caption)"}
+                          {p.type ? `${p.type[0].toUpperCase()}${p.type.slice(1)}` : "—"} ·{" "}
+                          {(p.message || "").slice(0, 60) || "(no caption)"}
                         </div>
                         <div className="text-[11px] text-ink-muted mt-0.5">
-                          {fmtNum(reach)} reach · QE {qe} ({(p as any).shares_count || 0}s + {(p as any).comments_count || 0}c)
+                          {fmtNum(reach)} reach · QE {qe} ({p.shares || 0}s + {p.comments || 0}c)
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <PostReference
                         iconOnly
-                        caption={(p as any).message || ""}
-                        permalinkUrl={(p as any).permalink_url || ""}
+                        caption={p.message || ""}
+                        permalinkUrl={p.permalink_url || ""}
                         iconLabel="View post on Facebook"
                       />
                       {verdict && (

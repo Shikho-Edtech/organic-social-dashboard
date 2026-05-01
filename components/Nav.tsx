@@ -19,6 +19,9 @@ const TABS = [
   { href: "/plan", label: "Plan" },
   { href: "/outcomes", label: "Outcomes" },
   { href: "/explore", label: "Explore" },
+  // Sprint P7 v4.16 (2026-05-02): glossary / taxonomy reference. Last in
+  // nav order — operators land here only when they need a definition.
+  { href: "/reference", label: "Reference" },
 ];
 
 export default function Nav() {
