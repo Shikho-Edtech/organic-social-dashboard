@@ -1,5 +1,51 @@
 # Changelog
 
+## 2026-05-01 — Sprint P7 v4.10: Outcomes loop fix + calendar slot count + first POV discovery promoted
+
+User asked the right question: "why are we not detecting what was
+posted vs the plan and populating Outcomes?" Investigation found a
+structural bug that 2 password-gated QA passes both missed.
+
+**v4.10 P0a — Outcomes loop closure (pipeline `1896515`):**
+- Pre-v4.10 matcher in `src/sheets.py` read `_p.get("slot_index")`
+  from each post — a field Facebook posts don't carry. So the
+  actuals-by-slot dict was always empty, every Outcome row was
+  "no-data", and the loop never closed across any v4.x run.
+- Replaced with `_build_outcome_actuals(calendar, posts, classifications)`
+  — joins by (date, format, pillar) with time_bdt proximity tiebreak.
+  Smoke-tested with synthetic data; correctly handles single-match,
+  no-match, and multi-candidate-with-time-tiebreak cases.
+
+**v4.10 P0b — Calendar prompt slot count + distinctness (pipeline
+prompt v1.7 → v1.8):**
+- Slot target raised from "3-5/day" floor (which AI was treating as
+  21/week) to explicit "28-30/week, 4/day with weekend bumps in exam
+  season."
+- New DISTINCTNESS RULE explicitly forbids regenerating a default
+  template each week. Each calendar must reflect last week's
+  diagnosis, last week's outcome scores, this week's academic
+  context, this week's brand-comms context.
+
+**Discovery promoted to Tier 1 — T1.11 join-key existence audit
+(`docs/LIVE_CHECK_POVS.md`, `docs/LIVE_CHECK_DISCOVERIES.md`):**
+- The new POV that would have caught the matcher bug. Generalizes:
+  every join across data sources must verify the join key exists on
+  both sides. Promoted from Discoveries because it's a P0 loop bug
+  that no existing Tier 1/2/3 POV would have caught.
+- The discovery doc workflow worked first time: bug found, lens
+  named, generalization tested (Diagnosis ↔ source_post_ids,
+  Strategy ↔ Calendar, etc all verified clean), promoted to T1.
+
+**v4.10 verification status:**
+- Run `25202864494` (force_regenerate, days=30) completed before v4.10
+  shipped, so the matcher fix isn't reflected yet. v1.12 prompt + brand
+  comms context wins ARE visible: Plan size up to 30 slots/week (was
+  22), narrative cites academic + brand context + named top performers,
+  Calendar Alert hedges instead of commands, active-exam banner
+  correct ("Active: SSC 2026 · ends in 19 days").
+- Outcomes still 30/30 pending in this run. Matcher fix takes effect
+  on next cron (Mon May 4) or manual trigger.
+
 ## 2026-04-30 — Sprint P7 v4.5 (close out QA findings — multi-line on Explore + outlier-aware y-axis + copy fixes)
 
 Working through the open findings from the v4.4 QA report.

@@ -74,8 +74,9 @@ classify the new POV.
 | **T1.8** | **Cross-page metric reconciliation** — same metric should produce same number across pages (Overview Posts = Explore Posts with no filters) | ✅ 1 fix (Explore missing "Data as of" stamp made cache-window mismatches invisible) | 🟢 |
 | **T1.9** | **Hardcoded calendar dates drift** — every static date in code cross-checked vs source-of-truth (academic_calendar sheet, brand_comms sheet) | ✅ 1 fix (`lib/exams.ts` hardcoded HSC 2026-05-01; actual = 2026-07-02) | 🟡 |
 | **T1.10** | **Every visible interactive element gets clicked once** — button → action; pill → re-key; disclosure → open; link → opens correctly | ✅ 2 fixes (Reels RANK BY pills decorative, Diagnosis regenerate button wrong scope) | 🟡 |
+| **T1.11 🆕** | **Join-key existence audit** — for every matcher / aggregator that joins data across sources (Plan ↔ Posts, Strategy ↔ Calendar, Diagnosis ↔ source_post_ids), verify the join key actually exists on both sides. A `dict.get("nonexistent_field")` that always returns None is a structurally-broken loop. | ✅ 1 P0 (Outcomes matcher read non-existent `slot_index` field on posts → entire loop never closed across all v4.x QA passes) — promoted from `LIVE_CHECK_DISCOVERIES.md` 2026-05-01 | 🟡 |
 
-**Total Tier 1 cost: ~30 minutes.** If you only have time for one thing, run this.
+**Total Tier 1 cost: ~30-35 minutes.** If you only have time for one thing, run this.
 
 ---
 
