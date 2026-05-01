@@ -13,7 +13,7 @@
 // Hidden when there's no future exam (component returns null) — we don't
 // want a stale "last exam was X days ago" surface cluttering the page.
 
-import { currentSeason, daysUntilExam, nextExam } from "@/lib/exams";
+import { currentSeason, daysUntilExam, daysUntilExamEnd, isExamActive, nextExam } from "@/lib/exams";
 
 type Tone = "exam" | "regular";
 
@@ -33,6 +33,16 @@ function countdownWord(days: number): string {
   return `in ${days} days`;
 }
 
+/**
+ * Sprint P7 v4.9 (2026-04-30): "ends in N days" helper for exams that
+ * are currently active (already started but not yet over).
+ */
+function endingWord(daysToEnd: number): string {
+  if (daysToEnd <= 0) return "ending today";
+  if (daysToEnd === 1) return "ends in 1 day";
+  return `ends in ${daysToEnd} days`;
+}
+
 export default function AcademicContextStrip({
   now = new Date(),
 }: {
@@ -42,7 +52,15 @@ export default function AcademicContextStrip({
   const next = nextExam(now);
   if (!next) return null;
 
+  // Sprint P7 v4.9: distinguish "currently active" exam from "upcoming"
+  // exam. Previously we always rendered "in N days" — but if the exam
+  // window had already opened (e.g. SSC theoretical Apr 21-May 20 with
+  // today=Apr 30), days would be negative and `nextExam` would skip to
+  // the far-future HSC. Now active exams take priority + render with
+  // "active, ends in N days" framing.
+  const active = isExamActive(next, now);
   const days = daysUntilExam(next, now);
+  const daysToEnd = daysUntilExamEnd(next, now);
   const season = currentSeason(now);
   const tone: Tone = season === "exam" ? "exam" : "regular";
 
@@ -62,16 +80,20 @@ export default function AcademicContextStrip({
           {seasonLabel}
         </span>
         <span className="text-ink-muted truncate">
-          {tone === "exam"
-            ? "Within the 14-day AMEND window — expect demand to shift."
-            : "No exam within the 14-day window."}
+          {active
+            ? "Exam window is active — students are mid-exam, content load shifts hard toward last-minute help."
+            : tone === "exam"
+              ? "Within the 14-day AMEND window — expect demand to shift."
+              : "No exam within the 14-day window."}
         </span>
       </div>
       <div className="flex items-baseline gap-1.5 text-ink-secondary sm:flex-shrink-0">
-        <span className="text-ink-muted">Next exam:</span>
+        <span className="text-ink-muted">{active ? "Active:" : "Next exam:"}</span>
         <span className="font-semibold text-ink-primary break-words">{next.name}</span>
         <span className="text-ink-muted">·</span>
-        <span className="font-medium text-brand-shikho-indigo">{countdownWord(days)}</span>
+        <span className="font-medium text-brand-shikho-indigo">
+          {active ? endingWord(daysToEnd) : countdownWord(days)}
+        </span>
       </div>
     </div>
   );
