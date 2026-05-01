@@ -299,13 +299,24 @@ export async function getDiagnosisByWeekPreferred(
   if (matching.length === 0) return null;
   if (matching.length === 1) return diagnosisFromRow(matching[0]);
   // Multiple rows for the same week_ending — pick by engine preference.
+  // Sprint P7 v4.12 (2026-05-01): when multiple rows of the same engine
+  // exist (week_ending normalization in v4.12 collapses pre-existing rows
+  // that used run-date strings, so a single Mon-anchor week may now have
+  // 3-5 'ai' rows from different historical runs), pick the NEWEST by
+  // generated_at. Previously `.find()` returned the earliest match,
+  // so the dashboard rendered stale diagnoses indefinitely.
   const parsed = matching.map(diagnosisFromRow);
-  const midweekRow = parsed.find((d) => d.engine === "ai-midweek");
-  const fullRow = parsed.find((d) => d.engine === "ai" || d.engine === "native-insights");
+  const byNewestFirst = [...parsed].sort((a, b) => {
+    const ta = a.generated_at ? Date.parse(a.generated_at) : 0;
+    const tb = b.generated_at ? Date.parse(b.generated_at) : 0;
+    return tb - ta;
+  });
+  const midweekRow = byNewestFirst.find((d) => d.engine === "ai-midweek");
+  const fullRow = byNewestFirst.find((d) => d.engine === "ai" || d.engine === "native-insights");
   if (prefer === "midweek") {
-    return midweekRow || fullRow || parsed[parsed.length - 1];
+    return midweekRow || fullRow || byNewestFirst[0];
   }
-  return fullRow || midweekRow || parsed[parsed.length - 1];
+  return fullRow || midweekRow || byNewestFirst[0];
 }
 
 /**
