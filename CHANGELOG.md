@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-05-01 — Plan-algorithm audit + roadmap recorded
+
+Decomposed how the calendar / strategy stages choose every dimension
+(slot count, pillar mix, format, hook, spotlight, time-of-day, forecast
+band, hypothesis) and named where each decision is weakest. New
+[`docs/PLAN_ALGORITHM_AUDIT.md`](docs/PLAN_ALGORITHM_AUDIT.md) is the
+critical multi-POV audit (statistical, causal, identifiability,
+calibration, evaluation, adversarial, behavioral, time-series,
+information-theoretic). Recommends Tier 1-7 of upgrades; Tier 1 is
+the only set that's a prerequisite for evaluating everything else
+(calibration log + pre-registered experiment metric). Algorithm
+decomposition + 3-tier ranking summary in [`LEARNINGS.md`](LEARNINGS.md).
+
 ## 2026-05-01 — Sprint P7 v4.10: Outcomes loop fix + calendar slot count + first POV discovery promoted
 
 User asked the right question: "why are we not detecting what was

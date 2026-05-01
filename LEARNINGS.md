@@ -1,5 +1,59 @@
 # Learnings
 
+## 2026-05-01 — Plan generation algorithm decomposition + factor decision logic (per-dimension audit)
+
+Asked: "for a given week, what algorithm decides format / hook / spotlight /
+time / pillar mix, and how do we know it's right?" Walked the pipeline
+end-to-end and decomposed each dimension's decision rule. Surfaced
+weaknesses that the audit never named before.
+
+**Per-dimension decision logic (today's state):**
+
+| Dimension | Decided by | Strength | Weakness |
+|---|---|---|---|
+| Slot count (28-30/wk) | Hardcoded floor | Bounded | Not derived from page's diminishing-returns curve |
+| Pillar mix | Strategy AI emits weights summing to 1.0 | Auditable | AI gut-feel within prompt; no objective function |
+| Format mix | Same as pillar | Same | Same |
+| Day-of-week | `Priors_WeekdaySeasonality` consulted; AI distributes | 90-day grounded | Doesn't model substitution effects |
+| Time of day | `Priors_SlotTime` best historical hour per format | Empirical | Sample size per (day × hour × format) often n<10; noise dominates |
+| Hook line | `Hook_Library` (top-quartile) + 4-week reuse veto | Avoids fatigue | Top-quartile selection unconditional — winner during Boishakh ≠ winner during exam week |
+| Spotlight (teacher / app feature) | Strategy's `teacher_rotation` ordered list | Explicit | Recency bias — one viral post dominates rotation 3 weeks |
+| Pillar × format pairing | AI judgment | Flexible | Big known gaps (Reel × Live Class >> Photo × Live Class for Abdullah Bhaiya) not surfaced explicitly |
+| Visual + key message | AI per slot | Specific | Pure prose; no downstream-metric tie |
+| CTA / funnel stage | AI heuristic | OK | No guardrail forcing balanced TOFU/MOFU/BOFU |
+| Forecast band | Deterministic: `Priors_Pillar × Priors_Format × Priors_AcademicSeason` | Reproducible | Independence assumption; interaction effects erased |
+| Hypothesis (h1, h2) | Strategy + experiments_to_run | Forces falsifiability | Adherence checked qualitatively; no pre-registered metric threshold |
+
+**Where today's "certainty" leaks:**
+
+- Validators reject malformed structure → doesn't prove choices are good
+- Cited priors row must exist → doesn't prove the cited row supports the conclusion
+- Forecast bands from 90-day priors → 80% CI by design, but we don't measure if calibration holds
+- Outcome scorer is deterministic → the math is right, the band might still be a bad prediction
+- Adherence to last week's hypothesis is asked qualitatively → no pass/fail gate
+- Source-post drill-down → AI samples the IDs, can cherry-pick
+
+**The deeper structural gaps (3-tier improvement ranking):**
+
+- **Tier 1 (≤1 week each, ship first):** Calibration_Log (was hit-rate inside 80% CI?); pre-registered numeric success metric per experiment; per-pillar/format hit-rate dashboard; post-decay-aware reach (don't score < 7 days old); slot count from data not floor; conditional hook freshness.
+- **Tier 2 (2-4 weeks each):** joint priors `Priors_PillarFormatSeasonTeacher`; slot A/B test framework (2 paired slots/wk); statistical power gates on findings; regime-change detector (KS-test recent vs prior); counterfactual Monte Carlo simulator; hypothesis grammar (reject multi-claim "and" hypotheses).
+- **Tier 3 (1+ month each):** Bayesian online prior update; causal model for spotlight-effect deconfusion; multi-armed bandit slot scheduler; negative-result memory; audience-segmented forecasts.
+
+**The honest summary:** today the choices are *defensible* (every chip cites
+evidence, every forecast cites priors, every plan ties to a hypothesis),
+but they're not *optimized* and not *calibrated*. Tier 1 converts
+"defensible" into "demonstrably calibrated"; Tier 2+ converts that into
+"demonstrably better than obvious baselines." Without Tier 1's calibration
+trace, every later improvement is opinion-vs-opinion.
+
+Deeper multi-POV critique (statistical, causal, decision-theoretic,
+identifiability, evaluation, adversarial) and Tier 4-7 roadmap moved into
+[`docs/PLAN_ALGORITHM_AUDIT.md`](docs/PLAN_ALGORITHM_AUDIT.md). That doc
+is the one to read before proposing any algorithmic change — it names
+which assumptions each tier is undoing.
+
+---
+
 ## 2026-04-30 — Multi-line text in JSX fragments inside inline elements: SSR/CSR whitespace drift
 
 Second class of "build green, crash production" bug shipped (and hot-
