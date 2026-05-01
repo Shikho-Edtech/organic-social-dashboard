@@ -5,6 +5,11 @@ import { usePathname } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 
 const TABS = [
+  // Sprint P7 v4.15 (2026-05-02): Today is the operational landing —
+  // today's planned slots + yesterday's verdicts + active alerts. Lives
+  // before Overview because operators should hit it first; analytical
+  // drill-downs (Overview onward) come after.
+  { href: "/today", label: "Today" },
   { href: "/", label: "Overview" },
   { href: "/trends", label: "Trends" },
   { href: "/engagement", label: "Engagement" },
