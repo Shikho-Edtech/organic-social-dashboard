@@ -161,6 +161,18 @@ export default async function OutcomesPage({
   const rollup = computeOutcomeRollup(rows, activeWeek);
   const generatedAt = rows[0]?.generated_at || "";
 
+  // Sprint P7 v4.14b (2026-05-02): only show the Target Metric column when
+  // the active week has at least one row with a populated value. If every
+  // row's Slot Target Metric + Slot Expected Reach Range are empty,
+  // showing an all-empty column adds noise without information — per
+  // user feedback "what's the point of having this column if it is not
+  // useful." Column re-appears automatically once the next pipeline run
+  // populates the values.
+  const hasTargetMetric = rows.some(
+    (r) => (r.slot_target_metric || "").trim() !== "" ||
+           (r.slot_expected_reach_range || "").trim() !== ""
+  );
+
   // Sprint P7 v4.14 Tier 1.5 (2026-05-01): post-drill-down enabler.
   // Build a lookup of {post_id → {message, permalink_url}} so the table
   // can render a PostReference next to each row whose Matched Post ID
@@ -410,9 +422,11 @@ export default async function OutcomesPage({
                           <th className="px-4 py-2 font-medium text-[11px] uppercase tracking-wider">
                             Format
                           </th>
-                          <th className="px-4 py-2 font-medium text-[11px] uppercase tracking-wider" title="The metric the slot was AIMED at when planned (e.g. 'Follows > 150', 'Engagement rate > 3%', '20K-35K unique reach'). When the slot's stated target isn't reach, the deterministic verdict still scores reach — that's the only dimension we have 90-day priors for.">
-                            Target Metric<span className="ml-1 text-ink-muted normal-case font-normal">(slot&apos;s stated bet)</span>
-                          </th>
+                          {hasTargetMetric && (
+                            <th className="px-4 py-2 font-medium text-[11px] uppercase tracking-wider" title="The metric the slot was AIMED at when planned (e.g. 'Follows > 150', 'Engagement rate > 3%', '20K-35K unique reach'). When the slot's stated target isn't reach, the deterministic verdict still scores reach — that's the only dimension we have 90-day priors for.">
+                              Target Metric<span className="ml-1 text-ink-muted normal-case font-normal">(slot&apos;s stated bet)</span>
+                            </th>
+                          )}
                           <th className="px-4 py-2 font-medium text-[11px] uppercase tracking-wider text-right" title="Unique reach forecast (post_total_media_view_unique). Computed at pillar × format × season level from 90-day priors. Always shown in unique-reach units regardless of the slot's stated target metric.">
                             Reach Forecast<span className="ml-1 text-ink-muted normal-case font-normal">(unique · pillar-level)</span>
                           </th>
@@ -473,6 +487,7 @@ export default async function OutcomesPage({
                             <td className="px-4 py-2 text-ink-primary">
                               {s.format || "—"}
                             </td>
+                            {hasTargetMetric && (
                             <td className="px-4 py-2 text-ink-primary">
                               {(() => {
                                 const target = (s.slot_target_metric || "").trim();
@@ -515,6 +530,7 @@ export default async function OutcomesPage({
                                 );
                               })()}
                             </td>
+                            )}
                             <td className="px-4 py-2 text-right tabular-nums text-ink-primary">
                               <div className="inline-flex items-baseline gap-1 justify-end">
                                 <span>{fmtNum(s.forecast_mid)}</span>
@@ -597,7 +613,7 @@ export default async function OutcomesPage({
                             </div>
                             <VerdictPill verdict={s.verdict} />
                           </div>
-                          {(() => {
+                          {hasTargetMetric && (() => {
                             const target = (s.slot_target_metric || "").trim();
                             const range = (s.slot_expected_reach_range || "").trim();
                             if (!target && !range) return null;

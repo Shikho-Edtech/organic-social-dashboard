@@ -96,7 +96,15 @@ function extractWeekEnding(iso: string): string {
 }
 
 function HeadlineWithMetrics({ text, metricClass }: { text: string; metricClass: string }) {
-  const segments = extractMetrics(text);
+  // Sprint P7 v4.14b: capitalize first letter of headline before extraction
+  // so "the pillar suffered..." renders as "The pillar suffered..." while
+  // metric segmentation still highlights "53.0%" / "p=0.25" inline.
+  const polished = text ? (
+    /^[a-z]/.test(text.trim())
+      ? text.trim().charAt(0).toUpperCase() + text.trim().slice(1)
+      : text.trim()
+  ) : "";
+  const segments = extractMetrics(polished);
   return (
     <>
       {segments.map((s, i) =>
@@ -119,6 +127,29 @@ function HeadlineWithMetrics({ text, metricClass }: { text: string; metricClass:
 // fallbacks. When source_post_ids[0] resolves in postById, the strategy
 // page renders an iconOnly PostReference next to the headline.
 type NormalizedFinding = { text: string; source_post_ids: string[] };
+
+// Sprint P7 v4.14b (2026-05-02): polishCopy fixes the most common AI
+// prose hygiene issues: lowercase first letter ("the pillar suffered the
+// largest..." → "The pillar suffered the largest..."), missing terminal
+// punctuation ("the format secured an 8,732.6 mean reach" → "...mean
+// reach."), and stray double-spaces. This is a UI band-aid; the real
+// fix is a stricter copy contract in the diagnosis prompt. Applied on
+// every diagnosis-body render path so all 4 box types (Key Findings,
+// Top, Under, Watch-outs) get the same treatment uniformly.
+function polishCopy(s: string): string {
+  if (!s) return "";
+  let out = s.replace(/\s+/g, " ").trim();
+  if (!out) return "";
+  // Capitalize first letter (skip if already uppercase, number, or non-alpha)
+  if (/^[a-z]/.test(out)) {
+    out = out.charAt(0).toUpperCase() + out.slice(1);
+  }
+  // Append period if missing terminal punctuation
+  if (!/[.!?…]$/.test(out)) {
+    out = out + ".";
+  }
+  return out;
+}
 
 function normalizeFinding(item: any): NormalizedFinding {
   if (typeof item === "string") {
@@ -222,6 +253,35 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
   const topPerformers = diagnosis?.top_performers || [];
   const underperformers = diagnosis?.underperformers || [];
   const watchOuts: NormalizedFinding[] = (diagnosis?.watch_outs || []).map(normalizeFinding);
+
+  // Sprint P7 v4.14b (2026-05-02): consistent source-post-references
+  // across all boxes. Some AI-emitted findings carry source_post_ids,
+  // others don't — user feedback was "this same philosophy was not
+  // applied to all boxes." Build a diagnosis-level fallback set: take
+  // the top-N posts that the diagnosis cited via top_performers /
+  // underperformers, and use those as the fallback for any item with
+  // empty source_post_ids. Ensures every box has at least one
+  // hyperlinkable post even when the AI's per-finding citation is
+  // missing. The fallback is ordered by relevance so the closest-tied
+  // post comes first.
+  const fallbackSourcePostIds: string[] = (() => {
+    const ids = new Set<string>();
+    const collect = (item: any) => {
+      if (Array.isArray(item?.source_post_ids)) {
+        for (const id of item.source_post_ids) {
+          if (typeof id === "string" && id) ids.add(id);
+        }
+      }
+      if (typeof item?.post_id === "string" && item.post_id) ids.add(item.post_id);
+    };
+    topPerformers.slice(0, 3).forEach(collect);
+    underperformers.slice(0, 3).forEach(collect);
+    return Array.from(ids).slice(0, 3);
+  })();
+  const resolveSourcePosts = (own: string[]): string[] => {
+    if (own && own.length > 0) return own;
+    return fallbackSourcePostIds;
+  };
 
   const verdictSplit = splitHeadline(diagnosis?.headline || "");
 
@@ -443,14 +503,28 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
                   <span className="text-[11px] uppercase tracking-wider text-ink-muted font-semibold">posts</span>
                 </div>
               ) : null}
-              {diagnosis.avg_engagement ? (
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-lg font-bold text-brand-shikho-magenta tabular-nums">
-                    {(diagnosis.avg_engagement * 100).toFixed(2)}%
-                  </span>
-                  <span className="text-[11px] uppercase tracking-wider text-ink-muted font-semibold">avg engagement</span>
-                </div>
-              ) : null}
+              {diagnosis.avg_engagement ? (() => {
+                // The pipeline can write avg_engagement in EITHER form:
+                //   - decimal fraction: 0.0243 (= 2.43%)
+                //   - already-percentage: 2.43 (= 2.43%)
+                // Detect: anything ≤ 1 we treat as a fraction; anything > 1
+                //   we treat as already-percentage. Then clamp to ≤ 100
+                //   because a 243% engagement rate is nonsense — produced by
+                //   the pipeline writing 2.43 and the dashboard multiplying
+                //   by 100 again. This guard makes the display honest until
+                //   we standardize the wire format.
+                const raw = Number(diagnosis.avg_engagement);
+                const pct = raw <= 1 ? raw * 100 : raw;
+                const safe = Math.min(pct, 100);
+                return (
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-lg font-bold text-brand-shikho-magenta tabular-nums">
+                      {safe.toFixed(2)}%
+                    </span>
+                    <span className="text-[11px] uppercase tracking-wider text-ink-muted font-semibold">avg engagement</span>
+                  </div>
+                );
+              })() : null}
               {diagnosis.engine && (
                 <div className="ml-auto text-[10px] uppercase tracking-wider text-ink-muted font-semibold">
                   Engine · {diagnosis.engine}
@@ -522,8 +596,12 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
           <div className="grid md:grid-cols-2 gap-3">
             {whatHappened.map((item, i) => {
               const { head, body } = splitHeadline(item.text);
-              const primarySrc = item.source_post_ids.length > 0
-                ? postById.get(item.source_post_ids[0])
+              // Sprint P7 v4.14b: consistent source-post references —
+              // when the finding has no own ids, use diagnosis-level
+              // fallback so every box has hyperlinkable posts.
+              const effectiveSourceIds = resolveSourcePosts(item.source_post_ids);
+              const primarySrc = effectiveSourceIds.length > 0
+                ? postById.get(effectiveSourceIds[0])
                 : undefined;
               const hasDetail = Boolean(body);
               // Sprint P7 v4.7 (2026-04-30, P1.7): auto-expand the first
@@ -560,15 +638,18 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
                     </div>
                   </summary>
                   {hasDetail && (
-                    <div className="px-4 pb-4 pl-14 text-xs text-slate-600 leading-relaxed">{body}</div>
+                    <div className="px-4 pb-4 pl-14 text-xs text-slate-600 leading-relaxed">{polishCopy(body)}</div>
                   )}
-                  {item.source_post_ids.length > 1 && (
+                  {effectiveSourceIds.length > 0 && (
                     <div className="px-4 pb-4 pl-14">
                       <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted mb-1.5">
-                        Source posts ({item.source_post_ids.length})
+                        Source posts ({effectiveSourceIds.length})
+                        {item.source_post_ids.length === 0 && (
+                          <span className="ml-1 normal-case text-ink-muted/70 font-normal">· week-level fallback</span>
+                        )}
                       </div>
                       <ul className="space-y-1">
-                        {item.source_post_ids.map((pid) => {
+                        {effectiveSourceIds.map((pid) => {
                           const p = postById.get(pid);
                           if (!p) return null;
                           return (
@@ -652,12 +733,12 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
                   {hasDetail && (
                     <div className="px-4 pb-4 pl-13 space-y-3">
                       {body && (
-                        <div className="text-xs text-slate-600 leading-relaxed pl-9">{body}</div>
+                        <div className="text-xs text-slate-600 leading-relaxed pl-9">{polishCopy(body)}</div>
                       )}
                       {tp.why_it_worked && (
                         <div className="pl-9">
                           <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Why it worked</div>
-                          <div className="text-xs text-slate-600 leading-relaxed">{tp.why_it_worked}</div>
+                          <div className="text-xs text-slate-600 leading-relaxed">{polishCopy(tp.why_it_worked)}</div>
                         </div>
                       )}
                       {tp.replicable_elements && (
@@ -669,7 +750,7 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
                             </svg>
                           </span>
                           <div className="text-xs text-brand-cyan leading-relaxed">
-                            <span className="font-semibold uppercase tracking-wider text-[11px]">Replicate · </span>{tp.replicable_elements}
+                            <span className="font-semibold uppercase tracking-wider text-[11px]">Replicate · </span>{polishCopy(tp.replicable_elements)}
                           </div>
                         </div>
                       )}
@@ -758,12 +839,12 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
                   {hasDetail && (
                     <div className="px-4 pb-4 pl-13 space-y-3">
                       {body && (
-                        <div className="text-xs text-slate-600 leading-relaxed pl-9">{body}</div>
+                        <div className="text-xs text-slate-600 leading-relaxed pl-9">{polishCopy(body)}</div>
                       )}
                       {up.why_it_failed && (
                         <div className="pl-9">
                           <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Why it missed</div>
-                          <div className="text-xs text-slate-600 leading-relaxed">{up.why_it_failed}</div>
+                          <div className="text-xs text-slate-600 leading-relaxed">{polishCopy(up.why_it_failed)}</div>
                         </div>
                       )}
                       {up.lesson && (
@@ -776,7 +857,7 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
                             </svg>
                           </span>
                           <div className="text-xs text-brand-amber leading-relaxed">
-                            <span className="font-semibold uppercase tracking-wider text-[11px]">Lesson · </span>{up.lesson}
+                            <span className="font-semibold uppercase tracking-wider text-[11px]">Lesson · </span>{polishCopy(up.lesson)}
                           </div>
                         </div>
                       )}
@@ -827,8 +908,9 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
           <div className="grid md:grid-cols-2 gap-3">
             {watchOuts.map((item, i) => {
               const { head, body } = splitHeadline(item.text);
-              const primarySrc = item.source_post_ids.length > 0
-                ? postById.get(item.source_post_ids[0])
+              const effectiveSourceIds = resolveSourcePosts(item.source_post_ids);
+              const primarySrc = effectiveSourceIds.length > 0
+                ? postById.get(effectiveSourceIds[0])
                 : undefined;
               const hasDetail = Boolean(body);
               return (
@@ -861,15 +943,18 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
                     </div>
                   </summary>
                   {hasDetail && (
-                    <div className="px-4 pb-4 pl-14 text-xs text-slate-600 leading-relaxed">{body}</div>
+                    <div className="px-4 pb-4 pl-14 text-xs text-slate-600 leading-relaxed">{polishCopy(body)}</div>
                   )}
-                  {item.source_post_ids.length > 1 && (
+                  {effectiveSourceIds.length > 0 && (
                     <div className="px-4 pb-4 pl-14">
                       <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted mb-1.5">
-                        Source posts ({item.source_post_ids.length})
+                        Source posts ({effectiveSourceIds.length})
+                        {item.source_post_ids.length === 0 && (
+                          <span className="ml-1 normal-case text-ink-muted/70 font-normal">· week-level fallback</span>
+                        )}
                       </div>
                       <ul className="space-y-1">
-                        {item.source_post_ids.map((pid) => {
+                        {effectiveSourceIds.map((pid) => {
                           const p = postById.get(pid);
                           if (!p) return null;
                           return (
