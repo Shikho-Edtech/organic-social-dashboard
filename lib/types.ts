@@ -283,6 +283,12 @@ export interface OutcomeLogEntry {
   preliminary: boolean;
   matched_post_id: string;
   age_days: number | null;
+  // Sprint P7 v4.14b (2026-05-02): the slot's stated target metric +
+  // expected_reach_range. Lets the Outcomes table show what the slot was
+  // BETTING on (e.g. "Follows > 150") alongside the deterministic
+  // reach-CI scoring. Empty string for slots predating the migration.
+  slot_target_metric: string;
+  slot_expected_reach_range: string;
 }
 
 // Aggregated rollup across a set of outcome rows (typically one week).

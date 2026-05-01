@@ -410,10 +410,13 @@ export default async function OutcomesPage({
                           <th className="px-4 py-2 font-medium text-[11px] uppercase tracking-wider">
                             Format
                           </th>
-                          <th className="px-4 py-2 font-medium text-[11px] uppercase tracking-wider text-right" title="Unique reach forecast (post_total_media_view_unique). Computed at pillar × format × season level from 90-day priors. Slots in the same pillar+format display the same forecast — that's expected.">
+                          <th className="px-4 py-2 font-medium text-[11px] uppercase tracking-wider" title="The metric the slot was AIMED at when planned (e.g. 'Follows > 150', 'Engagement rate > 3%', '20K-35K unique reach'). When the slot's stated target isn't reach, the deterministic verdict still scores reach — that's the only dimension we have 90-day priors for.">
+                            Target Metric<span className="ml-1 text-ink-muted normal-case font-normal">(slot&apos;s stated bet)</span>
+                          </th>
+                          <th className="px-4 py-2 font-medium text-[11px] uppercase tracking-wider text-right" title="Unique reach forecast (post_total_media_view_unique). Computed at pillar × format × season level from 90-day priors. Always shown in unique-reach units regardless of the slot's stated target metric.">
                             Reach Forecast<span className="ml-1 text-ink-muted normal-case font-normal">(unique · pillar-level)</span>
                           </th>
-                          <th className="px-4 py-2 font-medium text-[11px] uppercase tracking-wider text-right" title="Unique reach actually delivered by the matched post (Facebook insights post_total_media_view_unique).">
+                          <th className="px-4 py-2 font-medium text-[11px] uppercase tracking-wider text-right" title="Unique reach actually delivered by the matched post (Facebook insights post_total_media_view_unique). Always shown in unique-reach units regardless of the slot's stated target metric.">
                             Actual Reach<span className="ml-1 text-ink-muted normal-case font-normal">(unique)</span>
                           </th>
                           <th className="px-4 py-2 font-medium text-[11px] uppercase tracking-wider text-right" title="Score = actual / forecast_mid. >1 = above forecast, <1 = below. Hit/Miss verdict is computed against the full CI band, not this ratio.">
@@ -469,6 +472,48 @@ export default async function OutcomesPage({
                             </td>
                             <td className="px-4 py-2 text-ink-primary">
                               {s.format || "—"}
+                            </td>
+                            <td className="px-4 py-2 text-ink-primary">
+                              {(() => {
+                                const target = (s.slot_target_metric || "").trim();
+                                const range = (s.slot_expected_reach_range || "").trim();
+                                if (!target && !range) {
+                                  return <span className="text-ink-muted text-xs italic">not stated</span>;
+                                }
+                                const isReachTarget = /reach|unique|view/i.test(target);
+                                return (
+                                  <div className="flex flex-col gap-0.5 min-w-[140px]">
+                                    {target && (
+                                      <span
+                                        className={`text-xs leading-snug ${isReachTarget ? "text-ink-primary" : "text-ink-primary"}`}
+                                        title={isReachTarget
+                                          ? "This slot's stated target is a reach metric — directly comparable to the Reach Forecast/Actual columns."
+                                          : "This slot's stated target is not a reach metric. The deterministic verdict (Hit/Miss) still scores reach because that's the only dimension with 90-day priors. Use this column to read the slot's intent."}
+                                      >
+                                        {target}
+                                      </span>
+                                    )}
+                                    {range && (
+                                      <span className="text-[10px] text-ink-muted">
+                                        Expected: {range}
+                                      </span>
+                                    )}
+                                    {target && !isReachTarget && (
+                                      <span
+                                        className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-amber-700 font-semibold mt-0.5"
+                                        title="The verdict scores reach (right two columns), not the slot's stated target metric. We only have priors for reach today — stating non-reach targets is allowed but not deterministically scored. Tier 6 of the audit roadmap addresses this."
+                                      >
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                          <circle cx="12" cy="12" r="10"></circle>
+                                          <line x1="12" y1="8" x2="12" y2="12"></line>
+                                          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                        </svg>
+                                        scored on reach
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </td>
                             <td className="px-4 py-2 text-right tabular-nums text-ink-primary">
                               <div className="inline-flex items-baseline gap-1 justify-end">
@@ -552,6 +597,37 @@ export default async function OutcomesPage({
                             </div>
                             <VerdictPill verdict={s.verdict} />
                           </div>
+                          {(() => {
+                            const target = (s.slot_target_metric || "").trim();
+                            const range = (s.slot_expected_reach_range || "").trim();
+                            if (!target && !range) return null;
+                            const isReachTarget = /reach|unique|view/i.test(target);
+                            return (
+                              <div className="mt-2 px-2.5 py-1.5 rounded-md bg-shikho-indigo-50/40 border border-shikho-indigo-100 text-xs">
+                                <div className="text-[10px] uppercase tracking-wider text-ink-muted font-semibold">
+                                  Target metric (slot&apos;s stated bet)
+                                </div>
+                                {target && (
+                                  <div className="text-ink-primary leading-snug mt-0.5">{target}</div>
+                                )}
+                                {range && (
+                                  <div className="text-[10px] text-ink-muted mt-0.5">
+                                    Expected reach: {range}
+                                  </div>
+                                )}
+                                {target && !isReachTarget && (
+                                  <div className="mt-1 inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-amber-700 font-semibold">
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                      <circle cx="12" cy="12" r="10"></circle>
+                                      <line x1="12" y1="8" x2="12" y2="12"></line>
+                                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                    </svg>
+                                    Scored on reach (only metric with priors)
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
                           <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
                             <div>
                               <div className="text-ink-muted text-[10px] uppercase tracking-wider" title="Unique reach forecast (post_total_media_view_unique)">

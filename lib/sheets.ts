@@ -1158,6 +1158,8 @@ function outcomeLogFromRow(row: Record<string, any>): OutcomeLogEntry {
     preliminary: toBool(row["Preliminary"]),
     matched_post_id: String(row["Matched Post ID"] || "").trim(),
     age_days: _numOrNull(row["Age Days"]),
+    slot_target_metric: String(row["Slot Target Metric"] || "").trim(),
+    slot_expected_reach_range: String(row["Slot Expected Reach Range"] || "").trim(),
   };
 }
 
