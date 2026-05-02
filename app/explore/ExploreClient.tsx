@@ -191,15 +191,17 @@ export default function ExploreClient({ posts, activeMetrics = ["reach"], active
 
   return (
     <div>
-      {/* Header — mirrors PageHeader: mobile stacks title above picker,
-          picker self-aligns right. sm+: side by side at far edges. */}
-      <div className="mb-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+      {/* Header — mirrors PageHeader compact mode (R1, 2026-05-02): tighter
+          title + meta inlined onto one line so the filter toolbar starts
+          higher up the viewport. Mobile stacks title above picker, picker
+          self-aligns right. sm+: side by side at far edges. */}
+      <div className="mb-3 sm:mb-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold text-slate-900">Explore</h1>
-            <p className="text-sm text-slate-500 mt-1">Filter by any dimension, group by any dimension</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Explore</h1>
+            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Filter by any dimension, group by any dimension</p>
           </div>
-          <div className="flex flex-col items-end gap-2 self-end sm:self-auto">
+          <div className="flex flex-col items-end gap-1 self-end sm:self-auto">
             <RangeDropdown
               preset={preset}
               setPreset={setPreset}
@@ -208,16 +210,15 @@ export default function ExploreClient({ posts, activeMetrics = ["reach"], active
               setCustomStart={setCustomStart}
               setCustomEnd={setCustomEnd}
             />
-            <div className="text-xs text-slate-500">{rangeLabel}</div>
-            {/* Sprint P7 v4.6 (2026-04-30, P0 finding #2): "Data as of"
-                stamp matching the rest of the dashboard. Reconciles
-                cross-page KPI freshness when Overview/Explore caches are
-                hit at different times. */}
-            {lastScrapedAt && (
-              <div className="text-[11px] text-slate-500">
-                Data as of: <span className="font-medium">{new Date(lastScrapedAt).toLocaleString("en-GB", { timeZone: "Asia/Dhaka", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })} BDT</span>
-              </div>
-            )}
+            <div className="text-[11px] text-slate-500 leading-snug text-right">
+              <span>{rangeLabel}</span>
+              {lastScrapedAt && (
+                <>
+                  <span className="mx-1.5 text-ink-muted/60">·</span>
+                  <span>Data as of {new Date(lastScrapedAt).toLocaleString("en-GB", { timeZone: "Asia/Dhaka", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })} BDT</span>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>

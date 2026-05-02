@@ -235,7 +235,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
 
   return (
     <div>
-      <PageHeader title="Overview" subtitle="Key performance at a glance" dateLabel={range.label} lastScrapedAt={runStatus.last_run_at} />
+      <PageHeader title="Overview" subtitle="Key performance at a glance" dateLabel={range.label} lastScrapedAt={runStatus.last_run_at} compact />
 
       {/* Sprint P7 Phase 3: page-level metric selector. Affects the
           Reach/Interactions/etc Trend chart + the Content Pillars

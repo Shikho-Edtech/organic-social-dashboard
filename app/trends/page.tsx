@@ -160,7 +160,7 @@ export default async function TrendsPage({ searchParams }: { searchParams: Recor
 
   return (
     <div>
-      <PageHeader title="Trends" subtitle="Time-based patterns across the period" dateLabel={range.label} lastScrapedAt={runStatus.last_run_at} />
+      <PageHeader title="Trends" subtitle="Time-based patterns across the period" dateLabel={range.label} lastScrapedAt={runStatus.last_run_at} compact />
       <MetricSelector basePath="/trends" active={activeMetrics} preserve={searchParams} />
 
       <div className="grid lg:grid-cols-2 gap-4 mb-6">

@@ -1,5 +1,32 @@
 # Changelog
 
+## 2026-05-02 — v4.18 R1: Pulse + Weekly bucket header compression
+
+User feedback (transcript backlog): "the headers on Pulse and Weekly
+pages take too much vertical space. By the time I see the first chart
+I've scrolled half a screen on mobile."
+
+Implementation:
+- New `compact` prop on `PageHeader` (default false). When true:
+  shrinks title `text-2xl` → `text-xl` on mobile (still text-2xl on sm+),
+  drops `mb-6` → `mb-3 sm:mb-4`, inlines the picker meta onto a single
+  line (`{dateLabel} · {dataAsOf}` instead of two stacked lines).
+- `WeekSelector` slimmed from `mb-4` → `mb-3`, pills `px-3 py-1` → `px-2.5 py-0.5`,
+  pill text `text-xs` → `text-[11px]`, range subscript `text-[10px]` → `text-[9px]`,
+  label "Showing:" → "Week:". Saves ~12-16px.
+- Explore's custom inline header rewritten to match the compact pattern
+  (it doesn't use `PageHeader` because of its `RangeDropdown` client
+  state — but the visual rules are identical now).
+
+Applied to all 6 Pulse pages (Overview, Trends, Engagement, Timing,
+Reels, Explore) and all 3 Weekly pages (Diagnosis, Plan, Outcomes).
+**Today** and **Reference** keep the spacious version: they're focus
+landing pages where the 28px title earns its space.
+
+Total saved per affected page: ~40-60px of vertical chrome on mobile,
+~24-32px on desktop. Cumulative effect: the first chart / first KPI
+strip moves above the fold on a 360px screen for every Pulse page.
+
 ## 2026-05-02 — v4.18 R5: Outcomes Yesterday inline focus card
 
 User feedback (transcript backlog): "when I open Outcomes on a Tuesday

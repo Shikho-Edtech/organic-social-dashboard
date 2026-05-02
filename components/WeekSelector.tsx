@@ -165,10 +165,14 @@ export default function WeekSelector({
     return qs ? `${basePath}?${qs}` : basePath;
   }
 
+  // R1 (2026-05-02): tighter chrome on Weekly bucket pages. mb-4 → mb-3,
+  // pills px-3 py-1 → px-2.5 py-0.5 with smaller font, range subscript
+  // shrunk to [9px]. Saves ~12-16px of vertical space + makes the row read
+  // as a control strip rather than a hero.
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
-      <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-        Showing:
+    <div className="mb-3 flex flex-wrap items-center gap-1.5 text-sm">
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">
+        Week:
       </span>
       {choices.map((c) => {
         const isActive = c === activeKey;
@@ -179,7 +183,7 @@ export default function WeekSelector({
             href={buildHref(c)}
             scroll={false}
             aria-pressed={isActive}
-            className={`px-3 py-1 rounded-md border text-xs font-medium transition-colors ${
+            className={`px-2.5 py-0.5 rounded-md border text-[11px] font-medium transition-colors ${
               isActive
                 ? "bg-brand-shikho-indigo text-white border-brand-shikho-indigo"
                 : "bg-ink-paper text-ink-secondary border-ink-100 hover:border-brand-shikho-indigo hover:text-brand-shikho-indigo"
@@ -188,7 +192,7 @@ export default function WeekSelector({
           >
             <span>{label}</span>
             <span
-              className={`ml-1.5 text-[10px] ${
+              className={`ml-1 text-[9px] ${
                 isActive ? "text-white/80" : "text-ink-muted"
               }`}
             >

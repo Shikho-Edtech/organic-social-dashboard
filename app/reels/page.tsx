@@ -411,7 +411,7 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
   if (totalReels === 0) {
     return (
       <div>
-        <PageHeader title="Reels" subtitle="Video watch time, retention, and follower conversion" dateLabel={`${range.label} · Bangladesh Time (UTC+6)`} lastScrapedAt={runStatus.last_run_at} />
+        <PageHeader title="Reels" subtitle="Video watch time, retention, and follower conversion" dateLabel={`${range.label} · Bangladesh Time (UTC+6)`} lastScrapedAt={runStatus.last_run_at} compact />
       {/* Sprint P7 v4.7 (2026-04-30, P1.9): MetricSelector hidden on
           Reels because the page's metrics (Plays / Watch Time /
           Followers Gained) are reel-domain and don't map to the four
@@ -431,7 +431,7 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
 
   return (
     <div>
-      <PageHeader title="Reels" subtitle="Video watch time, retention, and follower conversion" dateLabel={`${range.label} · Bangladesh Time (UTC+6)`} />
+      <PageHeader title="Reels" subtitle="Video watch time, retention, and follower conversion" dateLabel={`${range.label} · Bangladesh Time (UTC+6)`} compact />
       {/* Sprint P7 v4.7 (2026-04-30, P1.9): MetricSelector hidden on
           Reels because the page's metrics (Plays / Watch Time /
           Followers Gained) are reel-domain and don't map to the four

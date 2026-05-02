@@ -360,7 +360,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
 
   return (
     <div>
-      <PageHeader title="Engagement" subtitle="What drives interaction" dateLabel={range.label} lastScrapedAt={runStatus.last_run_at} />
+      <PageHeader title="Engagement" subtitle="What drives interaction" dateLabel={range.label} lastScrapedAt={runStatus.last_run_at} compact />
 
       {/* "Best X" strip — reach-weighted, with category-semantic colour on
           the winning value. A Reel winner reads pink (same as Plan's reel

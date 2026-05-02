@@ -289,6 +289,7 @@ export default async function OutcomesPage({
             : "Awaiting first weekly grading run"
         }
         showPicker={false}
+        compact
       />
 
       {allWeeks.length === 0 && (

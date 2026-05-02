@@ -207,7 +207,7 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
 
   return (
     <div>
-      <PageHeader title="Timing" subtitle="When to post for max reach and engagement" dateLabel={`${range.label} · Bangladesh Time (UTC+6)`} lastScrapedAt={runStatus.last_run_at} />
+      <PageHeader title="Timing" subtitle="When to post for max reach and engagement" dateLabel={`${range.label} · Bangladesh Time (UTC+6)`} lastScrapedAt={runStatus.last_run_at} compact />
       <MetricSelector basePath="/timing" active={activeMetrics} preserve={searchParams} />
 
       {/* Sprint P7 v4.7 (2026-04-30, P2.21): synthesis hero above the 4

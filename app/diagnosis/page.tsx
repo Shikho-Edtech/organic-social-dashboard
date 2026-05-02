@@ -325,6 +325,7 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
           subtitle="Claude's diagnosis and recommended actions"
           dateLabel={`${range.label} · AI diagnosis off`}
           lastScrapedAt={runStatus.last_run_at}
+          compact
         />
         <AIDisabledEmptyState
           stage={STAGES.diagnosis}
@@ -363,6 +364,7 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
               : "Last week's verdict")}
         dateLabel={`${range.label} · ${isArchival ? "archived snapshot" : (isThisWeekView ? "this week" : "last week")}`}
         lastScrapedAt={runStatus.last_run_at}
+        compact
       />
 
       {/* Sprint P7 Phase 2: week selector for Diagnosis. Hidden in
