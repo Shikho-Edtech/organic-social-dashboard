@@ -84,7 +84,13 @@ export default function RecommendedThisPeriod(props: RecommendedThisPeriodProps)
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-4 sm:p-5">
+      {/* User feedback (2026-05-02): single row of 4 boxes horizontally on
+          desktop. Mobile still stacks 1-up. Full-form labels — "engagement
+          rate" / "across N posts" — instead of "ER" / "n=N". The Day/Hour
+          slots are still supported by the prop API but currently omitted
+          on Overview (cross-link to /timing handles the when-to-post
+          question). */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4 sm:p-5">
         {/* WHAT TO POST — content recommendations */}
         {bestFormat && bestPillar && (
           <RecCard
@@ -96,7 +102,7 @@ export default function RecommendedThisPeriod(props: RecommendedThisPeriodProps)
                 <span style={{ color: colorFor("pillar", bestPillar.key) }}>{bestPillar.key}</span>
               </>
             }
-            secondary={`${bestFormat.rate.toFixed(2)}% ER on ${bestFormat.count} ${bestFormat.key.toLowerCase()}${bestFormat.count === 1 ? "" : "s"}, ${bestPillar.rate.toFixed(2)}% on ${bestPillar.count} pillar post${bestPillar.count === 1 ? "" : "s"}. Intersection is untested.`}
+            secondary={`${bestFormat.rate.toFixed(2)}% engagement rate on ${bestFormat.count} ${bestFormat.key.toLowerCase()}${bestFormat.count === 1 ? "" : "s"}; ${bestPillar.rate.toFixed(2)}% across ${bestPillar.count} pillar post${bestPillar.count === 1 ? "" : "s"}. Intersection is untested.`}
             accent={colorFor("format", bestFormat.key)}
           />
         )}
@@ -104,7 +110,7 @@ export default function RecommendedThisPeriod(props: RecommendedThisPeriodProps)
           <RecCard
             label="Opening hook"
             primary={<span style={{ color: colorFor("hook", bestHook.key) }}>{bestHook.key}</span>}
-            secondary={`${bestHook.rate.toFixed(2)}% ER across ${bestHook.count} post${bestHook.count === 1 ? "" : "s"}.`}
+            secondary={`${bestHook.rate.toFixed(2)}% engagement rate across ${bestHook.count} post${bestHook.count === 1 ? "" : "s"}.`}
             accent={colorFor("hook", bestHook.key)}
           />
         )}
@@ -112,7 +118,7 @@ export default function RecommendedThisPeriod(props: RecommendedThisPeriodProps)
           <RecCard
             label="Feature spotlight"
             primary={<span style={{ color: colorFor("spotlight", bestSpotlight.key) }}>{bestSpotlight.key}</span>}
-            secondary={`${bestSpotlight.rate.toFixed(2)}% reach-weighted ER, ${bestSpotlight.count} post${bestSpotlight.count === 1 ? "" : "s"}.`}
+            secondary={`${bestSpotlight.rate.toFixed(2)}% reach-weighted engagement rate across ${bestSpotlight.count} post${bestSpotlight.count === 1 ? "" : "s"}.`}
             accent={colorFor("spotlight", bestSpotlight.key)}
           />
         )}
@@ -120,11 +126,13 @@ export default function RecommendedThisPeriod(props: RecommendedThisPeriodProps)
           <RecCard
             label="Caption tone"
             primary={<span style={{ color: colorFor("tone", bestTone.key) }}>{bestTone.key}</span>}
-            secondary={`${bestTone.rate.toFixed(2)}% ER across ${bestTone.count} post${bestTone.count === 1 ? "" : "s"}. Tone ≠ hook; independent variable.`}
+            secondary={`${bestTone.rate.toFixed(2)}% engagement rate across ${bestTone.count} post${bestTone.count === 1 ? "" : "s"}. Tone is independent of the hook.`}
             accent={colorFor("tone", bestTone.key)}
           />
         )}
-        {/* WHEN TO POST — posting window from Timing aggregation */}
+        {/* WHEN TO POST — posting window from Timing aggregation. Currently
+            unused on Overview; if both day + hour slots are passed they
+            spill onto a second row alongside the 4 content slots. */}
         {bestDayReach && (
           <RecCard
             label="Best day for reach"

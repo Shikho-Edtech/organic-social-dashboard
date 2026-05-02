@@ -354,153 +354,181 @@ export default async function ReferencePage() {
         </div>
         <div className="grid md:grid-cols-2 gap-4">
           {taxonomySections.map((sec, i) => (
-            <Card key={i} className="border-l-4 border-l-brand-shikho-indigo">
-              <h3 className="text-base font-semibold text-ink-primary mb-1">{sec.title}</h3>
-              <p className="text-xs text-ink-muted leading-relaxed mb-2.5">{sec.description}</p>
-              {sec.values.length === 0 ? (
-                <p className="text-xs text-ink-muted italic">No values found in current data.</p>
-              ) : (
-                <ul className="space-y-1.5">
-                  {sec.values.map((v) => (
-                    <li key={v} className="text-sm leading-snug">
-                      <div>
-                        <span className="font-medium text-ink-primary">{v}</span>
-                        {sec.valueDescriptions?.[v] && (
-                          <span className="ml-1.5 text-xs text-ink-muted">· {sec.valueDescriptions[v]}</span>
-                        )}
-                      </div>
-                      {sec.valueExamples?.[v] && (
-                        <div className="mt-0.5 text-[11px] text-ink-secondary italic leading-snug pl-2 border-l border-ink-100">
-                          e.g. {sec.valueExamples[v]}
-                        </div>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <div className="mt-2.5 pt-2 border-t border-ink-100 text-[10px] uppercase tracking-wider text-ink-muted">
-                {sec.values.length} distinct value{sec.values.length === 1 ? "" : "s"}
+            <div key={i} className="bg-ink-paper border border-ink-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-base ease-shikho-out overflow-hidden">
+              {/* Color-coded header bar — uses each section's canonical
+                  gradient. Operator can scan the page color-first and
+                  navigate to the dimension they care about without reading
+                  every title. */}
+              <div className={`bg-gradient-to-r ${sec.accent} px-5 py-3 text-white`}>
+                <h3 className="text-base font-semibold leading-tight">{sec.title}</h3>
+                <p className="text-[11px] text-white/85 leading-snug mt-0.5">{sec.description}</p>
               </div>
-            </Card>
+              <div className="p-5">
+                {sec.values.length === 0 ? (
+                  <p className="text-xs text-ink-muted italic">No values found in current data.</p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {sec.values.map((v) => (
+                      <li key={v} className="text-sm leading-snug">
+                        <div>
+                          <span className="font-medium text-ink-primary">{v}</span>
+                          {sec.valueDescriptions?.[v] && (
+                            <span className="ml-1.5 text-xs text-ink-muted">· {sec.valueDescriptions[v]}</span>
+                          )}
+                        </div>
+                        {sec.valueExamples?.[v] && (
+                          <div className="mt-0.5 text-[11px] text-ink-secondary italic leading-snug pl-2 border-l-2 border-ink-100">
+                            e.g. {sec.valueExamples[v]}
+                          </div>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <div className="mt-3 pt-2 border-t border-ink-100 text-[10px] uppercase tracking-wider text-ink-muted">
+                  {sec.values.length} distinct value{sec.values.length === 1 ? "" : "s"}
+                </div>
+              </div>
+            </div>
           ))}
 
-          {/* W4: Audiences — nested grouped (Students > Junior/SSC/HSC/Admission, Parents, Teachers, General) */}
-          <Card className="border-l-4 border-l-brand-shikho-indigo">
-            <h3 className="text-base font-semibold text-ink-primary mb-1">Audiences</h3>
-            <p className="text-xs text-ink-muted leading-relaxed mb-2.5">
-              Primary target cohort the post is written for. Drives audience-segmented analysis (Tier 3 in the algorithm audit roadmap).
-            </p>
-            {audiences.length === 0 ? (
-              <p className="text-xs text-ink-muted italic">No values found in current data.</p>
-            ) : (
-              <div className="space-y-2.5">
-                {audienceGroupsLive.map((g) => (
-                  <div key={g.label}>
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-brand-shikho-indigo mb-1">
-                      {g.label}
-                      <span className="ml-1.5 text-[10px] font-normal text-ink-muted normal-case tracking-normal">
-                        ({g.presentMembers.length})
-                      </span>
-                    </div>
-                    <ul className="space-y-1 pl-3 border-l border-ink-100">
-                      {g.presentMembers.map((m) => (
-                        <li key={m} className="text-sm leading-snug">
-                          <span className="font-medium text-ink-primary">{m}</span>
-                          {AUDIENCE_DESCRIPTIONS[m] && (
-                            <span className="ml-1.5 text-xs text-ink-muted">· {AUDIENCE_DESCRIPTIONS[m]}</span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-                {otherAudiences.length > 0 && (
-                  <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted mb-1">Other</div>
-                    <ul className="space-y-1 pl-3 border-l border-ink-100">
-                      {otherAudiences.map((a) => (
-                        <li key={a} className="text-sm leading-snug">
-                          <span className="font-medium text-ink-primary">{a}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )}
-            <div className="mt-2.5 pt-2 border-t border-ink-100 text-[10px] uppercase tracking-wider text-ink-muted">
-              {audiences.length} distinct value{audiences.length === 1 ? "" : "s"}
+          {/* Audiences — nested grouped (Students > Junior/SSC/HSC/Admission,
+              Parents, Teachers, General). Sunrise gradient header to set it
+              apart from the indigo/cyan/magenta core dimensions. */}
+          <div className="bg-ink-paper border border-ink-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-base ease-shikho-out overflow-hidden">
+            <div className="bg-gradient-to-r from-brand-shikho-indigo to-brand-cyan px-5 py-3 text-white">
+              <h3 className="text-base font-semibold leading-tight">Audiences</h3>
+              <p className="text-[11px] text-white/85 leading-snug mt-0.5">
+                Primary target cohort the post is written for. Drives audience-segmented analysis.
+              </p>
             </div>
-          </Card>
+            <div className="p-5">
+              {audiences.length === 0 ? (
+                <p className="text-xs text-ink-muted italic">No values found in current data.</p>
+              ) : (
+                <div className="space-y-2.5">
+                  {audienceGroupsLive.map((g) => (
+                    <div key={g.label}>
+                      <div className="text-[11px] font-semibold uppercase tracking-wider text-brand-shikho-indigo mb-1">
+                        {g.label}
+                        <span className="ml-1.5 text-[10px] font-normal text-ink-muted normal-case tracking-normal">
+                          ({g.presentMembers.length})
+                        </span>
+                      </div>
+                      <ul className="space-y-1 pl-3 border-l-2 border-shikho-indigo-100">
+                        {g.presentMembers.map((m) => (
+                          <li key={m} className="text-sm leading-snug">
+                            <span className="font-medium text-ink-primary">{m}</span>
+                            {AUDIENCE_DESCRIPTIONS[m] && (
+                              <span className="ml-1.5 text-xs text-ink-muted">· {AUDIENCE_DESCRIPTIONS[m]}</span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                  {otherAudiences.length > 0 && (
+                    <div>
+                      <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted mb-1">Other</div>
+                      <ul className="space-y-1 pl-3 border-l-2 border-ink-100">
+                        {otherAudiences.map((a) => (
+                          <li key={a} className="text-sm leading-snug">
+                            <span className="font-medium text-ink-primary">{a}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className="mt-3 pt-2 border-t border-ink-100 text-[10px] uppercase tracking-wider text-ink-muted">
+                {audiences.length} distinct value{audiences.length === 1 ? "" : "s"}
+              </div>
+            </div>
+          </div>
 
-          {/* W4: Languages — inline pills (compact horizontal) */}
-          <Card className="border-l-4 border-l-brand-shikho-indigo">
-            <h3 className="text-base font-semibold text-ink-primary mb-1">Languages</h3>
-            <p className="text-xs text-ink-muted leading-relaxed mb-2.5">
-              Caption primary language. Affects audience reach (Bangla content reaches different cohort than English).
-            </p>
-            {languages.length === 0 ? (
-              <p className="text-xs text-ink-muted italic">No values found in current data.</p>
-            ) : (
-              <div className="space-y-1.5">
+          {/* Languages — inline pills (compact horizontal). Coral gradient. */}
+          <div className="bg-ink-paper border border-ink-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-base ease-shikho-out overflow-hidden">
+            <div className="bg-gradient-to-r from-brand-shikho-coral to-brand-shikho-magenta px-5 py-3 text-white">
+              <h3 className="text-base font-semibold leading-tight">Languages</h3>
+              <p className="text-[11px] text-white/85 leading-snug mt-0.5">
+                Caption primary language. Affects audience reach (Bangla content reaches a different cohort than English).
+              </p>
+            </div>
+            <div className="p-5">
+              {languages.length === 0 ? (
+                <p className="text-xs text-ink-muted italic">No values found in current data.</p>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {languages.map((l) => (
+                      <span
+                        key={l}
+                        className="inline-flex items-center text-xs font-semibold bg-gradient-to-r from-shikho-magenta-50 to-shikho-coral-50 text-brand-shikho-magenta border border-shikho-magenta-100 rounded-md px-2.5 py-1 shadow-xs"
+                        title={LANGUAGE_DESCRIPTIONS[l] || undefined}
+                      >
+                        {l}
+                      </span>
+                    ))}
+                  </div>
+                  {languages.some((l) => LANGUAGE_DESCRIPTIONS[l] || LANGUAGE_EXAMPLES[l]) && (
+                    <ul className="space-y-1 pt-1">
+                      {languages
+                        .filter((l) => LANGUAGE_DESCRIPTIONS[l] || LANGUAGE_EXAMPLES[l])
+                        .map((l) => (
+                          <li key={l} className="leading-snug">
+                            <div className="text-[11px] text-ink-muted">
+                              <span className="font-medium text-ink-secondary">{l}</span>
+                              {LANGUAGE_DESCRIPTIONS[l] && <span className="ml-1.5">· {LANGUAGE_DESCRIPTIONS[l]}</span>}
+                            </div>
+                            {LANGUAGE_EXAMPLES[l] && (
+                              <div className="mt-0.5 text-[11px] text-ink-secondary italic leading-snug pl-2 border-l-2 border-shikho-magenta-100">
+                                e.g. {LANGUAGE_EXAMPLES[l]}
+                              </div>
+                            )}
+                          </li>
+                        ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+              <div className="mt-3 pt-2 border-t border-ink-100 text-[10px] uppercase tracking-wider text-ink-muted">
+                {languages.length} distinct value{languages.length === 1 ? "" : "s"}
+              </div>
+            </div>
+          </div>
+
+          {/* Spotlight Names — separate full-width card, dedup'd live. */}
+          <div className="md:col-span-2 bg-ink-paper border border-ink-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-base ease-shikho-out overflow-hidden">
+            <div className="bg-gradient-to-r from-brand-amber to-brand-shikho-coral px-5 py-3 text-white">
+              <h3 className="text-base font-semibold leading-tight">
+                Spotlight Names
+                <span className="ml-1.5 text-[10px] uppercase text-white/80 font-semibold">deduplicated</span>
+              </h3>
+              <p className="text-[11px] text-white/85 leading-snug mt-0.5">
+                Distinct creator / product / campaign names tagged across all posts. Spotlight Type ↑ defines the kind; Spotlight Name is the specific instance.
+              </p>
+            </div>
+            <div className="p-5">
+              {spotlightNames.length === 0 ? (
+                <p className="text-xs text-ink-muted italic">No spotlight names in current data.</p>
+              ) : (
                 <div className="flex flex-wrap gap-1.5">
-                  {languages.map((l) => (
+                  {spotlightNames.map((n) => (
                     <span
-                      key={l}
-                      className="inline-flex items-center text-xs font-medium bg-shikho-indigo-50 text-brand-shikho-indigo rounded-md px-2 py-1"
-                      title={LANGUAGE_DESCRIPTIONS[l] || undefined}
+                      key={n}
+                      className="inline-flex items-center text-[11px] font-medium bg-gradient-to-r from-amber-50 to-shikho-coral-50 text-brand-shikho-coral border border-shikho-coral-100 rounded-md px-2 py-1"
                     >
-                      {l}
+                      {n}
                     </span>
                   ))}
                 </div>
-                {languages.some((l) => LANGUAGE_DESCRIPTIONS[l] || LANGUAGE_EXAMPLES[l]) && (
-                  <ul className="space-y-1 pt-1">
-                    {languages
-                      .filter((l) => LANGUAGE_DESCRIPTIONS[l] || LANGUAGE_EXAMPLES[l])
-                      .map((l) => (
-                        <li key={l} className="leading-snug">
-                          <div className="text-[11px] text-ink-muted">
-                            <span className="font-medium text-ink-secondary">{l}</span>
-                            {LANGUAGE_DESCRIPTIONS[l] && <span className="ml-1.5">· {LANGUAGE_DESCRIPTIONS[l]}</span>}
-                          </div>
-                          {LANGUAGE_EXAMPLES[l] && (
-                            <div className="mt-0.5 text-[11px] text-ink-secondary italic leading-snug pl-2 border-l border-ink-100">
-                              e.g. {LANGUAGE_EXAMPLES[l]}
-                            </div>
-                          )}
-                        </li>
-                      ))}
-                  </ul>
-                )}
+              )}
+              <div className="mt-3 pt-2 border-t border-ink-100 text-[10px] uppercase tracking-wider text-ink-muted">
+                {spotlightNames.length} distinct
               </div>
-            )}
-            <div className="mt-2.5 pt-2 border-t border-ink-100 text-[10px] uppercase tracking-wider text-ink-muted">
-              {languages.length} distinct value{languages.length === 1 ? "" : "s"}
             </div>
-          </Card>
-
-          {/* Spotlight Names — separate card, dedup'd live */}
-          <Card className="md:col-span-2 border-l-4 border-l-brand-shikho-coral">
-            <h3 className="text-base font-semibold text-ink-primary mb-1">Spotlight Names <span className="ml-1 text-[10px] uppercase text-ink-muted font-semibold">deduplicated</span></h3>
-            <p className="text-xs text-ink-muted leading-relaxed mb-3">
-              Distinct creator / product / campaign names tagged across all posts. Spotlight Type ↑ defines the kind; Spotlight Name is the specific instance. Strategy&apos;s teacher_rotation references these.
-            </p>
-            {spotlightNames.length === 0 ? (
-              <p className="text-xs text-ink-muted italic">No spotlight names in current data.</p>
-            ) : (
-              <div className="flex flex-wrap gap-1.5">
-                {spotlightNames.map((n) => (
-                  <span key={n} className="inline-flex items-center text-[11px] font-medium bg-shikho-indigo-50 text-brand-shikho-indigo rounded-md px-2 py-1">
-                    {n}
-                  </span>
-                ))}
-              </div>
-            )}
-            <div className="mt-3 pt-2 border-t border-ink-100 text-[10px] uppercase tracking-wider text-ink-muted">
-              {spotlightNames.length} distinct
-            </div>
-          </Card>
+          </div>
         </div>
       </div>
 
@@ -518,13 +546,29 @@ export default async function ReferencePage() {
           <span className="text-[11px] text-ink-muted uppercase tracking-wider">how the dashboard counts things</span>
         </div>
         <div className="grid md:grid-cols-2 gap-3">
-          {definitions.map((d, i) => (
-            <Card key={i} className="">
-              <h3 className="text-sm font-semibold text-ink-primary mb-1">{d.term}</h3>
-              <p className="text-xs font-medium text-ink-secondary leading-snug mb-1.5">{d.key}</p>
-              <p className="text-[11px] text-ink-muted leading-relaxed">{d.def}</p>
-            </Card>
-          ))}
+          {definitions.map((d, i) => {
+            // Subject-aware accent: terms grouped into 4 visual families so the
+            // grid scans by topic instead of as 15 identical cards. Reach/QE/
+            // Engagement use indigo+magenta (the metric family); Verdict/Hit
+            // Rate/Calibration use teal+cyan (the scoring family); Forecast/
+            // Hypothesis/Past-week use sunrise (the strategy family); System
+            // Suggestions/Mid-week use coral (the operational family).
+            const accentClass =
+              /(reach|engagement|quality engagement|interactions|metric)/i.test(d.term)
+                ? "border-l-brand-shikho-magenta"
+                : /(verdict|hit rate|calibration|score|prelim)/i.test(d.term)
+                  ? "border-l-brand-teal"
+                  : /(forecast|hypothesis|past-week|week|fallback)/i.test(d.term)
+                    ? "border-l-brand-amber"
+                    : "border-l-brand-shikho-coral";
+            return (
+              <Card key={i} className={`border-l-4 ${accentClass}`}>
+                <h3 className="text-sm font-semibold text-ink-primary mb-1">{d.term}</h3>
+                <p className="text-xs font-medium text-ink-secondary leading-snug mb-1.5">{d.key}</p>
+                <p className="text-[11px] text-ink-muted leading-relaxed">{d.def}</p>
+              </Card>
+            );
+          })}
         </div>
       </div>
 
