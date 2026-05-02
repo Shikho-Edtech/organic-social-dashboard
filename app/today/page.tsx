@@ -150,20 +150,20 @@ export default async function TodayPage() {
     if (ageHours > 36) {
       alerts.push({
         severity: "warning",
-        text: `Calendar pipeline last ran ${Math.round(ageHours)}h ago — fresh run may be due`,
+        text: `Calendar pipeline last ran ${Math.round(ageHours)}h ago: fresh run may be due`,
       });
     }
   }
   if (!todaysSlotsByTime.length) {
     alerts.push({
       severity: "warning",
-      text: `No planned slots in Content_Calendar for ${today} — running-week plan may be incomplete`,
+      text: `No planned slots in Content_Calendar for ${today}: running-week plan may be incomplete`,
     });
   }
   if (todaysSlotsByTime.length && todaysPosts.length > todaysSlotsByTime.length) {
     alerts.push({
       severity: "info",
-      text: `Today: ${todaysPosts.length} posts published vs ${todaysSlotsByTime.length} planned — over-publishing`,
+      text: `Today: ${todaysPosts.length} posts published vs ${todaysSlotsByTime.length} planned (over-publishing)`,
     });
   }
 
@@ -247,7 +247,7 @@ export default async function TodayPage() {
         </div>
         {todaysSlotsByTime.length === 0 ? (
           <p className="text-sm text-ink-muted py-4">
-            No slots planned for today. Either the running-week plan hasn&apos;t been generated yet (Plan&apos;s Regenerate button) or this is an unexpected gap — check Plan page.
+            No slots planned for today. Either the running-week plan hasn&apos;t been generated yet, or this is an unexpected gap. Check the Plan page.
           </p>
         ) : (
           <ul className="divide-y divide-ink-100">
@@ -435,7 +435,7 @@ export default async function TodayPage() {
           </div>
         </div>
         <div className="mt-4 px-3 py-2 rounded-md bg-ink-50 border border-ink-100 text-[11px] text-ink-secondary leading-relaxed">
-          <strong className="text-ink-primary">Two metrics shown in parallel.</strong> Reach is the current scoring anchor (what priors and Outcomes verdicts measure). Quality Engagement (Shares × 2 + Comments × 1) is a candidate north-star — displayed alongside reach for 4–8 weeks while we collect data on which one tracks team intuition better. Decision deferred to <code className="text-[10px] px-1 py-0.5 rounded bg-ink-100">North_Star_Trace</code> review. See <Link href="/docs" className="underline">PLAN_ALGORITHM_AUDIT.md Tier 4</Link> for rationale.
+          <strong className="text-ink-primary">Two metrics shown in parallel.</strong> Reach is the current scoring anchor (what priors and Outcomes verdicts measure). Quality Engagement (Shares × 2, Comments × 1) is a candidate north-star, displayed alongside reach for 4 to 8 weeks while we collect data on which one tracks team intuition better. Decision deferred to <code className="text-[10px] px-1 py-0.5 rounded bg-ink-100">North_Star_Trace</code> review. See <Link href="/docs" className="underline">PLAN_ALGORITHM_AUDIT.md Tier 4</Link> for rationale.
         </div>
       </Card>
     </div>

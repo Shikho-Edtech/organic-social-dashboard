@@ -387,40 +387,50 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
             <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
               Winning pattern this period
             </div>
+            {/* Sprint P7 v4.18 (2026-05-02): explicit dimension labels.
+                Pre-v4.18 the sentence read 'Video × Product/Program Promo
+                × Educational tone, hooked with Announcement, spotlighting
+                product.' Readers had to infer what each token represented
+                — the first 'Video' is a format, the second is a pillar,
+                etc. Now each value carries an inline muted label so the
+                sentence answers 'what is this' without requiring schema
+                memory. */}
             <div className="text-base sm:text-lg leading-snug text-ink-primary">
-              {[
-                bestFormat && (
-                  <span key="f">
-                    <span style={{ color: canonicalColor("format", bestFormat.key) }} className="font-semibold">{bestFormat.key}</span>
-                  </span>
-                ),
-                bestPillar && (
-                  <span key="p">
-                    {" × "}
-                    <span style={{ color: canonicalColor("pillar", bestPillar.key) }} className="font-semibold">{bestPillar.key}</span>
-                  </span>
-                ),
-                bestTone && (
-                  <span key="t">
-                    {" × "}
-                    <span style={{ color: canonicalColor("tone", bestTone.key) }} className="font-semibold">{bestTone.key}</span>
-                  </span>
-                ),
-              ].filter(Boolean)}
-              {" tone, "}
+              {bestFormat && (
+                <span>
+                  <span style={{ color: canonicalColor("format", bestFormat.key) }} className="font-semibold">{bestFormat.key}</span>
+                  <span className="text-[11px] text-ink-muted font-normal ml-1">(format)</span>
+                </span>
+              )}
+              {bestPillar && (
+                <>
+                  <span className="text-ink-muted">{" × "}</span>
+                  <span style={{ color: canonicalColor("pillar", bestPillar.key) }} className="font-semibold">{bestPillar.key}</span>
+                  <span className="text-[11px] text-ink-muted font-normal ml-1">(pillar)</span>
+                </>
+              )}
+              {bestTone && (
+                <>
+                  <span className="text-ink-muted">{" × "}</span>
+                  <span style={{ color: canonicalColor("tone", bestTone.key) }} className="font-semibold">{bestTone.key}</span>
+                  <span className="text-[11px] text-ink-muted font-normal ml-1">(caption tone)</span>
+                </>
+              )}
               {bestHook && (
                 <>
-                  hooked with{" "}
+                  <span className="text-ink-muted">{", hooked with "}</span>
                   <span style={{ color: canonicalColor("hook", bestHook.key) }} className="font-semibold">{bestHook.key}</span>
+                  <span className="text-[11px] text-ink-muted font-normal ml-1">(hook)</span>
                 </>
               )}
               {bestSpotlight && (
                 <>
-                  , spotlighting{" "}
+                  <span className="text-ink-muted">{", spotlighting "}</span>
                   <span style={{ color: canonicalColor("spotlight", bestSpotlight.key) }} className="font-semibold">{bestSpotlight.key.toLowerCase()}</span>
+                  <span className="text-[11px] text-ink-muted font-normal ml-1">(spotlight type)</span>
                 </>
               )}
-              .
+              <span className="text-ink-muted">.</span>
             </div>
             <div className="text-xs text-ink-muted">
               Each dimension ranked independently by reach-weighted engagement, n≥{MIN_N}. The intersection of all five is untested — treat the synthesis as a hypothesis, not a guarantee. Per-dimension breakdowns below.

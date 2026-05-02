@@ -299,11 +299,15 @@ export default function ExploreClient({ posts, activeMetrics = ["reach"], active
               first active metric's daily series. */}
           <div className="mb-6">
             <ChartCard
-              title={`Performance by ${groupByLabel}`}
+              title={
+                isComposite
+                  ? `Performance by ${groupByLabel} · Composite of ${activeMetrics.map((m) => metricLabelFull[m]).join(", ")}`
+                  : `Performance by ${groupByLabel}`
+              }
               kind="ai"
               subtitle={
                 isComposite
-                  ? `Composite rank by ${activeMetrics.length} metrics`
+                  ? `Ranked by composite of ${activeMetrics.length} metrics: ${activeMetrics.map((m) => metricLabelLower[m]).join(" · ")}`
                   : `${primaryMetric === "engagement" ? "Mean" : "Total"} ${metricLabelLower[primaryMetric]} by segment`
               }
               caption={
@@ -337,8 +341,8 @@ export default function ExploreClient({ posts, activeMetrics = ["reach"], active
                 })()}
                 horizontal
                 height={Math.max(200, Math.min(12, grouped.length) * 34)}
-                metricName={isComposite ? "Composite" : metricLabelFull[primaryMetric]}
-                valueAxisLabel={isComposite ? "Composite score" : metricLabelFull[primaryMetric]}
+                metricName={isComposite ? `Composite (${activeMetrics.map((m) => metricLabelFull[m]).join(" + ")})` : metricLabelFull[primaryMetric]}
+                valueAxisLabel={isComposite ? `Composite score · ${activeMetrics.map((m) => metricLabelFull[m]).join(" / ")}` : metricLabelFull[primaryMetric]}
                 showPercent={!isComposite}
                 compositeBreakdown={isComposite ? (() => {
                   // Sprint P7 v4 (2026-04-29): per-bar percentile breakdown for

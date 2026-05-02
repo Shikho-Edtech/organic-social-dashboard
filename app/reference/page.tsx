@@ -26,7 +26,7 @@ export const revalidate = 300;
 const PILLAR_DESCRIPTIONS: Record<string, string> = {
   "Live Class / Exam Prep": "Reactive teacher-led content tied to active exam windows. Highest reach pillar at Shikho; serves SSC/HSC/board-prep urgency.",
   "Study Tips & Hacks": "Generic study technique content. Mid-funnel; works as connective layer between exam-urgency content and product promo.",
-  "Quiz / Challenge": "Interactive prompts (MCQ challenges, fill-in-the-blank). High-engagement, high-virality pillar — strong on shares.",
+  "Quiz / Challenge": "Interactive prompts (MCQ challenges, fill-in-the-blank). High-engagement, high-virality pillar; strong on shares.",
   "Product / Program Promo": "Direct course / program promotion. BOFU; drives conversion but high doses cause audience fatigue.",
   "Promotional Offer": "Time-bound discounts, batch openings, scholarship deadlines. BOFU urgency.",
   "App Feature": "App functionality showcase (Shikho AI, doubt-clearing, etc.). MOFU/BOFU; drives installs.",
@@ -48,9 +48,9 @@ const FORMAT_DESCRIPTIONS: Record<string, string> = {
 };
 
 const FUNNEL_STAGE_DESCRIPTIONS: Record<string, string> = {
-  TOFU: "Top of funnel — acquisition, brand awareness, broad reach. Goal: get the post in front of new audience.",
-  MOFU: "Middle of funnel — engagement, education, trust. Goal: deepen relationship with audience already aware of Shikho.",
-  BOFU: "Bottom of funnel — conversion, install, enrollment. Goal: drive specific action.",
+  TOFU: "Top of funnel: acquisition, brand awareness, broad reach. Goal: get the post in front of new audience.",
+  MOFU: "Middle of funnel: engagement, education, trust. Goal: deepen relationship with audience already aware of Shikho.",
+  BOFU: "Bottom of funnel: conversion, install, enrollment. Goal: drive specific action.",
 };
 
 const SPOTLIGHT_TYPE_DESCRIPTIONS: Record<string, string> = {
@@ -59,7 +59,7 @@ const SPOTLIGHT_TYPE_DESCRIPTIONS: Record<string, string> = {
   Program: "Branded program or batch (e.g. SSC '26 Master Course).",
   Brand: "Generic Shikho brand spotlight, no specific human/product.",
   Campaign: "Time-bound marketing campaign (e.g. Pohela Boishakh Quiz Series).",
-  None: "No explicit spotlight — generic content.",
+  None: "No explicit spotlight; generic content.",
 };
 
 const HOOK_TYPE_DESCRIPTIONS: Record<string, string> = {
@@ -184,7 +184,7 @@ export default async function ReferencePage() {
     },
     {
       term: "Reach (unique reach)",
-      def: "Distinct people who saw the post — Facebook insights' post_total_media_view_unique field. The dashboard's primary scoring metric. Different from media_views (total impressions including re-views) and from views (Reels-specific).",
+      def: "Distinct people who saw the post. Facebook insights' post_total_media_view_unique field. The dashboard's primary scoring metric. Different from media_views (total impressions including re-views) and from views (Reels-specific).",
     },
     {
       term: "Engagement Rate",
@@ -192,11 +192,11 @@ export default async function ReferencePage() {
     },
     {
       term: "Quality Engagement (candidate)",
-      def: "Shares × 2 + Comments × 1, summed weekly. Excludes reactions because they're a low-effort reach proxy. Shares double-weighted because each share = unpaid distribution + algorithm reward. CANDIDATE north-star — being trialed alongside reach for 4-8 weeks before a canonical anchor decision.",
+      def: "Shares × 2, Comments × 1, summed weekly. Excludes reactions because they're a low-effort reach proxy. Shares double-weighted because each share = unpaid distribution and algorithm reward. CANDIDATE north-star; being trialed alongside reach for 4 to 8 weeks before a canonical anchor decision.",
     },
     {
       term: "Interactions",
-      def: "Reactions + Comments + Shares (sum). Dominated by reactions (~80-90% of total) so behaves as a reach proxy. Why we don't use this as the candidate north-star — Quality Engagement is the high-intent subset.",
+      def: "Reactions, Comments, and Shares summed. Dominated by reactions (~80-90% of total) so behaves as a reach proxy. Why we don't use this as the candidate north-star: Quality Engagement is the high-intent subset.",
     },
     {
       term: "Hypothesis (h0 / h1 / h2 …)",
@@ -216,7 +216,7 @@ export default async function ReferencePage() {
     },
     {
       term: "\"Week-level fallback\" on source posts",
-      def: "On Diagnosis Key Findings + Watch-outs. Appears when a finding doesn't carry its own source_post_ids — the page falls back to the diagnosis's top + under performers as best-available citation. Distinct from a precise per-finding citation; tells operators the link is inferred, not exact.",
+      def: "On Diagnosis Key Findings and Watch-outs. Appears when a finding doesn't carry its own source_post_ids; the page falls back to the diagnosis's top and under performers as best-available citation. Distinct from a precise per-finding citation; tells operators the link is inferred, not exact.",
     },
     {
       term: "Calibration",
@@ -236,7 +236,7 @@ export default async function ReferencePage() {
     },
     {
       term: "System Suggestions",
-      def: "Auto-derived prescriptions written to System_Suggestions tab each weekly run (calibration drift, hypothesis retire, pillar over/underperform). NEVER auto-applied — strategy prompt reads them as advisory context. The team / human decides whether to follow each suggestion.",
+      def: "Auto-derived prescriptions written to System_Suggestions tab each weekly run (calibration drift, hypothesis retire, pillar over/underperform). NEVER auto-applied; strategy prompt reads them as advisory context. The team / human decides whether to follow each suggestion.",
     },
   ];
 
@@ -274,7 +274,7 @@ export default async function ReferencePage() {
                     <li key={v} className="text-sm">
                       <span className="font-medium text-ink-primary">{v}</span>
                       {sec.valueDescriptions?.[v] && (
-                        <span className="ml-1.5 text-xs text-ink-muted">— {sec.valueDescriptions[v]}</span>
+                        <span className="ml-1.5 text-xs text-ink-muted">· {sec.valueDescriptions[v]}</span>
                       )}
                     </li>
                   ))}
