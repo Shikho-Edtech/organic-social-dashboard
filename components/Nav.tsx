@@ -126,7 +126,7 @@ export default function Nav() {
               </div>
               <div className="leading-tight min-w-0">
                 <div className="text-sm font-semibold text-brand-shikho-indigo truncate">Shikho</div>
-                <div className="text-[11px] text-slate-500 -mt-0.5 truncate">Organic Social</div>
+                <div className="text-[11px] text-ink-muted -mt-0.5 truncate">Organic Social</div>
               </div>
             </Link>
             <span className="hidden sm:inline-flex ml-2 px-2 py-0.5 rounded-md bg-brand-shikho-indigo/10 text-brand-shikho-indigo text-[11px] font-semibold shrink-0">
@@ -139,7 +139,7 @@ export default function Nav() {
                 () => (window.location.href = "/login")
               )
             }
-            className="text-xs text-slate-500 hover:text-slate-800 shrink-0 ml-2"
+            className="text-xs text-ink-muted hover:text-ink-primary shrink-0 ml-2"
           >
             Sign out
           </button>
@@ -159,12 +159,12 @@ export default function Nav() {
                   className={`px-3.5 py-2.5 text-sm font-semibold border-b-2 whitespace-nowrap transition-colors ${
                     isActive
                       ? "border-brand-shikho-indigo text-brand-shikho-indigo"
-                      : "border-transparent text-slate-500 hover:text-slate-800"
+                      : "border-transparent text-ink-muted hover:text-ink-primary"
                   }`}
                 >
                   {b.label}
                   <span className={`ml-1.5 text-[10px] uppercase tracking-wider font-normal ${
-                    isActive ? "text-brand-shikho-indigo/70" : "text-slate-400"
+                    isActive ? "text-brand-shikho-indigo/70" : "text-ink-300"
                   }`}>
                     {b.pages.length > 1 ? `· ${b.pages.length}` : ""}
                   </span>
@@ -209,14 +209,14 @@ export default function Nav() {
             onClick={() => setMobileOpen((v) => !v)}
             aria-expanded={mobileOpen}
             aria-haspopup="menu"
-            className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-900 hover:bg-slate-50 transition-colors"
+            className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border border-ink-100 bg-ink-paper text-sm font-medium text-ink-primary hover:bg-ink-50 transition-colors"
           >
             <span className="flex items-center gap-2">
-              <span className="text-slate-500 text-xs uppercase tracking-wide">{activeBucket.label}</span>
+              <span className="text-ink-muted text-xs uppercase tracking-wide">{activeBucket.label}</span>
               <span>{activePage.label}</span>
             </span>
             <svg
-              className={`w-4 h-4 text-slate-500 transition-transform ${mobileOpen ? "rotate-180" : ""}`}
+              className={`w-4 h-4 text-ink-muted transition-transform ${mobileOpen ? "rotate-180" : ""}`}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -227,13 +227,13 @@ export default function Nav() {
           {mobileOpen && (
             <div
               role="menu"
-              className="absolute left-0 right-0 mt-1 rounded-lg border border-slate-200 bg-white shadow-lg overflow-hidden z-50 max-h-[80vh] overflow-y-auto"
+              className="absolute left-0 right-0 mt-1 rounded-lg border border-ink-100 bg-ink-paper shadow-lg overflow-hidden z-50 max-h-[80vh] overflow-y-auto"
             >
               {BUCKETS.map((b) => (
-                <div key={b.id} className="border-b border-slate-100 last:border-b-0">
-                  <div className="px-4 py-2 bg-slate-50 text-[10px] uppercase tracking-wider font-bold text-slate-500">
+                <div key={b.id} className="border-b border-ink-100 last:border-b-0">
+                  <div className="px-4 py-2 bg-ink-50 text-[10px] uppercase tracking-wider font-bold text-ink-muted">
                     {b.label}
-                    <span className="ml-1.5 normal-case font-normal text-slate-400">{b.hint}</span>
+                    <span className="ml-1.5 normal-case font-normal text-ink-300">{b.hint}</span>
                   </div>
                   {b.pages.map((p) => {
                     const isActivePage = p.href === activePage.href;
@@ -245,7 +245,7 @@ export default function Nav() {
                         className={`block px-5 py-3 text-sm transition-colors ${
                           isActivePage
                             ? "bg-brand-shikho-indigo/10 text-brand-shikho-indigo font-semibold"
-                            : "text-slate-700 hover:bg-slate-50"
+                            : "text-ink-secondary hover:bg-ink-50"
                         }`}
                       >
                         {p.label}

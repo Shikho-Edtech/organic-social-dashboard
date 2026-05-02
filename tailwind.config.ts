@@ -128,6 +128,15 @@ const config: Config = {
           "shikho-indigo": "#304090", // indigo-600 core
           "shikho-blue":   "#3F4FA2", // indigo-500 (hover/medium)
           "shikho-pink":   "#C02080", // magenta-500 core
+          // Live check 2026-05-02: `brand-shikho-magenta` was used in 108
+          // places across 16 files but never defined here — Tailwind silently
+          // no-op'd them, so all the "magenta accents" rendered with parent
+          // color (indigo-toned) instead of magenta. Adding the alias
+          // resolves them all in one shot. Same hex as shikho-pink (the
+          // canonical magenta-500), kept as a separate alias because the
+          // semantic name "magenta" reads truer at the call site than "pink"
+          // for a violet-leaning hue.
+          "shikho-magenta": "#C02080", // magenta-500 core (alias of shikho-pink)
           "shikho-orange": "#E0A010", // sunrise-500 core
           "shikho-coral":  "#E03050", // coral-500 core (NEW)
           // Surface helpers
