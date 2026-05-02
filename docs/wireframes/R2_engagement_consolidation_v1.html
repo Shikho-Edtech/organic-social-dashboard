@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>R2 — Engagement consolidation wireframe v1 (2026-05-02)</title>
+<style>
+  /* Shikho v1.0 dark surface (per master CLAUDE.md mapping) */
+  :root {
+    --bg: #0A0C18;          /* ink.900 */
+    --panel: #121526;       /* ink.800 */
+    --border: #1A2558;      /* ink.700 */
+    --text: #DCE0F3;        /* shikho-indigo-100 */
+    --muted: #8995C5;
+    --indigo: #304090;
+    --magenta: #C02080;
+    --sunrise: #E0A010;
+    --coral: #E03050;
+    --teal: #1A8E78;
+    --shadow: 0 4px 24px rgba(48, 64, 144, 0.18);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+    line-height: 1.55;
+    padding: 32px 24px 64px;
+  }
+  .container { max-width: 1200px; margin: 0 auto; }
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin: 0 0 4px;
+    background: linear-gradient(135deg, var(--indigo), var(--magenta));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .subtitle { font-size: 14px; color: var(--muted); margin-bottom: 32px; }
+  h2 {
+    font-size: 20px;
+    margin: 40px 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  h2::before {
+    content: '';
+    display: inline-block;
+    width: 4px;
+    height: 18px;
+    background: var(--magenta);
+    border-radius: 2px;
+  }
+  h3 { font-size: 16px; margin: 16px 0 6px; color: var(--text); }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px 24px;
+    box-shadow: var(--shadow);
+    margin-bottom: 16px;
+  }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 720px) { .grid-2 { grid-template-columns: 1fr; } }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 4px 10px;
+    border-radius: 999px;
+    margin-right: 6px;
+  }
+  .badge-current { background: rgba(224, 48, 80, 0.18); color: var(--coral); }
+  .badge-proposed { background: rgba(26, 142, 120, 0.18); color: var(--teal); }
+  .badge-keep { background: rgba(224, 160, 16, 0.18); color: var(--sunrise); }
+  .pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; }
+  .chart-mock {
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 6px 0;
+    font-size: 13px;
+    color: var(--muted);
+    background: rgba(48, 64, 144, 0.05);
+  }
+  .chart-mock-active {
+    border-color: var(--indigo);
+    background: rgba(48, 64, 144, 0.12);
+    color: var(--text);
+  }
+  .strike { text-decoration: line-through; opacity: 0.5; }
+  .arrow { color: var(--magenta); font-weight: 600; margin: 0 6px; }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    font-size: 12px;
+    color: var(--muted);
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
+    margin: 12px 0;
+  }
+  .meta strong { color: var(--text); font-weight: 600; }
+  ul { padding-left: 20px; margin: 6px 0; }
+  li { margin-bottom: 4px; font-size: 14px; }
+  code {
+    background: rgba(48, 64, 144, 0.18);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #B0BCEF;
+  }
+  .key-decision {
+    border-left: 3px solid var(--sunrise);
+    padding: 10px 16px;
+    background: rgba(224, 160, 16, 0.06);
+    border-radius: 0 8px 8px 0;
+    margin: 8px 0;
+    font-size: 13px;
+  }
+  .key-decision strong { color: var(--sunrise); }
+  .toggle-mock {
+    display: inline-flex;
+    gap: 4px;
+    padding: 3px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    margin: 6px 0;
+  }
+  .toggle-mock span {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+  .toggle-mock span.active {
+    background: var(--indigo);
+    color: white;
+  }
+  .footnote { font-size: 12px; color: var(--muted); margin-top: 32px; line-height: 1.6; }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>R2 — Engagement consolidation wireframe v1</h1>
+    <p class="subtitle">2026-05-02 · /engagement page rebuild target · STATIC mockup, not yet wired</p>
+
+    <div class="panel">
+      <h3 style="margin-top: 0">Why this exists</h3>
+      <p style="margin: 6px 0 0; font-size: 14px;">Voice transcript 2026-05-01: "the engagement page has too many charts that say similar things. I want fewer, more decision-driving views." Current page is 959 lines, ~12 charts, 3 of which are KPI strips. R2 target: 5 anchored views, each answering one specific question.</p>
+    </div>
+
+    <h2>Current structure (the problem)</h2>
+    <div class="grid-2">
+      <div class="panel">
+        <span class="badge badge-current">Current</span>
+        <h3>Stack of similar bar charts</h3>
+        <div class="chart-mock">KPI strip — Best Format / Pillar / Hook / Tone / Spotlight</div>
+        <div class="chart-mock">Reach × Format bar chart</div>
+        <div class="chart-mock">Engagement rate × Format bar chart</div>
+        <div class="chart-mock">Reach × Pillar bar chart</div>
+        <div class="chart-mock">Engagement rate × Pillar bar chart</div>
+        <div class="chart-mock">Reach × Hook bar chart</div>
+        <div class="chart-mock">Engagement rate × Hook bar chart</div>
+        <div class="chart-mock">Reach × Tone bar chart</div>
+        <div class="chart-mock">Reach × Spotlight bar chart</div>
+        <div class="chart-mock">Format × Hour heatmap (with metric selector)</div>
+        <div class="chart-mock">Funnel engagement</div>
+        <div class="chart-mock">Winning patterns inline</div>
+        <p style="font-size: 12px; color: var(--coral); margin-top: 12px;">Operator scrolls 9+ chart sections of "X by Y" before reaching anything actionable.</p>
+      </div>
+      <div class="panel">
+        <span class="badge badge-proposed">Proposed</span>
+        <h3>5 anchored decision-driving views</h3>
+        <div class="chart-mock chart-mock-active">1 · Performance by Dimension <span style="color: var(--muted); font-weight: normal;">— pillar/format/hook/tone/spotlight switcher × reach/engagement metric switcher</span></div>
+        <div class="chart-mock chart-mock-active">2 · Format × Hour Heatmap <span style="color: var(--muted); font-weight: normal;">— kept (already best-in-class)</span></div>
+        <div class="chart-mock chart-mock-active">3 · Funnel Engagement <span style="color: var(--muted); font-weight: normal;">— kept (mechanical math, doesn't fit elsewhere)</span></div>
+        <div class="chart-mock chart-mock-active">4 · Winning Pattern Cards <span style="color: var(--muted); font-weight: normal;">— restructured as cards, not inline strip</span></div>
+        <div class="chart-mock chart-mock-active">5 · Comparison Lab <span style="color: var(--muted); font-weight: normal;">— optional drill-down: pick any 2 dimensions for cross-tab</span></div>
+        <p style="font-size: 12px; color: var(--teal); margin-top: 12px;">~600 lines saved. One axis switcher replaces 8 stacked charts.</p>
+      </div>
+    </div>
+
+    <h2>View 1 — Performance by Dimension <span class="badge badge-proposed">Consolidates 8 charts → 1</span></h2>
+    <div class="panel">
+      <h3 style="margin-top: 0">The core consolidation</h3>
+      <p style="font-size: 14px;">Eight bar charts (4 dimensions × 2 metrics) become one chart with two switchers: a <strong>dimension</strong> pill row + a <strong>metric</strong> pill row. The active combination renders below.</p>
+
+      <div class="meta">
+        <span><strong>Dimension switcher:</strong></span>
+        <div class="toggle-mock">
+          <span class="active">Pillar</span>
+          <span>Format</span>
+          <span>Hook</span>
+          <span>Caption Tone</span>
+          <span>Spotlight Type</span>
+        </div>
+      </div>
+
+      <div class="meta">
+        <span><strong>Metric switcher:</strong></span>
+        <div class="toggle-mock">
+          <span class="active">Reach</span>
+          <span>Engagement Rate</span>
+          <span>Shares</span>
+          <span>Quality Engagement</span>
+        </div>
+      </div>
+
+      <div class="chart-mock chart-mock-active" style="height: 200px; display: flex; align-items: center; justify-content: center;">
+        [bar chart — Reach × Pillar — same shape as today's BarChartBase]
+      </div>
+
+      <div class="key-decision">
+        <strong>Decision:</strong> use page-level <code>?metric</code> URL param as default for the metric switcher. This already exists site-wide. New URL param: <code>?eng_dim</code> for the dimension. Both mirror Reels' tab pattern.
+      </div>
+
+      <div class="key-decision">
+        <strong>Crown badge:</strong> the "Best X" KPI strip moves <em>inline</em> with this card — when you flip to Pillar, the KPI line above the chart shows "Live Class / Exam Prep — 412k avg reach (best)". The whole concept of a separate "Best" strip dies.
+      </div>
+    </div>
+
+    <h2>View 2 — Format × Hour Heatmap <span class="badge badge-keep">KEEP as-is</span></h2>
+    <div class="panel">
+      <p style="font-size: 14px; margin: 0 0 8px;">The heatmap is already best-in-class on this page — it's the only view that answers "when do I post X format" in one glance. Kept exactly as-is, with its existing 4-metric pill switcher.</p>
+      <div class="chart-mock">[Format × Hour heatmap — unchanged]</div>
+      <p style="font-size: 12px; color: var(--muted); margin-top: 8px;">R3 (dynamic timing rebuild) lives separately and may eventually replace this. Out of scope for R2.</p>
+    </div>
+
+    <h2>View 3 — Funnel Engagement <span class="badge badge-keep">KEEP as-is</span></h2>
+    <div class="panel">
+      <p style="font-size: 14px; margin: 0 0 8px;">Mechanical math view (no AI credits — guardrail #2 from voice transcript). Doesn't fit the dimension-switcher pattern because it's a flow chart, not a slice. Kept verbatim.</p>
+      <div class="chart-mock">[Funnel: TOFU → MOFU → BOFU engagement bars]</div>
+    </div>
+
+    <h2>View 4 — Winning Pattern Cards <span class="badge badge-proposed">Restructured</span></h2>
+    <div class="panel">
+      <p style="font-size: 14px;">Currently shipped as inline (format)/(pillar)/(caption tone)/(hook)/(spotlight type) labels stacked together. Promoting to a 3-up grid of cards each highlighting one winning combination from this period.</p>
+      <div class="grid-2" style="grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+        <div class="chart-mock chart-mock-active" style="text-align: left;">
+          <div style="font-size: 10px; color: var(--sunrise); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Winning Combo · Reach</div>
+          <div style="font-size: 14px; font-weight: 600; color: var(--text);">Live Class · Reel · Question hook</div>
+          <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">412k avg reach · n=8 posts</div>
+        </div>
+        <div class="chart-mock chart-mock-active" style="text-align: left;">
+          <div style="font-size: 10px; color: var(--sunrise); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Winning Combo · Engagement</div>
+          <div style="font-size: 14px; font-weight: 600; color: var(--text);">Quiz · Carousel · Curiosity hook</div>
+          <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">8.2% avg ER · n=5 posts</div>
+        </div>
+        <div class="chart-mock chart-mock-active" style="text-align: left;">
+          <div style="font-size: 10px; color: var(--sunrise); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Winning Combo · Shares</div>
+          <div style="font-size: 14px; font-weight: 600; color: var(--text);">Study Tips · Reel · Stat hook</div>
+          <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">+3.1k shares · n=4 posts</div>
+        </div>
+      </div>
+      <p style="font-size: 12px; color: var(--muted); margin-top: 12px;">Click a card → drills into Comparison Lab (View 5) pre-filled with that combo.</p>
+    </div>
+
+    <h2>View 5 — Comparison Lab <span class="badge badge-proposed">New</span></h2>
+    <div class="panel">
+      <p style="font-size: 14px;">Optional drill-down for the curious operator. Pick any two dimensions; see their cross-tab performance. Replaces the user's mental "I wish I could see Pillar × Hook together".</p>
+
+      <div class="meta">
+        <div>
+          <strong>Rows:</strong>
+          <div class="toggle-mock">
+            <span class="active">Pillar</span>
+            <span>Format</span>
+            <span>Hook</span>
+            <span>Caption Tone</span>
+          </div>
+        </div>
+        <div>
+          <strong>Cols:</strong>
+          <div class="toggle-mock">
+            <span>Pillar</span>
+            <span>Format</span>
+            <span class="active">Hook</span>
+            <span>Caption Tone</span>
+          </div>
+        </div>
+      </div>
+      <div class="chart-mock chart-mock-active" style="height: 220px; display: flex; align-items: center; justify-content: center;">
+        [cross-tab heatmap — rows: Pillar (8 values) × cols: Hook (8 values), cells = avg reach]
+      </div>
+      <p style="font-size: 12px; color: var(--muted); margin-top: 8px;">Default is collapsed (a thin "Open Comparison Lab" link). Power-user feature — most operators won't open it.</p>
+    </div>
+
+    <h2>What we're NOT changing (guardrails)</h2>
+    <div class="panel">
+      <ul style="font-size: 14px;">
+        <li><strong>Engagement page is mechanical math</strong> — no AI credits. Reaffirmed; all 5 views above are pure aggregation, no LLM call.</li>
+        <li><strong>Existing 4-metric URL param contract</strong> (<code>?metric=reach</code> etc.) preserved as the metric switcher's source of truth.</li>
+        <li><strong>Format × Hour heatmap</strong> kept verbatim.</li>
+        <li><strong>Winning Pattern data shape</strong> from the current page reused — just rendered differently.</li>
+      </ul>
+    </div>
+
+    <h2>Migration path (proposed)</h2>
+    <div class="panel">
+      <ol style="font-size: 14px;">
+        <li><strong>This wireframe</strong> — review with user, capture feedback, iterate to v2 if needed.</li>
+        <li><strong>QA env trial</strong> — wire up View 1 (the big consolidation) on a feature-flagged route (e.g. <code>/engagement?layout=r2</code>). Real data, real interactions, but old layout still default.</li>
+        <li><strong>Operator A/B</strong> — user tries both for ~1 week. If R2 wins on time-to-insight, promote to default.</li>
+        <li><strong>Cutover</strong> — old 8-chart stack deleted in one commit; URL params preserved.</li>
+      </ol>
+    </div>
+
+    <h2>Open questions for v2</h2>
+    <div class="panel">
+      <ul style="font-size: 14px;">
+        <li>Does the dimension switcher need to remember last-active per session, or always default to Pillar? (Today's <code>?metric</code> persists via URL — same here for <code>?eng_dim</code>?)</li>
+        <li>Comparison Lab default — collapsed or expanded? Collapsed = cleaner; expanded = discoverable but adds visual noise.</li>
+        <li>Winning Pattern Cards — 3-up always, or responsive 1-up on mobile?</li>
+        <li>Do we keep "isLowConfidence" tags on the bars when sample size is below the floor? (Today the chart hides them entirely; Comparison Lab might show them dimmed instead.)</li>
+      </ul>
+    </div>
+
+    <p class="footnote">
+      Wireframe v1 · 2026-05-02 · Sprint P7 v4.18 W2 parallel task R2 · status: AWAITING REVIEW.<br>
+      Source: <code>docs/wireframes/R2_engagement_consolidation_v1.html</code> · Next iteration on operator feedback.
+    </p>
+  </div>
+</body>
+</html>

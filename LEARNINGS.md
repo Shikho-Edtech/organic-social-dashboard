@@ -1,5 +1,25 @@
 # Learnings
 
+## 2026-05-02 — Render-prop pagination is the cleanest cross-page reuse pattern
+
+When a page needs pagination on a heterogeneous list (table on desktop, card list on mobile, ranked leaderboard, etc.), a render-prop component beats a layout-aware one. `<PaginatedList items pageSize>{({visibleItems, page, setPage}) => ...}</PaginatedList>` knows nothing about whether the caller renders a `<table>` or a `<ul>` or a `<div>` — it just hands over the visible slice + the paging API.
+
+**Why this matters:** Recent Reels needs both a desktop table AND a mobile card list under one shared pager. Earlier prototypes tried `renderDesktop={...} renderMobile={...}` props — that doubled the call site without doubling the render code (the same map() with different markup wrappers). The render-prop version writes one render function, and the caller decides where to put the desktop and mobile clauses inside it.
+
+**Reuse rule:** when a future page needs pagination, USE this component. Don't reinvent. Outcomes (8+ weeks, no cap), Diagnosis source posts, Explore rows — all candidates.
+
+---
+
+## 2026-05-02 — Server components inside client tab strips: pass them as ReactNode children
+
+`TopReelSwitcher` (client) needs to toggle visibility of three `TopReelList` panels (server). React's rule: a server component can't be rendered inside a client component except as `children`. So the page (server) renders all three lists eagerly and passes them as `tabs[i].content` ReactNode props; the client switcher just shows/hides via local state.
+
+**Cost:** all three panels render server-side every page load even though only one is visible. Acceptable here because each list is ~10 rows of mostly static text and the page is already SSR'd. If panels were expensive (chart with lots of data points), use a client-side data store + lazy mount instead.
+
+**Pattern repeats anywhere a tab strip toggles between things that depend on server data.**
+
+---
+
 ## 2026-05-02 — Schema migration that runs at write time fails open silently
 
 `write_outcome_log` adds new columns via `ws.update_cell(1, next_pos, name)` lazily — only when a write fires. If a run skips the outcome stage (no calendar generated, AI off, etc.) the new columns never appear in the sheet. Symptom: dashboard reads empty values for `Matched Post ID` / `Slot Target Metric` and conditionally-rendered drill-down icons silently disappear from rows that should have them.
