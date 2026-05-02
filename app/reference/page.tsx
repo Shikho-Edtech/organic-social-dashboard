@@ -1,4 +1,4 @@
-// Sprint P7 v4.16 (2026-05-02): Reference / glossary page.
+// Sprint P7 v4.18 W2 Tue (2026-05-02): Reference / glossary page.
 //
 // Lives at /reference. Operators land here when they encounter a value
 // or term they don't recognize ("what does spotlight_type=brand mean?",
@@ -9,10 +9,15 @@
 // Two columns of content:
 //  1. TAXONOMIES — every dimension's distinct values, with descriptions
 //     where applicable (Pillars, Formats, Hook Types, Spotlight Types,
-//     Tones, Audiences, Funnel Stages, Languages, Spotlight Names dedup'd).
+//     Caption Tone, Audiences, Funnel Stages, Languages, Spotlight Names dedup'd).
 //  2. DEFINITIONS — what a week is, how reach is measured, what
 //     Quality Engagement means, what each verdict state signals, what
 //     "scored on reach" / "preliminary" / "week-level fallback" mean.
+//
+// W4 layout pass (2026-05-02): "Tones" → "Caption Tone" (matches caption_tone
+// classifier field), Languages render as inline pills (compact horizontal),
+// Audiences nested under Students/Parents/Teachers/General groups, list
+// spacing tightened to reduce cross-card height variance.
 //
 // Pure server component, ISR with 5-min cache.
 
@@ -87,10 +92,29 @@ const TONE_DESCRIPTIONS: Record<string, string> = {
 const AUDIENCE_DESCRIPTIONS: Record<string, string> = {
   SSC: "Class 9-10 students preparing for SSC board exam.",
   HSC: "Class 11-12 students preparing for HSC board exam.",
+  Junior: "Class 6-8 students; pre-board cohort.",
   Admission: "University admission test prep audience.",
   General: "Cross-cohort general audience.",
   Parent: "Parent-targeted content.",
+  Parents: "Parent-targeted content.",
   Teacher: "Teacher / educator audience.",
+  Teachers: "Teacher / educator audience.",
+};
+
+// W4: nested audience taxonomy for the Audiences card. Drives the grouped render
+// below. Order matters — Students first (most slots), then Parents/Teachers/General.
+const AUDIENCE_GROUPS: { label: string; members: string[]; description?: string }[] = [
+  { label: "Students", members: ["Junior", "SSC", "HSC", "Admission"], description: "Cohort-segmented student audiences." },
+  { label: "Parents", members: ["Parent", "Parents"] },
+  { label: "Teachers", members: ["Teacher", "Teachers"] },
+  { label: "General", members: ["General"] },
+];
+
+const LANGUAGE_DESCRIPTIONS: Record<string, string> = {
+  Bangla: "Caption written in Bangla.",
+  English: "Caption written in English.",
+  Mixed: "Caption mixes Bangla + English (transliterated or code-switched).",
+  Banglish: "Bangla written in Latin script.",
 };
 
 function dedupSorted(arr: string[]): string[] {
@@ -156,26 +180,22 @@ export default async function ReferencePage() {
       accent: "from-brand-amber to-brand-shikho-coral",
     },
     {
-      title: "Tones",
-      description: "Caption voice / register. Lower-cardinality dimension; useful for cross-format pattern detection.",
+      title: "Caption Tone",
+      description: "Caption voice / register (matches the caption_tone classifier field). Lower-cardinality dimension; useful for cross-format pattern detection.",
       values: tones,
       valueDescriptions: TONE_DESCRIPTIONS,
       accent: "from-brand-cyan to-brand-green",
     },
-    {
-      title: "Audiences",
-      description: "Primary target cohort the post is written for. Drives audience-segmented analysis (Tier 3 in the algorithm audit roadmap).",
-      values: audiences,
-      valueDescriptions: AUDIENCE_DESCRIPTIONS,
-      accent: "from-brand-shikho-indigo to-brand-cyan",
-    },
-    {
-      title: "Languages",
-      description: "Caption primary language. Affects audience reach (Bangla content reaches different cohort than English).",
-      values: languages,
-      accent: "from-brand-amber to-brand-green",
-    },
   ];
+
+  // W4: build grouped audience structure from live data.
+  // Any audience value that doesn't match a known group becomes "Other".
+  const knownAudienceMembers = new Set(AUDIENCE_GROUPS.flatMap((g) => g.members.map((m) => m.toLowerCase())));
+  const audienceGroupsLive = AUDIENCE_GROUPS.map((g) => ({
+    ...g,
+    presentMembers: audiences.filter((a) => g.members.some((m) => m.toLowerCase() === a.toLowerCase())),
+  })).filter((g) => g.presentMembers.length > 0);
+  const otherAudiences = audiences.filter((a) => !knownAudienceMembers.has(a.toLowerCase()));
 
   const definitions: { term: string; def: string }[] = [
     {
@@ -265,13 +285,13 @@ export default async function ReferencePage() {
           {taxonomySections.map((sec, i) => (
             <Card key={i} className="border-l-4 border-l-brand-shikho-indigo">
               <h3 className="text-base font-semibold text-ink-primary mb-1">{sec.title}</h3>
-              <p className="text-xs text-ink-muted leading-relaxed mb-3">{sec.description}</p>
+              <p className="text-xs text-ink-muted leading-relaxed mb-2.5">{sec.description}</p>
               {sec.values.length === 0 ? (
                 <p className="text-xs text-ink-muted italic">No values found in current data.</p>
               ) : (
-                <ul className="space-y-1.5">
+                <ul className="space-y-1">
                   {sec.values.map((v) => (
-                    <li key={v} className="text-sm">
+                    <li key={v} className="text-sm leading-snug">
                       <span className="font-medium text-ink-primary">{v}</span>
                       {sec.valueDescriptions?.[v] && (
                         <span className="ml-1.5 text-xs text-ink-muted">· {sec.valueDescriptions[v]}</span>
@@ -280,11 +300,101 @@ export default async function ReferencePage() {
                   ))}
                 </ul>
               )}
-              <div className="mt-3 pt-2 border-t border-ink-100 text-[10px] uppercase tracking-wider text-ink-muted">
+              <div className="mt-2.5 pt-2 border-t border-ink-100 text-[10px] uppercase tracking-wider text-ink-muted">
                 {sec.values.length} distinct value{sec.values.length === 1 ? "" : "s"}
               </div>
             </Card>
           ))}
+
+          {/* W4: Audiences — nested grouped (Students > Junior/SSC/HSC/Admission, Parents, Teachers, General) */}
+          <Card className="border-l-4 border-l-brand-shikho-indigo">
+            <h3 className="text-base font-semibold text-ink-primary mb-1">Audiences</h3>
+            <p className="text-xs text-ink-muted leading-relaxed mb-2.5">
+              Primary target cohort the post is written for. Drives audience-segmented analysis (Tier 3 in the algorithm audit roadmap).
+            </p>
+            {audiences.length === 0 ? (
+              <p className="text-xs text-ink-muted italic">No values found in current data.</p>
+            ) : (
+              <div className="space-y-2.5">
+                {audienceGroupsLive.map((g) => (
+                  <div key={g.label}>
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-brand-shikho-indigo mb-1">
+                      {g.label}
+                      <span className="ml-1.5 text-[10px] font-normal text-ink-muted normal-case tracking-normal">
+                        ({g.presentMembers.length})
+                      </span>
+                    </div>
+                    <ul className="space-y-1 pl-3 border-l border-ink-100">
+                      {g.presentMembers.map((m) => (
+                        <li key={m} className="text-sm leading-snug">
+                          <span className="font-medium text-ink-primary">{m}</span>
+                          {AUDIENCE_DESCRIPTIONS[m] && (
+                            <span className="ml-1.5 text-xs text-ink-muted">· {AUDIENCE_DESCRIPTIONS[m]}</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+                {otherAudiences.length > 0 && (
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted mb-1">Other</div>
+                    <ul className="space-y-1 pl-3 border-l border-ink-100">
+                      {otherAudiences.map((a) => (
+                        <li key={a} className="text-sm leading-snug">
+                          <span className="font-medium text-ink-primary">{a}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="mt-2.5 pt-2 border-t border-ink-100 text-[10px] uppercase tracking-wider text-ink-muted">
+              {audiences.length} distinct value{audiences.length === 1 ? "" : "s"}
+            </div>
+          </Card>
+
+          {/* W4: Languages — inline pills (compact horizontal) */}
+          <Card className="border-l-4 border-l-brand-shikho-indigo">
+            <h3 className="text-base font-semibold text-ink-primary mb-1">Languages</h3>
+            <p className="text-xs text-ink-muted leading-relaxed mb-2.5">
+              Caption primary language. Affects audience reach (Bangla content reaches different cohort than English).
+            </p>
+            {languages.length === 0 ? (
+              <p className="text-xs text-ink-muted italic">No values found in current data.</p>
+            ) : (
+              <div className="space-y-1.5">
+                <div className="flex flex-wrap gap-1.5">
+                  {languages.map((l) => (
+                    <span
+                      key={l}
+                      className="inline-flex items-center text-xs font-medium bg-shikho-indigo-50 text-brand-shikho-indigo rounded-md px-2 py-1"
+                      title={LANGUAGE_DESCRIPTIONS[l] || undefined}
+                    >
+                      {l}
+                    </span>
+                  ))}
+                </div>
+                {languages.some((l) => LANGUAGE_DESCRIPTIONS[l]) && (
+                  <ul className="space-y-0.5 pt-1">
+                    {languages
+                      .filter((l) => LANGUAGE_DESCRIPTIONS[l])
+                      .map((l) => (
+                        <li key={l} className="text-[11px] text-ink-muted leading-snug">
+                          <span className="font-medium text-ink-secondary">{l}</span>
+                          <span className="ml-1.5">· {LANGUAGE_DESCRIPTIONS[l]}</span>
+                        </li>
+                      ))}
+                  </ul>
+                )}
+              </div>
+            )}
+            <div className="mt-2.5 pt-2 border-t border-ink-100 text-[10px] uppercase tracking-wider text-ink-muted">
+              {languages.length} distinct value{languages.length === 1 ? "" : "s"}
+            </div>
+          </Card>
+
           {/* Spotlight Names — separate card, dedup'd live */}
           <Card className="md:col-span-2 border-l-4 border-l-brand-shikho-coral">
             <h3 className="text-base font-semibold text-ink-primary mb-1">Spotlight Names <span className="ml-1 text-[10px] uppercase text-ink-muted font-semibold">deduplicated</span></h3>
@@ -325,7 +435,7 @@ export default async function ReferencePage() {
         <div className="grid md:grid-cols-2 gap-3">
           {definitions.map((d, i) => (
             <Card key={i} className="">
-              <h3 className="text-sm font-semibold text-ink-primary mb-1.5">{d.term}</h3>
+              <h3 className="text-sm font-semibold text-ink-primary mb-1">{d.term}</h3>
               <p className="text-xs text-ink-secondary leading-relaxed">{d.def}</p>
             </Card>
           ))}

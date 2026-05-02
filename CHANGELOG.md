@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-05-02 — v4.18 W2 Tue (W4): Reference layout rework
+
+Reference page restructured per the locked plan's W2 Tue ticket. Three changes:
+
+1. **"Tones" → "Caption Tone"** — section header now matches the
+   `caption_tone` classifier field exactly (per user clarification on
+   2026-05-02). Reduces the "what is this called?" friction when an
+   operator clicks through from a Tier-1 chart that uses the field name.
+2. **Audiences nested grouping** — Students (Junior/SSC/HSC/Admission)
+   become a single visual group with an indented sub-list; Parents,
+   Teachers, General are sibling groups. Each group gets a tiny count
+   suffix. Unknown audiences fall through to an "Other" group so live
+   data drift can't hide behind the schema. Read-time only — no data
+   change.
+3. **Languages as inline pills** — was a vertical list (5+ rows of
+   whitespace next to a 3-value column). Now horizontal flex-wrap
+   pills, with descriptions in a compact text legend below. Section
+   height drops by ~60%; aligns better with neighboring Caption Tone
+   card on the right.
+
+Spacing tightened across all taxonomy cards (`space-y-1` instead of
+`space-y-1.5`, `mb-2.5` instead of `mb-3`) so dense cards (Pillars,
+Hook Types) don't feel sparse anymore.
+
 ## 2026-05-02 — v4.14b: Outcomes Target Metric column + per-row drill-down
 
 User feedback: "both forecast and actual columns should reflect the
