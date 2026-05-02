@@ -581,7 +581,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           sampleSize={`min ${MIN_N_FUNNEL} posts per stage · ${rangeDaysForFunnel}d window`}
           caption="Which stage the audience actually engages with. If BOFU engages higher than TOFU at organic scale, the audience is already close to buying — lean harder into conversion."
         >
-          <BarChartBase data={funnelEng} valueFormat="percent" metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Funnel stage" />
+          <BarChartBase data={funnelEng} valueFormat="percent" metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Funnel stage" showValueLabel />
         </ChartCard>
       </div>
       <div className="mb-6 text-[12px] text-ink-muted leading-relaxed px-1">

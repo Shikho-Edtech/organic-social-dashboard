@@ -2,7 +2,10 @@ import { getPosts, getLatestDiagnosis, getDiagnosisByWeek, getDiagnosisByWeekPre
 import { totalReach, totalQualityEngagement, totalShares, totalComments, wowDelta, formatWowDelta, deltaColorClass } from "@/lib/qualityEngagement";
 import { bdt as bdtParse, dateStr as dateIso } from "@/lib/aggregate";
 import WeekSelector, { computeWeekEndings, weekRange } from "@/components/WeekSelector";
-import RegenerateThisWeekButton from "@/components/RegenerateThisWeekButton";
+// Sprint P7 v4.18 (2026-05-02): RegenerateThisWeekButton removed from
+// dashboard surfaces. Operator-side regeneration belongs in the SaaS
+// admin layer, not in a shared user dashboard. Returns when the
+// multi-tenant rollout adds access controls.
 import { filterPosts } from "@/lib/aggregate";
 import { resolveRange } from "@/lib/daterange";
 import PageHeader from "@/components/PageHeader";
@@ -372,17 +375,7 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
             choices={["this", "last"]}
             preserve={searchParams}
           />
-          {/* Sprint P7 v4.4 (2026-04-29): regenerate button on "This
-              week" view with scope="midweek" — re-runs the Thursday
-              mid-week diagnosis the user is currently looking at. v4.2
-              originally placed this on Last-Week with scope="weekly",
-              but Diagnosis is exempt from running-week locking (per v3
-              spec — mid-week + Monday cycle is intentional dual-write),
-              so a "weekly" scope here regenerates Strategy/Calendar/
-              Plan_Narrative — content that's not visible on Diagnosis.
-              Confusing. The right action surface for Diagnosis is the
-              mid-week scope, on the running week. */}
-          {isThisWeekView && <RegenerateThisWeekButton scope="midweek" />}
+          {/* RegenerateThisWeekButton removed in v4.18 — admin-only. */}
         </div>
       )}
 

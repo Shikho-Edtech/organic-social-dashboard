@@ -320,11 +320,15 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
 
       <div className="grid lg:grid-cols-2 gap-4">
         <ChartCard
-          title="Content Pillars"
+          title={
+            isComposite
+              ? `Content Pillars · Composite of ${activeMetrics.map((m) => metricLabel[m]).join(", ")}`
+              : "Content Pillars"
+          }
           kind="ai"
           subtitle={
             isComposite
-              ? `Composite rank by ${activeMetrics.length} metrics`
+              ? `Ranked by composite of ${activeMetrics.length} metrics: ${activeMetrics.map((m) => metricLabel[m].toLowerCase()).join(" · ")}`
               : `${primaryMetric === "engagement" ? "Avg" : "Total"} ${metricLabel[primaryMetric].toLowerCase()} by content pillar`
           }
           definition={

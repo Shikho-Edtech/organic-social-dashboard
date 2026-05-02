@@ -23,7 +23,7 @@ import {
   getPlanNarrative,
   getPosts,
 } from "@/lib/sheets";
-import { weekRange } from "@/components/WeekSelector";
+import WeekSelector, { weekRange, computeWeekEndings, resolveWeekParam } from "@/components/WeekSelector";
 import type { OutcomeLogEntry, OutcomeVerdict } from "@/lib/types";
 import { Card } from "@/components/Card";
 import PageHeader from "@/components/PageHeader";
@@ -144,15 +144,31 @@ export default async function OutcomesPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const requestedWeek = firstString(searchParams.week).trim();
+  const requestedRaw = firstString(searchParams.week).trim();
 
-  // Resolve which week to show: explicit param > latest graded > latest any
+  // Sprint P7 v4.18 (2026-05-02): unified week-resolution. The Outcomes
+  // page used to ship a custom date-range picker that resolved by exact
+  // YYYY-MM-DD match against the week list. This produced two issues:
+  //   1. Pills showed raw dates instead of "This week / Last week / Next
+  //      week" relative labels (jarring next to Plan + Diagnosis which
+  //      use shared WeekSelector).
+  //   2. Click-from-picker had a transient empty-state flash (the
+  //      "buttons disappear" bug from the live audit).
+  // Both go away by routing through resolveWeekParam — the same helper
+  // Plan + Diagnosis use. ?week=this|last|next|YYYY-MM-DD all map to a
+  // canonical Mon-anchor.
+  const resolvedWeek = resolveWeekParam(requestedRaw);
+
   const [allWeeks, latestGraded] = await Promise.all([
     listOutcomeWeeks(),
     getLatestGradedOutcomeWeek(),
   ]);
+  // Prefer the URL-resolved week if it has data; else fall back to
+  // latest-graded; else the most recent week with any rows. Final
+  // fallback to empty when nothing exists yet.
   const activeWeek =
-    (requestedWeek && allWeeks.includes(requestedWeek) && requestedWeek) ||
+    (resolvedWeek && allWeeks.includes(resolvedWeek) && resolvedWeek) ||
+    (requestedRaw && allWeeks.includes(requestedRaw) && requestedRaw) ||
     latestGraded ||
     allWeeks[0] ||
     "";
@@ -249,47 +265,17 @@ export default async function OutcomesPage({
 
       {activeWeek && rows.length > 0 && (
         <>
-          {/* Week picker. Sprint P7 v4.5 (2026-04-30): semantic label
-              dropped — the data column stores the Monday-grading date
-              (when the weekly cron ran scoring), not the Sunday week-end,
-              so "Last week (May 4)" misled readers into thinking May 4
-              was a past Sunday. Now: most recent pill = "Most recent
-              ({date})", older pills = raw YYYY-MM-DD. The grading-date
-              vs week-end-date distinction is also clarified in the
-              rollup card header below. */}
-          {allWeeks.length > 1 && (
-            <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-                Showing:
-              </span>
-              {allWeeks.map((wk, idx) => {
-                const active = wk === activeWeek;
-                const isLatest = idx === 0;
-                return (
-                  <Link
-                    key={wk}
-                    href={`/outcomes?week=${wk}`}
-                    className={`px-3 py-1 rounded-md border text-xs font-medium transition-colors ${
-                      active
-                        ? "bg-brand-shikho-indigo text-white border-brand-shikho-indigo"
-                        : "bg-ink-paper text-ink-secondary border-ink-100 hover:border-brand-shikho-indigo hover:text-brand-shikho-indigo"
-                    }`}
-                  >
-                    {isLatest ? (
-                      <>
-                        <span>Most recent</span>
-                        <span className={`ml-1.5 text-[10px] ${active ? "text-white/80" : "text-ink-muted"}`}>
-                          ({weekRange(wk)})
-                        </span>
-                      </>
-                    ) : (
-                      <span>{weekRange(wk)}</span>
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
-          )}
+          {/* Sprint P7 v4.18 (2026-05-02): unified week-switching across
+              all 3 Weekly-bucket pages. Outcomes now uses the shared
+              WeekSelector — pills read "This week (Apr 27 – May 3) /
+              Last week / Next week" instead of bare dates. Eliminates
+              the pre-v4.18 custom picker bug + matches Plan + Diagnosis. */}
+          <WeekSelector
+            basePath="/outcomes"
+            current={requestedRaw || undefined}
+            choices={["this", "last", "next"]}
+            preserve={searchParams as Record<string, string | string[] | undefined>}
+          />
 
           {/* Rollup card — the "so what" answer up top */}
           <Card className="mb-5">

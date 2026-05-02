@@ -19,6 +19,11 @@ type Props = {
   categoryAxisLabel?: string;
   /** If true, show each bar as a percentage share of total alongside the raw value */
   showPercent?: boolean;
+  /** Sprint P7 v4.18 (2026-05-02): when true (and showPercent is false),
+   *  render the raw value above/right of each bar — formatted via valueFormat.
+   *  Used for Funnel Engagement where shares-of-total don't apply but the
+   *  per-bar % engagement-rate value is the headline number worth surfacing. */
+  showValueLabel?: boolean;
   /** Sprint P7 v4 (2026-04-29): when set, the chart is in composite-rank
    *  mode — the bar value is a 0..100 composite score, and the tooltip
    *  shows the per-metric percentile + weight breakdown that produced it.
@@ -62,6 +67,7 @@ export default function BarChartBase({
   valueAxisLabel,
   categoryAxisLabel,
   showPercent,
+  showValueLabel,
   compositeBreakdown,
 }: Props) {
   const fmt = makeFormatter(valueFormat);
@@ -248,6 +254,14 @@ export default function BarChartBase({
               dataKey="value"
               position={horizontal ? "right" : "top"}
               formatter={pctLabel}
+              style={{ fontSize: 10, fill: "#4A506A", fontWeight: 600 }}
+            />
+          )}
+          {showValueLabel && !showPercent && (
+            <LabelList
+              dataKey="value"
+              position={horizontal ? "right" : "top"}
+              formatter={(v: number) => fmt(v)}
               style={{ fontSize: 10, fill: "#4A506A", fontWeight: 600 }}
             />
           )}
