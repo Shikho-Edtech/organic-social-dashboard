@@ -273,6 +273,28 @@ export default async function TodayPage() {
                         {slot.hook_line}
                       </div>
                     )}
+                    {/* Sprint P7 v4.18 (2026-05-02): published slots
+                        surface their post's reach + QE inline so today's
+                        operational state is readable at a glance. Until
+                        W2 ships (4-hour intra-day refresh cron), these
+                        numbers update once daily at the 09:00 BDT cron;
+                        a post published today won't show its actuals
+                        until tomorrow's run. The slot status flips to
+                        "Published" as soon as the daily cron picks up
+                        the new post. Mirror of the Yesterday block. */}
+                    {published && matchedPost && (
+                      <div className="text-[11px] text-ink-muted mt-1 flex items-center gap-x-3 gap-y-0.5 flex-wrap">
+                        <span>
+                          <span className="font-semibold text-brand-shikho-indigo tabular-nums">{fmtNum(postReach(matchedPost))}</span>
+                          <span className="ml-0.5">reach</span>
+                        </span>
+                        <span>
+                          <span className="font-semibold text-brand-shikho-magenta tabular-nums">{qualityEngagementForPost(matchedPost)}</span>
+                          <span className="ml-0.5">QE</span>
+                          <span className="ml-1 text-ink-muted/70">({matchedPost.shares || 0}s + {matchedPost.comments || 0}c)</span>
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0 sm:ml-4">
