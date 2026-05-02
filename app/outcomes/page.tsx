@@ -29,6 +29,8 @@ import { Card } from "@/components/Card";
 import PageHeader from "@/components/PageHeader";
 import PostReference from "@/components/PostReference";
 import Link from "next/link";
+import { bdt, bdtNow, dateStr, startOfWeekBDT } from "@/lib/aggregate";
+import { postReach as postReachFn, qualityEngagementForPost } from "@/lib/qualityEngagement";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -227,6 +229,44 @@ export default async function OutcomesPage({
   const orderedDays = DAY_ORDER.filter((d) => byDay[d]);
   if (byDay["Unknown"]) orderedDays.push("Unknown");
 
+  // Sprint P7 v4.18 W2 R5 (2026-05-02): Yesterday-focused inline card.
+  //
+  // Context: operators land on /outcomes on a Tuesday morning to check
+  // Monday's results. The per-day stacked view forces them to scan all
+  // 7 day cells before locating yesterday — high friction for the most
+  // common entry point. R5 surfaces yesterday's slots as a hero card
+  // ABOVE the rollup when the active week IS the current Mon-anchor
+  // week AND yesterday falls inside it. Pure presentation: the same
+  // rows are still rendered in the per-day breakdown below; this is
+  // a focus pin, not a duplication of state.
+  //
+  // Conditions: only renders when (a) active week is the current week,
+  // (b) yesterday's date string ≠ today's (so on Monday morning we
+  // don't pin Sunday from the previous week), and (c) at least one
+  // row matches yesterday.
+  const now = bdtNow();
+  const todayBdt = dateStr(now);
+  const yesterdayDate = new Date(now);
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const yesterdayIso = dateStr(yesterdayDate);
+  const yesterdayDayName = yesterdayDate.toLocaleDateString("en-US", {
+    weekday: "long",
+    timeZone: "Asia/Dhaka",
+  });
+  const currentWeekStart = dateStr(startOfWeekBDT(now));
+  const isCurrentWeek = activeWeek === currentWeekStart;
+  const yesterdayInActiveWeek = isCurrentWeek && yesterdayIso !== todayBdt;
+  const yesterdayRows = yesterdayInActiveWeek
+    ? rows.filter((r) => r.date === yesterdayIso)
+    : [];
+  const yesterdayRollup = yesterdayRows.length
+    ? {
+        hits: yesterdayRows.filter((r) => r.verdict === "hit" || r.verdict === "exceeded").length,
+        missed: yesterdayRows.filter((r) => r.verdict === "missed").length,
+        pending: yesterdayRows.filter((r) => r.verdict === "no-data" || r.verdict === "unavailable").length,
+      }
+    : null;
+
   return (
     <div>
       <PageHeader
@@ -276,6 +316,121 @@ export default async function OutcomesPage({
             choices={["this", "last", "next"]}
             preserve={searchParams as Record<string, string | string[] | undefined>}
           />
+
+          {/* R5 (2026-05-02): Yesterday-focused inline card.
+              Pinned above the rollup when active week is current week +
+              yesterday has matched slots. The same rows ALSO render in the
+              per-day breakdown below — this is a focus shortcut, not a
+              data fork. Saves operators 1 scroll on the most common entry
+              point (Tuesday morning checking Monday's results). */}
+          {yesterdayRollup && yesterdayRows.length > 0 && (
+            <Card className="mb-5 border-l-4 border-l-brand-shikho-magenta">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] uppercase tracking-wider font-semibold text-brand-shikho-magenta bg-shikho-magenta-50/60 rounded px-1.5 py-0.5">
+                      Yesterday
+                    </span>
+                    <h2 className="text-base font-semibold text-ink-primary">
+                      {yesterdayDayName} {yesterdayDate.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "Asia/Dhaka" })}
+                    </h2>
+                  </div>
+                  <p className="text-xs text-ink-muted mt-1">
+                    {yesterdayRows.length} slot{yesterdayRows.length === 1 ? "" : "s"} · {yesterdayRollup.hits} hit{yesterdayRollup.hits === 1 ? "" : "s"} · {yesterdayRollup.missed} missed · {yesterdayRollup.pending} pending
+                  </p>
+                </div>
+                <a
+                  href={`#day-${yesterdayDayName}`}
+                  className="text-[11px] font-semibold uppercase tracking-wider text-brand-shikho-indigo hover:underline self-start sm:self-auto"
+                >
+                  Jump to {yesterdayDayName} ↓
+                </a>
+              </div>
+              <ul className="divide-y divide-ink-100">
+                {yesterdayRows.slice(0, 8).map((s) => {
+                  const m = s.matched_post_id ? postById.get(s.matched_post_id) : null;
+                  // Look up the actual Post record (postById gives us the
+                  // shape we built above; we need the underlying Post for
+                  // QE + reach helpers). The lookup falls back gracefully
+                  // when no post is matched (no-data verdict).
+                  const matchedPost = s.matched_post_id
+                    ? allPosts.find((p) => p.id === s.matched_post_id)
+                    : null;
+                  const reach = matchedPost ? postReachFn(matchedPost) : (s.actual_reach ?? 0);
+                  const qe = matchedPost ? qualityEngagementForPost(matchedPost) : 0;
+                  // OutcomeLogEntry doesn't carry time_bdt — derive from the
+                  // matched post's created_time when available, else show "—".
+                  const postTime = matchedPost?.created_time
+                    ? bdt(matchedPost.created_time).toLocaleTimeString("en-US", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        timeZone: "Asia/Dhaka",
+                        hour12: false,
+                      })
+                    : "—";
+                  return (
+                    <li key={s.outcome_key} className="py-2.5 flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <span className="text-[11px] text-ink-muted font-semibold uppercase tracking-wider flex-shrink-0 mt-0.5 w-12 tabular-nums">
+                          {postTime}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm text-ink-primary flex items-center gap-1.5 flex-wrap">
+                            <span className="font-medium">{s.pillar || "—"}</span>
+                            <span className="text-ink-muted">·</span>
+                            <span className="text-ink-secondary">{s.format || "—"}</span>
+                            {s.hypothesis_id && (
+                              <span
+                                className="text-[10px] font-bold uppercase tracking-wider bg-brand-shikho-indigo/10 text-brand-shikho-indigo rounded px-1.5 py-0.5 cursor-help"
+                                title={hypothesisTip(s.hypothesis_id)}
+                              >
+                                {s.hypothesis_id}
+                              </span>
+                            )}
+                            {s.preliminary && (
+                              <span
+                                className="text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 rounded px-1.5 py-0.5"
+                                title={`Post is ${s.age_days ?? "<7"} days old; verdict preliminary.`}
+                              >
+                                Prelim
+                              </span>
+                            )}
+                          </div>
+                          {matchedPost && (
+                            <div className="text-[11px] text-ink-muted mt-0.5 flex items-center gap-x-3 flex-wrap">
+                              <span className="tabular-nums">
+                                <span className="font-semibold text-brand-shikho-indigo">{fmtNum(reach)}</span> reach
+                              </span>
+                              <span className="tabular-nums">
+                                <span className="font-semibold text-brand-shikho-magenta">{qe}</span> QE
+                                <span className="ml-1 text-ink-muted/70">({matchedPost.shares || 0}s + {matchedPost.comments || 0}c)</span>
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {m && (
+                          <PostReference
+                            iconOnly
+                            caption={m.message || ""}
+                            permalinkUrl={m.permalink_url || ""}
+                            iconLabel={`View matched post (${s.matched_post_id})`}
+                          />
+                        )}
+                        <VerdictPill verdict={s.verdict} />
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+              {yesterdayRows.length > 8 && (
+                <p className="mt-2 text-[11px] text-ink-muted">
+                  +{yesterdayRows.length - 8} more slot{yesterdayRows.length - 8 === 1 ? "" : "s"} in {yesterdayDayName} below
+                </p>
+              )}
+            </Card>
+          )}
 
           {/* Rollup card — the "so what" answer up top */}
           <Card className="mb-5">
@@ -363,8 +518,9 @@ export default async function OutcomesPage({
               return (
                 <details
                   key={day}
+                  id={`day-${day}`}
                   open
-                  className="group bg-ink-paper border border-ink-100 rounded-xl overflow-hidden"
+                  className="group bg-ink-paper border border-ink-100 rounded-xl overflow-hidden scroll-mt-4"
                 >
                   <summary className="list-none cursor-pointer px-4 sm:px-5 py-3 border-b border-ink-100 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">

@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-05-02 — v4.18 R5: Outcomes Yesterday inline focus card
+
+User feedback (transcript backlog): "when I open Outcomes on a Tuesday
+morning to check Monday's results, I shouldn't have to scroll the
+whole week — just show me yesterday."
+
+Implementation: a new "Yesterday" Card pinned above the rollup on the
+Outcomes page when (a) active week == current Mon-anchor week and (b)
+yesterday's date string ≠ today's (avoids pinning Sunday on a Monday-
+morning rollover where yesterday belongs to a different week). Same
+rows still render in the per-day breakdown below — this is a focus
+shortcut, not a data fork.
+
+Each yesterday slot shows: post time (derived from matched post's
+created_time), pillar · format, hypothesis chip, prelim chip if
+applicable, reach + Quality Engagement inline (matching the Today
+page's Yesterday card vocabulary), PostReference drill-down, and
+verdict pill. "Jump to {Day} ↓" anchor link scrolls to the same day
+inside the per-day breakdown. Per-day `<details>` blocks gained
+`id="day-Monday"` etc. + `scroll-mt-4` for the anchor target offset.
+
+Cap at 8 rows in the focus card with "+N more in {Day} below" hint
+when yesterday had more slots than that. Magenta left-border accent
+distinguishes it from the rollup's neutral card.
+
 ## 2026-05-02 — v4.18 W2 Fri (W13): Recent Reels pagination + reusable PaginatedList
 
 User feedback (voice transcript 2026-05-01): "the Recent Reels table
