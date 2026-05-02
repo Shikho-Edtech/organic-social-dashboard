@@ -19,6 +19,10 @@ import PageHeader from "@/components/PageHeader";
 import { Card, ChartCard } from "@/components/Card";
 import BarChartBase from "@/components/BarChart";
 import type { GroupStatRow } from "@/lib/aggregate";
+import EngagementDimensionView, {
+  type DimensionConfig,
+  type DimensionId,
+} from "@/components/EngagementDimensionView";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -152,6 +156,21 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
     fhMetricParam === "interactions" || fhMetricParam === "engagement" || fhMetricParam === "shares"
       ? fhMetricParam
       : "reach";
+
+  // R2 implementation (2026-05-02): feature-flagged consolidated layout.
+  // ?layout=r2 swaps the 5 stacked per-dimension bar charts for a single
+  // chart with a dimension switcher (operator picks Format / Pillar /
+  // Hook / Spotlight / Tone — only one renders at a time). Default
+  // layout = "default" (the 5-chart stack) until QA + operator A/B
+  // approve cutover. Flag is URL-only — no cookie, no setting — so
+  // exiting is just removing the param.
+  const layoutParam = typeof searchParams?.layout === "string" ? searchParams.layout : "";
+  const isR2Layout = layoutParam === "r2";
+  const engDimParam = typeof searchParams?.eng_dim === "string" ? searchParams.eng_dim : "";
+  const validDims: DimensionId[] = ["format", "pillar", "hook", "spotlight", "tone"];
+  const activeEngDim: DimensionId = (validDims as string[]).includes(engDimParam)
+    ? (engDimParam as DimensionId)
+    : "pillar"; // default to pillar — most common entry-point question
   const [posts, runStatus, videos] = await Promise.all([
     getPosts(),
     getRunStatus(),
@@ -361,6 +380,36 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
   return (
     <div>
       <PageHeader title="Engagement" subtitle="What drives interaction" dateLabel={range.label} lastScrapedAt={runStatus.last_run_at} compact />
+
+      {/* R2 (2026-05-02): feature-flag banner. Visible only when ?layout=r2.
+          Tells operators they're in a preview layout + offers a one-click
+          exit. Wireframe spec: docs/wireframes/R2_engagement_consolidation_v1.html. */}
+      {isR2Layout ? (
+        <div className="mb-4 rounded-lg border border-shikho-magenta-100 bg-shikho-magenta-50/40 px-3 py-2 flex items-start sm:items-center gap-2 flex-wrap">
+          <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-brand-shikho-magenta bg-shikho-magenta-50 rounded px-1.5 py-0.5 border border-shikho-magenta-100">
+            R2 preview
+          </span>
+          <span className="text-xs text-ink-secondary leading-snug">
+            Consolidated dimension view: 5 stacked charts → 1 chart with a switcher. Old layout is the default; this is opt-in.
+          </span>
+          <Link
+            href="/engagement"
+            className="ml-auto text-[11px] font-semibold uppercase tracking-wider text-brand-shikho-indigo hover:underline"
+          >
+            ← Default layout
+          </Link>
+        </div>
+      ) : (
+        <div className="mb-4 px-3 py-1.5 flex items-center justify-end">
+          <Link
+            href="/engagement?layout=r2"
+            className="text-[11px] font-medium text-ink-muted hover:text-brand-shikho-magenta inline-flex items-center gap-1"
+            title="Preview the consolidated dimension switcher (5 charts → 1 with toggle)"
+          >
+            Try R2 consolidated layout →
+          </Link>
+        </div>
+      )}
 
       {/* "Best X" strip — reach-weighted, with category-semantic colour on
           the winning value. A Reel winner reads pink (same as Plan's reel
@@ -847,6 +896,81 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
         </section>
       )}
 
+      {/* R2 (2026-05-02): when ?layout=r2 active, render the consolidated
+          dimension switcher INSTEAD of the per-dimension chart stack below.
+          Funnel + Format×Hour + Recommended cards still render in both
+          layouts (they don't fit the dimension-switcher pattern). */}
+      {isR2Layout ? (
+        <EngagementDimensionView
+          active={activeEngDim}
+          totalPosts={inRange.length}
+          searchParams={searchParams}
+          colorFor={(axis, key) => canonicalColor(axis, key)}
+          dimensions={[
+            {
+              id: "format",
+              label: "Format",
+              subtitle: "Avg engagement rate by post format",
+              definition: `Engagement rate = total interactions (reactions + comments + shares) ÷ total unique reach for posts in that format — reach-weighted so viral outliers don't dominate. Formats with fewer than ${MIN_N} posts are hidden.`,
+              caption: "A format that consistently beats the average is worth doubling down on.",
+              noun: "format",
+              series: formatER,
+              winner: bestFormat ? { key: bestFormat.key, rate: bestFormat.avg_engagement_rate, count: bestFormat.count } : undefined,
+              minN: MIN_N,
+              horizontal: false,
+            },
+            {
+              id: "pillar",
+              label: "Pillar",
+              subtitle: "Avg engagement rate by content pillar",
+              definition: `Reach-weighted engagement rate per pillar. Only pillars with ${MIN_N}+ posts in the period are shown.`,
+              caption: "Identify which content themes resonate most with the audience.",
+              noun: "pillar",
+              series: pillarER,
+              winner: bestPillar ? { key: bestPillar.key, rate: bestPillar.avg_engagement_rate, count: bestPillar.count } : undefined,
+              minN: MIN_N,
+              horizontal: true,
+            },
+            {
+              id: "hook",
+              label: "Hook",
+              subtitle: "Avg engagement rate by opening hook",
+              definition: `Posts grouped by classified hook type (Question, Stat, Curiosity, etc.). Reach-weighted engagement rate. Only hook types with ${MIN_N}+ posts shown. Hook is assigned by the weekly pipeline from the post's opening line.`,
+              caption: "If one hook dominates, test the same content with a different opening.",
+              noun: "hook type",
+              series: hookER,
+              winner: bestHook ? { key: bestHook.key, rate: bestHook.avg_engagement_rate, count: bestHook.count } : undefined,
+              minN: MIN_N,
+              horizontal: true,
+            },
+            {
+              id: "spotlight",
+              label: "Spotlight",
+              subtitle: "Avg engagement rate by spotlight type",
+              definition: `Posts grouped by what they spotlight: Teacher / Product / Program / Campaign. Reach-weighted ER. Only types with ${MIN_N}+ posts shown.`,
+              caption: "If Teacher posts outperform Product posts, lean into the faculty.",
+              noun: "spotlight type",
+              series: spotlightER,
+              winner: bestSpotlight ? { key: bestSpotlight.key, rate: bestSpotlight.avg_engagement_rate, count: bestSpotlight.count } : undefined,
+              minN: MIN_N,
+              horizontal: true,
+            },
+            {
+              id: "tone",
+              label: "Caption Tone",
+              subtitle: "Avg engagement rate by caption tone",
+              definition: `Posts grouped by classified caption_tone field (Educational / Urgent / Conversational / etc.). Reach-weighted ER. Only tones with ${MIN_N}+ posts shown.`,
+              caption: "Tone is the caption's overall register — independent of the hook line.",
+              noun: "tone",
+              series: toneER,
+              winner: bestTone ? { key: bestTone.key, rate: bestTone.avg_engagement_rate, count: bestTone.count } : undefined,
+              minN: MIN_N,
+              horizontal: true,
+            },
+          ]}
+        />
+      ) : (
+      <>
       <div className="grid lg:grid-cols-2 gap-4 mb-6">
         <ChartCard
           title="Format Performance"
@@ -955,6 +1079,8 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           />
         </ChartCard>
       </div>
+      </>
+      )}
     </div>
   );
 }

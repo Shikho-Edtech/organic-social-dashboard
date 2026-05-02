@@ -1,5 +1,50 @@
 # Changelog
 
+## 2026-05-02 — v4.18 R2: feature-flagged Engagement consolidation (View 1)
+
+Wireframe (78e550d) → working code. `/engagement?layout=r2` now
+swaps the 5 stacked per-dimension bar charts (Format, Pillar, Hook,
+Spotlight, Tone) for **one chart with a dimension switcher**. The
+operator picks Format / Pillar / Hook / Spotlight / Tone via a pill
+row at the top; only the active dimension renders below. The "Best X"
+KPI is now inline above the chart (replacing the 5-card strip) so
+the eye sees winner→evidence in one frame, not "winner over here,
+evidence over there 1500px down."
+
+Server-rendered (no client state). Switching uses `?eng_dim=` URL
+param so deep-links + refreshes preserve selection. Default `eng_dim`
+= `pillar` (most common entry-point question).
+
+Implementation:
+- `components/EngagementDimensionView.tsx` — new server component
+  receiving 5 pre-computed dimension series + winners + minN
+  threshold; renders the switcher and the active chart card.
+- `app/engagement/page.tsx` — `?layout=r2` query param toggles the
+  conditional. Old 7-chart stack stays default until QA + operator
+  A/B approve cutover. Funnel + Format×Hour heatmap + Recommended +
+  Winning Pattern + Best-X KPIs all unchanged in both layouts.
+
+UX affordances:
+- **R2 preview banner** on the consolidated layout: magenta accent,
+  "← Default layout" exit link.
+- **"Try R2 consolidated layout →"** link on default layout (small,
+  muted, top-right above the per-dimension charts) so operators can
+  discover the preview without docs.
+
+Wireframe was at `docs/wireframes/R2_engagement_consolidation_v1.html`;
+implementation diverges only in: (a) skipping View 5 (Comparison Lab)
+for v1 — that's a power-user feature, ship after operator validates
+View 1 wins; (b) using `?layout=r2` instead of permanent route — keeps
+the rollback / A/B testing safe.
+
+Migration path (per wireframe):
+1. ✅ Wireframe + this v1 implementation
+2. ⏳ Operator A/B trial — both layouts live, user picks per-page-load
+3. ⏳ If R2 wins on time-to-insight → promote to default
+4. ⏳ Old 5-chart stack deletion in one commit; URL params preserved
+
+Build green; engagement bundle stable at 1.79 kB.
+
 ## 2026-05-02 — v4.18 R4: Recommended-this-period consolidated on Overview
 
 User feedback: "the recommendation sections on Engagement and Timing
