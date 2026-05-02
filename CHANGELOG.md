@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-05-02 — v4.18 R3: feature-flagged Timing dynamic heatmap
+
+`/timing?layout=r3` swaps the 2-3 stacked Day × Hour heatmaps
+(Engagement Rate / Avg Reach / optional Shares-or-Interactions for
+?metric=) for **one heatmap with a metric switcher**. The operator
+picks Engagement Rate / Avg Reach / Avg Shares / Avg Interactions
+via a pill row above the grid; only the active metric renders below.
+
+Same data model — the cell builder now produces all 4 cell arrays in
+one pass (negligible cost: ~672 cells total, 4× 168). View toggle
+uses `?heat_view=engagement|reach|shares|interactions` URL param so
+deep-links + refreshes preserve selection. Default
+`heat_view=engagement` (the canonical "when to post" signal).
+
+UX affordances (matching R2 pattern):
+- **R3 preview banner** at the top of the dynamic heatmap section
+  (not the page header, to avoid competing with the existing best-
+  posting-window hero).
+- **"Try R3 dynamic heatmap →"** subtle link on default layout
+  above the first heatmap.
+- **"← Default layout"** exit link in the R3 banner.
+
+Default layout still renders 2-3 heatmaps. Migration path same as
+R2: A/B trial → operator picks default → cutover deletes the stack
+in one commit.
+
+Build green; timing bundle stable at 3.75 kB (no client JS — toggle
+is server-side via URL param).
+
 ## 2026-05-02 — v4.18 R2: feature-flagged Engagement consolidation (View 1)
 
 Wireframe (78e550d) → working code. `/engagement?layout=r2` now

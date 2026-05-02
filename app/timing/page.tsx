@@ -7,6 +7,7 @@ import { Card, ChartCard } from "@/components/Card";
 import Heatmap, { type HeatmapCell } from "@/components/Heatmap";
 import EmptyChart from "@/components/EmptyChart";
 import MetricSelector, { parseMetricParam } from "@/components/MetricSelector";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -34,6 +35,22 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
   // against reach.
   const activeMetrics = parseMetricParam(searchParams.metric);
   const primaryMetric = activeMetrics[0];
+
+  // R3 (2026-05-02): feature-flagged dynamic-heatmap layout. When
+  // ?layout=r3 is active, the page renders ONE heatmap with a metric
+  // switcher above it (?heat_view=engagement|reach|shares|interactions)
+  // instead of the 2-3 stacked heatmaps that ship in the default
+  // layout. Same data model — just one chart at a time. URL param
+  // makes deep-links / refreshes preserve the active view.
+  const layoutParam = typeof searchParams?.layout === "string" ? searchParams.layout : "";
+  const isR3Layout = layoutParam === "r3";
+  const heatViewParam = typeof searchParams?.heat_view === "string" ? searchParams.heat_view : "";
+  const validHeatViews = ["engagement", "reach", "shares", "interactions"] as const;
+  type HeatView = (typeof validHeatViews)[number];
+  const activeHeatView: HeatView = (validHeatViews as readonly string[]).includes(heatViewParam)
+    ? (heatViewParam as HeatView)
+    : "engagement"; // default: engagement (the canonical "when" signal)
+
   const [posts, runStatus] = await Promise.all([getPosts(), getRunStatus()]);
   const inRange = filterPosts(posts, { start: range.start, end: range.end });
 
@@ -104,21 +121,30 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
   // when active metric is "shares" or "interactions"; reach + engagement
   // are already covered by the canonical pair above.
   const metricCells: HeatmapCell[] = [];
+  // R3 (2026-05-02): always-built shares + interactions cells so the
+  // dynamic-heatmap switcher (?layout=r3) can flip between any of the 4
+  // views via URL param without re-running the cell loop. ~168 cells per
+  // metric, cost is negligible. Default-layout pages don't render these.
+  const sharesCells: HeatmapCell[] = [];
+  const interactionsCells: HeatmapCell[] = [];
   for (let d = 0; d < 7; d++) {
     for (let h = 0; h < 24; h++) {
       const b = grid[d][h];
       const er = b.reach > 0 ? (b.interactions / b.reach) * 100 : 0;
       const avgReach = b.posts > 0 ? b.reach / b.posts : 0;
+      const avgShares = b.posts > 0 ? (b.shares || 0) / b.posts : 0;
+      const avgInteractions = b.posts > 0 ? b.interactions / b.posts : 0;
       erCells.push({ day: d, hour: h, value: er, n: b.n, totalReach: b.reach });
       reachCells.push({ day: d, hour: h, value: avgReach, n: b.n, totalReach: b.reach });
-      // Per-cell value of the active metric. For interactions: sum ÷ posts.
-      // For shares: sum ÷ posts. Both yield "avg per post" semantics that
-      // matches the existing reach heatmap's scale.
+      sharesCells.push({ day: d, hour: h, value: avgShares, n: b.n, totalReach: b.reach });
+      interactionsCells.push({ day: d, hour: h, value: avgInteractions, n: b.n, totalReach: b.reach });
+      // Per-cell value of the active metric (legacy default layout uses this for the
+      // optional 3rd heatmap when ?metric=shares|interactions is active).
       const metricValue =
         primaryMetric === "shares"
-          ? (b.posts > 0 ? (b.shares || 0) / b.posts : 0)
+          ? avgShares
           : primaryMetric === "interactions"
-            ? (b.posts > 0 ? b.interactions / b.posts : 0)
+            ? avgInteractions
             : 0;
       metricCells.push({ day: d, hour: h, value: metricValue, n: b.n, totalReach: b.reach });
     }
@@ -316,6 +342,170 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
         </Card>
       </div>
 
+      {/* R3 (2026-05-02): dynamic single heatmap with metric switcher.
+          When ?layout=r3 active, this replaces the 2-3 stacked heatmaps
+          below. Operator picks the view; URL ?heat_view= preserves it. */}
+      {isR3Layout ? (
+        <div className="mb-6">
+          {/* R3 banner — at the top of the dynamic heatmap section, not at
+              page-top, so it doesn't compete with the existing best-window
+              hero card. Magenta accent matches R2's preview banner. */}
+          <div className="mb-3 rounded-lg border border-shikho-magenta-100 bg-shikho-magenta-50/40 px-3 py-2 flex items-start sm:items-center gap-2 flex-wrap">
+            <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-brand-shikho-magenta bg-shikho-magenta-50 rounded px-1.5 py-0.5 border border-shikho-magenta-100">
+              R3 preview
+            </span>
+            <span className="text-xs text-ink-secondary leading-snug">
+              Dynamic heatmap: 2-3 stacked grids → 1 grid with a switcher.
+            </span>
+            <Link
+              href={(() => {
+                const p = new URLSearchParams();
+                for (const [k, v] of Object.entries(searchParams)) {
+                  if (k === "layout" || k === "heat_view") continue;
+                  if (typeof v === "string") p.set(k, v);
+                  else if (Array.isArray(v) && v.length) p.set(k, v[0]);
+                }
+                const qs = p.toString();
+                return qs ? `/timing?${qs}` : "/timing";
+              })()}
+              className="ml-auto text-[11px] font-semibold uppercase tracking-wider text-brand-shikho-indigo hover:underline"
+            >
+              ← Default layout
+            </Link>
+          </div>
+
+          {/* View switcher pills — Links so URL is the source of truth. */}
+          {(() => {
+            const buildViewHref = (view: HeatView): string => {
+              const p = new URLSearchParams();
+              for (const [k, v] of Object.entries(searchParams)) {
+                if (k === "heat_view") continue;
+                if (typeof v === "string") p.set(k, v);
+                else if (Array.isArray(v) && v.length) p.set(k, v[0]);
+              }
+              p.set("heat_view", view);
+              return `/timing?${p.toString()}`;
+            };
+            const viewMeta: Record<HeatView, { label: string; sublabel: string; minColor: string; maxColor: string; valueFormat: "percent" | "number"; metricLabel: string; cells: HeatmapCell[]; tagline: string }> = {
+              engagement: {
+                label: "Engagement Rate",
+                sublabel: "Reach-weighted ER per cell",
+                minColor: "#FCEAF3",
+                maxColor: "#C02080",
+                valueFormat: "percent",
+                metricLabel: "engagement rate",
+                cells: erCells,
+                tagline: "(Σ interactions ÷ Σ reach) × 100 per (day, hour) cell. Reach-weighted so a single viral post can't hijack a cell's color.",
+              },
+              reach: {
+                label: "Avg Reach",
+                sublabel: "Mean unique reach per post",
+                minColor: "#EEF0FA",
+                maxColor: "#304090",
+                valueFormat: "number",
+                metricLabel: "avg reach",
+                cells: reachCells,
+                tagline: "Σ reach ÷ N posts per cell. Pair with the engagement-rate view — a high-reach cell can still have low ER.",
+              },
+              shares: {
+                label: "Avg Shares",
+                sublabel: "Mean shares per post",
+                minColor: "#FEF3D9",
+                maxColor: "#E0A010",
+                valueFormat: "number",
+                metricLabel: "avg shares",
+                cells: sharesCells,
+                tagline: "Σ shares ÷ N posts per cell. Surfaces unpaid-distribution windows.",
+              },
+              interactions: {
+                label: "Avg Interactions",
+                sublabel: "Mean (reactions + comments + shares) per post",
+                minColor: "#FCEAF3",
+                maxColor: "#C02080",
+                valueFormat: "number",
+                metricLabel: "avg interactions",
+                cells: interactionsCells,
+                tagline: "Σ (reactions + comments + shares) ÷ N posts per cell. Combines all interaction types.",
+              },
+            };
+            const current = viewMeta[activeHeatView];
+            return (
+              <>
+                <nav
+                  aria-label="Heatmap metric"
+                  className="mb-3 flex flex-wrap items-center gap-1.5"
+                >
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted mr-1">
+                    View:
+                  </span>
+                  {(Object.keys(viewMeta) as HeatView[]).map((v) => {
+                    const isActive = v === activeHeatView;
+                    return (
+                      <Link
+                        key={v}
+                        href={buildViewHref(v)}
+                        scroll={false}
+                        aria-pressed={isActive}
+                        className={`px-2.5 py-1 rounded-md border text-[11px] font-medium transition-colors duration-base ${
+                          isActive
+                            ? "bg-brand-shikho-indigo text-white border-brand-shikho-indigo shadow-sm"
+                            : "bg-ink-paper text-ink-secondary border-ink-100 hover:border-brand-shikho-indigo hover:text-brand-shikho-indigo"
+                        }`}
+                      >
+                        {viewMeta[v].label}
+                      </Link>
+                    );
+                  })}
+                </nav>
+                <ChartCard
+                  title={`${current.label} · Day × Hour`}
+                  kind={activeHeatView === "engagement" ? "derived" : "observed"}
+                  subtitle={current.sublabel}
+                  definition={`${current.tagline} Color saturation encodes the value relative to the strongest cell. Cells with fewer than ${CELL_MIN_N} posts are dimmed (still visible so zero-post slots are distinguishable from low-confidence ones).`}
+                  sampleSize={`${totalCellsReliable} / ${totalCellsWithPosts} cells reliable (n≥${CELL_MIN_N}), ${inRange.length} posts total`}
+                  caption="Read left-to-right for daily patterns, top-to-bottom for weekday patterns. Dark diagonal bands suggest consistent best-time windows. Bangladesh Time (UTC+6)."
+                >
+                  {totalCellsWithPosts === 0 ? (
+                    <EmptyChart
+                      message="No posts in this date range"
+                      hint="Widen the range or check that posts exist for this window."
+                    />
+                  ) : (
+                    <Heatmap
+                      cells={current.cells}
+                      minN={CELL_MIN_N}
+                      metricLabel={current.metricLabel}
+                      valueFormat={current.valueFormat}
+                      minColor={current.minColor}
+                      maxColor={current.maxColor}
+                    />
+                  )}
+                </ChartCard>
+              </>
+            );
+          })()}
+        </div>
+      ) : (
+        <>
+        {/* Default layout: discovery hint to try R3 */}
+        <div className="mb-3 px-3 py-1.5 flex items-center justify-end">
+          <Link
+            href={(() => {
+              const p = new URLSearchParams();
+              for (const [k, v] of Object.entries(searchParams)) {
+                if (typeof v === "string") p.set(k, v);
+                else if (Array.isArray(v) && v.length) p.set(k, v[0]);
+              }
+              p.set("layout", "r3");
+              return `/timing?${p.toString()}`;
+            })()}
+            className="text-[11px] font-medium text-ink-muted hover:text-brand-shikho-magenta inline-flex items-center gap-1"
+            title="Preview the dynamic single-heatmap layout (2-3 grids → 1 with toggle)"
+          >
+            Try R3 dynamic heatmap →
+          </Link>
+        </div>
+
       {/* Primary heatmap: engagement rate by day×hour */}
       <div className="mb-6">
         <ChartCard
@@ -408,6 +598,8 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
             )}
           </ChartCard>
         </div>
+      )}
+      </>
       )}
     </div>
   );
