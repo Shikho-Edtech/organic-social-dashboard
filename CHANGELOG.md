@@ -1,5 +1,40 @@
 # Changelog
 
+## 2026-05-02 — v4.18 W2 Thu (W12): Top 10 Reels merged into one switcher
+
+User feedback (voice transcript 2026-05-01): "the three Top-10 Reels
+charts on the reels page should just be a switcher — I'm only looking
+at one of them at a time, and stacking three identical-looking ranked
+lists below each other is wasteful."
+
+Implementation: new `components/TopReelSwitcher.tsx` — a client tab
+strip that toggles between pre-rendered list panels. Each panel is
+still server-rendered (TopReelList stays a server component, uses
+PostReference + Bangla-aware truncation), passed as a `ReactNode` via
+the switcher's `tabs[].content` prop. The client component does
+nothing but toggle visibility — zero re-render cost, zero data
+fetching.
+
+Tab list:
+- **Plays** — raw reach leaders (default)
+- **Avg Watch Time** — engagement-quality (≥500 views floor)
+- **Followers Gained** — conditional (only included if any reels
+  gained followers in range)
+
+Each tab has its own accent color (indigo / magenta / green), its own
+subtitle + caption, its own bar color, and its own value formatter.
+Layout savings: ~600px of vertical space on desktop, ~1100px on mobile
+(was 3 stacked cards, now 1 card with toggle pills above the list).
+
+The dynamic 4th list (Top Reels by {active page metric}, surfaced
+when metric != reach) stays as a separate card — different semantics
+(it's framed as "what does the page-level metric say about reels?",
+not "rank these reels by a reel-domain metric").
+
+Build green; reels bundle 3.77 → 4.2 kB (small client component
+added). Tab strip respects `focus-visible` ring and aria-selected /
+aria-controls / role=tablist for keyboard + screen-reader nav.
+
 ## 2026-05-02 — v4.18 W2 Wed (W5 + W6): Reference content pass
 
 W5 — concrete examples added under every Hook Type, Caption Tone,

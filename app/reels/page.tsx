@@ -9,6 +9,7 @@ import BarChartBase from "@/components/BarChart";
 import TrendChart from "@/components/TrendChart";
 import PostReference from "@/components/PostReference";
 import MetricSelector, { parseMetricParam } from "@/components/MetricSelector";
+import TopReelSwitcher from "@/components/TopReelSwitcher";
 
 /**
  * TopReelList — ranked list replacement for BarChart on top-10 reels.
@@ -496,46 +497,63 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
         </ChartCard>
       </div>
 
-      {/* Top performers — ranked lists replace BarChart so captions are
-          clickable (hover shows full caption, icon links to the FB post). */}
-      <div className="grid lg:grid-cols-2 gap-4 mb-6">
+      {/* W12 (2026-05-02): three Top-10 Reels rankings — Plays, Avg Watch Time,
+          Followers Gained — merged into a single switcher card. Operators only
+          look at one ranking at a time; stacking three peer ChartCards burned
+          vertical space and made the comparison ("the same reels, ranked three
+          ways") implicit instead of explicit. The switcher exposes that framing
+          directly: pick the lens, see the leaders.
+
+          Implementation: each list is server-rendered (TopReelList uses
+          PostReference + Bangla-aware truncation) and passed as a pre-rendered
+          ReactNode to <TopReelSwitcher>, which is a thin client component that
+          toggles which list is visible. Followers Gained tab is conditionally
+          included (omitted if no reels gained followers in range, matching the
+          previous "show only if rows > 0" behaviour). */}
+      <div className="mb-6">
         <ChartCard
-          title="Top 10 Reels by Plays"
+          title="Top 10 Reels"
           kind="observed"
-          subtitle="Raw reach leaders · tap a caption for the full text"
-          definition="Total reel plays (includes replays) — the highest-distribution reels in the period. Each row shows rank, caption (click / tap for the full Bangla text + a link out to the Facebook post), a bar showing relative scale against the top performer, and avg watch time as context."
-          sampleSize={`top ${topByPlays.length}`}
-          caption="High plays with weak watch time = strong hook, weak middle. Use this list together with the Top 10 by Avg Watch Time below."
+          definition="Three rankings of the same reels in this date range — Plays (raw reach leaders, includes replays), Avg Watch Time (engagement-quality, filtered to ≥500 views to avoid tiny-sample outliers), Followers Gained (reels that converted viewers to followers). Each row shows rank, caption (click / tap for full text + a link out to the FB post), a bar for relative scale, and metric-specific context. Use the toggle to flip between rankings — high plays + weak watch time = strong hook, weak middle; long watch time + decent plays = replicable format; high follower gain on modest plays = punches above its weight."
+          sampleSize={`${reels.length} reel${reels.length === 1 ? "" : "s"} in range`}
         >
-          <TopReelList rows={topByPlays} max={topByPlaysMax} valueLabel="plays" barColor="#304090" />
-        </ChartCard>
-        <ChartCard
-          title="Top 10 Reels by Avg Watch Time"
-          kind="observed"
-          subtitle="Engagement-quality leaders (≥500 views)"
-          definition="Average watch time in seconds. Filtered to reels with at least 500 total views to avoid tiny-sample outliers. Click a caption to read the full text / open the post on Facebook."
-          sampleSize={`top ${topByWatchTime.length}`}
-          caption="Long watch time with decent plays = replicable format. Short watch time with high plays = good hook, weak middle."
-        >
-          <TopReelList rows={topByWatchTime} max={topByWatchTimeMax} valueLabel="seconds" barColor="#C02080" formatValue={(v) => `${v}s`} />
+          <TopReelSwitcher
+            tabs={[
+              {
+                label: "Plays",
+                subtitle: `Raw reach leaders · top ${topByPlays.length}`,
+                caption: "High plays with weak watch time = strong hook, weak middle. Switch to Avg Watch Time to spot reels that held the audience.",
+                accentBg: "bg-brand-shikho-indigo",
+                content: (
+                  <TopReelList rows={topByPlays} max={topByPlaysMax} valueLabel="plays" barColor="#304090" />
+                ),
+              },
+              {
+                label: "Avg Watch Time",
+                subtitle: `Engagement-quality leaders (≥500 views) · top ${topByWatchTime.length}`,
+                caption: "Long watch time with decent plays = replicable format. Short watch time with high plays = good hook, weak middle.",
+                accentBg: "bg-brand-shikho-magenta",
+                content: (
+                  <TopReelList rows={topByWatchTime} max={topByWatchTimeMax} valueLabel="seconds" barColor="#C02080" formatValue={(v) => `${v}s`} />
+                ),
+              },
+              ...(topByFollowers.length > 0
+                ? [
+                    {
+                      label: "Followers Gained",
+                      subtitle: `Reels that converted viewers → followers · ${topByFollowers.length} reel${topByFollowers.length === 1 ? "" : "s"}`,
+                      caption: "High plays with zero follower gain = viral but not sticky. Low plays with high follower gain = niche but converts.",
+                      accentBg: "bg-brand-green",
+                      content: (
+                        <TopReelList rows={topByFollowers} max={topByFollowersMax} valueLabel="followers" barColor="#1A8E78" formatValue={(v) => `+${v}`} />
+                      ),
+                    },
+                  ]
+                : []),
+            ]}
+          />
         </ChartCard>
       </div>
-
-      {/* Followers gained ranked list */}
-      {topByFollowers.length > 0 && (
-        <div className="mb-6">
-          <ChartCard
-            title="Top Reels by Followers Gained"
-            kind="observed"
-            subtitle="Reels that converted viewers → followers"
-            definition="Net new followers attributed to each reel by Meta. Click a caption to see the full post text or open it on Facebook. The trailing meta shows total plays for context — a reel with high follower gain on modest plays is punching above its weight."
-            sampleSize={`${topByFollowers.length} reel${topByFollowers.length === 1 ? "" : "s"} gained followers`}
-            caption="High plays with zero follower gain = viral but not sticky. Low plays with high follower gain = niche but converts."
-          >
-            <TopReelList rows={topByFollowers} max={topByFollowersMax} valueLabel="followers" barColor="#1A8E78" formatValue={(v) => `+${v}`} />
-          </ChartCard>
-        </div>
-      )}
 
       {/* Sprint P7 QA pass (2026-04-28): "Top 10 Reels by {active metric}"
           when the page-level selector is NOT on reach (reach is already
