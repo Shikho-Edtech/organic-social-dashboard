@@ -198,12 +198,30 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
     engagement: 0.5, // 0.5% engagement rate floor
     shares: 5,
   };
-  const floor = moverFloor[primaryMetric];
-  const moverRaw: Mover[] = groupStats(inRange, "content_pillar")
+  // Sprint P7 v4.18 (W7, 2026-05-02): biggest movers respects the active
+  // ranking metrics. Single-metric mode unchanged. Composite mode computes
+  // the percentile-rank composite score for each pillar in the current and
+  // prior period (each evaluated against ITS OWN period's pillar
+  // distribution so percentiles are honest), then takes WoW delta of the
+  // 0-100 scores. Floor = single-metric average so the mover list stays
+  // gated to non-trivial pillars regardless of mode.
+  const floor = isComposite
+    ? Object.values(moverFloor).reduce((s, v) => s + v, 0) / Object.values(moverFloor).length
+    : moverFloor[primaryMetric];
+  const currStatsAll = groupStats(inRange, "content_pillar");
+  const moverRaw: Mover[] = currStatsAll
     .map((s) => {
       const prevStat = prevPillarMap.get(s.key);
-      const cur = groupStatValue(s, primaryMetric);
-      const prev = prevStat ? groupStatValue(prevStat, primaryMetric) : 0;
+      const cur = isComposite
+        ? Math.round(groupStatCompositeScore(s, activeMetrics, currStatsAll, activeWeights) * 100)
+        : groupStatValue(s, primaryMetric);
+      const prev = isComposite
+        ? prevStat
+          ? Math.round(groupStatCompositeScore(prevStat, activeMetrics, prevPillarStats, activeWeights) * 100)
+          : 0
+        : prevStat
+          ? groupStatValue(prevStat, primaryMetric)
+          : 0;
       return {
         key: s.key || "Unknown",
         current: cur,
@@ -355,16 +373,34 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
         </ChartCard>
 
         <ChartCard
-          title="Biggest Movers"
+          title={
+            isComposite
+              ? `Biggest Movers · Composite of ${activeMetrics.map((m) => metricLabel[m]).join(", ")}`
+              : "Biggest Movers"
+          }
           kind="derived"
-          subtitle={`Pillar ${metricLabel[primaryMetric].toLowerCase()} vs previous period`}
-          definition={`For each content pillar: ${primaryMetric === "engagement" ? "mean engagement rate" : `total ${metricLabel[primaryMetric].toLowerCase()}`} this period vs the same number of days immediately preceding it. Tiny-base pillars are excluded so small pillars with noisy % deltas don't drown out real shifts. Ranked by absolute % change.`}
+          subtitle={
+            isComposite
+              ? `Pillar composite score vs previous period (across ${activeMetrics.map((m) => metricLabel[m].toLowerCase()).join(" / ")})`
+              : `Pillar ${metricLabel[primaryMetric].toLowerCase()} vs previous period`
+          }
+          definition={
+            isComposite
+              ? `For each content pillar: composite percentile-rank score (averaged across ${activeMetrics.length} metrics — ${activeMetrics.map((m) => metricLabel[m].toLowerCase()).join(", ")}) this period vs the same number of days immediately preceding it. Each period's percentiles are computed within ITS OWN pillar distribution so the rank is honest. Ranked by absolute % change.`
+              : `For each content pillar: ${primaryMetric === "engagement" ? "mean engagement rate" : `total ${metricLabel[primaryMetric].toLowerCase()}`} this period vs the same number of days immediately preceding it. Tiny-base pillars are excluded so small pillars with noisy % deltas don't drown out real shifts. Ranked by absolute % change.`
+          }
           sampleSize={`top ${risers.length + fallers.length} of ${moverRaw.length} pillars`}
-          caption="Which pillars gained ground this period, which lost it. Lean into the risers, diagnose the fallers before next week's plan."
+          caption={
+            isComposite
+              ? "Which pillars climbed or fell most across all selected metrics combined. Lean into the risers, diagnose the fallers before next week's plan."
+              : "Which pillars gained ground this period, which lost it. Lean into the risers, diagnose the fallers before next week's plan."
+          }
         >
           {risers.length + fallers.length === 0 ? (
             <div className="py-8 text-center text-sm text-ink-500">
-              Not enough pillars clear the {floor.toLocaleString()}{primaryMetric === "engagement" ? "%" : ""}-{metricLabel[primaryMetric].toLowerCase()} threshold in either period to rank movers. Widen the date range.
+              {isComposite
+                ? `Not enough pillars clear the composite-score floor in either period to rank movers. Widen the date range or reduce metric count.`
+                : `Not enough pillars clear the ${floor.toLocaleString()}${primaryMetric === "engagement" ? "%" : ""}-${metricLabel[primaryMetric].toLowerCase()} threshold in either period to rank movers. Widen the date range.`}
             </div>
           ) : (
             <div className="space-y-4">

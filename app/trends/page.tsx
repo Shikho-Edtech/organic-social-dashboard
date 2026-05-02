@@ -116,6 +116,48 @@ export default async function TrendsPage({ searchParams }: { searchParams: Recor
       ...(week === currentWeekKey ? { color: "#A4ACD0" /* shikho-indigo-300, faded */, partial: true } : {}),
     }));
 
+  // Sprint P7 v4.18 (W8, 2026-05-02): composite weekly series for the
+  // multi-metric weekly chart. Mirrors compositeDailySeries — for each
+  // active metric, build a per-week sum (or reach-weighted ER) and emit
+  // as a MultiSeries entry. MultiLineTrendChart renders all of them
+  // with peak normalization, so a 3-metric composite reads as 3 lines
+  // tracking week to week. Pre-v4.18 the weekly chart ignored composite
+  // selection entirely and only showed primaryMetric.
+  function buildWeeklySeriesForMetric(metric: RankingMetric): { date: string; value: number }[] {
+    const buckets: Record<string, { reach: number; ints: number; value: number }> = {};
+    for (const p of inRange) {
+      if (!p.created_time) continue;
+      const d = bdt(p.created_time);
+      const wk = `${d.getFullYear()}-W${String(getWeek(d)).padStart(2, "0")}`;
+      buckets[wk] = buckets[wk] || { reach: 0, ints: 0, value: 0 };
+      if (metric === "engagement") {
+        buckets[wk].reach += postMetricValue(p, "reach");
+        buckets[wk].ints += postMetricValue(p, "interactions");
+      } else {
+        buckets[wk].value += postMetricValue(p, metric);
+      }
+    }
+    return Object.entries(buckets)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([wk, v]) => ({
+        date: formatWeekRange(wk),
+        value:
+          metric === "engagement"
+            ? v.reach > 0
+              ? (v.ints / v.reach) * 100
+              : 0
+            : v.value,
+      }));
+  }
+  const compositeWeeklySeries: MultiSeries[] = isComposite
+    ? activeMetrics.map((m) => ({
+        name: metricLabelFull[m],
+        color: METRIC_COLORS[m],
+        data: buildWeeklySeriesForMetric(m),
+        formatKind: m === "engagement" ? "percent" : "number",
+      }))
+    : [];
+
   return (
     <div>
       <PageHeader title="Trends" subtitle="Time-based patterns across the period" dateLabel={range.label} lastScrapedAt={runStatus.last_run_at} />
@@ -175,27 +217,39 @@ export default async function TrendsPage({ searchParams }: { searchParams: Recor
 
       <div className="mb-6">
         <ChartCard
-          title={`Weekly ${metricLabelFull[primaryMetric]}${isComposite ? " (primary metric)" : ""}`}
+          title={
+            isComposite
+              ? `Weekly Composite (${activeMetrics.length} metrics, normalized)`
+              : `Weekly ${metricLabelFull[primaryMetric]}`
+          }
           kind="derived"
           subtitle={
-            primaryMetric === "engagement"
-              ? "Reach-weighted engagement rate per ISO week"
-              : `Total ${metricLabelLower[primaryMetric]} per ISO week`
+            isComposite
+              ? `Each line normalized to % of its own peak — shapes are comparable across ${activeMetrics.map((m) => metricLabelLower[m]).join(" / ")}`
+              : primaryMetric === "engagement"
+                ? "Reach-weighted engagement rate per ISO week"
+                : `Total ${metricLabelLower[primaryMetric]} per ISO week`
           }
           definition={
-            primaryMetric === "engagement"
-              ? "For each ISO week: (Σ reactions + comments + shares) ÷ (Σ unique reach) × 100. Reach-weighted (not averaged per post) so a few high-reach posts dominate the signal — which is what you want."
-              : `For each ISO week: total ${metricLabelLower[primaryMetric]} across posts published that week.`
+            isComposite
+              ? `Multi-line weekly trend with per-series % of peak normalization, one line per active metric (${activeMetrics.map((m) => metricLabelLower[m]).join(", ")}). Hover any week to see raw values per metric.`
+              : primaryMetric === "engagement"
+                ? "For each ISO week: (Σ reactions + comments + shares) ÷ (Σ unique reach) × 100. Reach-weighted (not averaged per post) so a few high-reach posts dominate the signal."
+                : `For each ISO week: total ${metricLabelLower[primaryMetric]} across posts published that week.`
           }
           caption={
-            primaryMetric === "engagement"
-              ? "Week-over-week stability indicates healthy audience relationship. Big drops warrant investigating what changed. The current (in-progress) ISO week may dip artificially because it's not yet complete."
-              : primaryMetric === "shares"
-                ? "Shares are the strongest virality signal — they expand reach beyond the existing audience. The faded bar marks the current (in-progress) week — its value will rise as the rest of the week posts."
-                : `Weekly ${metricLabelLower[primaryMetric]} — useful for spotting multi-week trends that daily noise might obscure. The faded bar marks the current (in-progress) week — its value will rise as the rest of the week posts.`
+            isComposite
+              ? "Shapes diverge → metrics tell different stories that week. Shapes track → metrics correlate."
+              : primaryMetric === "engagement"
+                ? "Week-over-week stability indicates healthy audience relationship. Big drops warrant investigating what changed. The current (in-progress) ISO week may dip artificially because it's not yet complete."
+                : primaryMetric === "shares"
+                  ? "Shares are the strongest virality signal — they expand reach beyond the existing audience. The faded bar marks the current (in-progress) week."
+                  : `Weekly ${metricLabelLower[primaryMetric]} — useful for spotting multi-week trends that daily noise might obscure. The faded bar marks the current (in-progress) week.`
           }
         >
-          {primaryMetric === "engagement" ? (
+          {isComposite ? (
+            <MultiLineTrendChart series={compositeWeeklySeries} />
+          ) : primaryMetric === "engagement" ? (
             <TrendChart
               data={weeklyData.map((d) => ({ date: d.label, value: d.value }))}
               color="#C02080"
