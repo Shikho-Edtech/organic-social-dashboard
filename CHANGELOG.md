@@ -1,5 +1,45 @@
 # Changelog
 
+## 2026-05-02 — v4.18 W2 Fri (W13): Recent Reels pagination + reusable PaginatedList
+
+User feedback (voice transcript 2026-05-01): "the Recent Reels table
+should let me scroll through everything from the period. 25 rows is
+arbitrary — if a week has 60 reels I should be able to see all 60."
+
+Implementation: new `components/PaginatedList.tsx` — a reusable
+render-prop pagination shell. Caller passes `items`, `pageSize`, and
+a render function; PaginatedList owns page state + renders the Prev /
+page-indicator / Next control strip below. Layout-agnostic: the same
+component wraps a desktop table OR a mobile card list OR a ranked
+leaderboard, as long as the caller's render function maps over
+`visibleItems`.
+
+API:
+```tsx
+<PaginatedList items={rows} pageSize={10} ariaLabel="Recent Reels">
+  {({ visibleItems, page, totalPages, setPage }) => (
+    <table>{visibleItems.map(...)}</table>
+  )}
+</PaginatedList>
+```
+
+Applied to Recent Reels: cap of 25 removed; pageSize=10. A 60-reel
+period now renders 6 pages, all reachable via the bottom Prev / Next
+strip. Both the desktop table AND the mobile card list share one
+`{visibleItems.map(...)}` render function — pagination state is
+shared, switching between viewports doesn't reset the page.
+
+a11y: `nav[aria-label]` on the control strip, `aria-label` on Prev /
+Next buttons, `disabled` state when at first / last page, focus-
+visible ring on all controls. Tabular-nums on the page indicator
+keeps the digits stable as the user pages.
+
+Future: PaginatedList is now generic — Outcomes table (currently no
+cap; 8+ weeks), Diagnosis source-post lists, Explore explorer rows,
+all candidates for the same shell. P6 future-reuse target captured.
+
+Build green; reels bundle 4.2 → 4.69 kB.
+
 ## 2026-05-02 — v4.18 W2 Thu (W12): Top 10 Reels merged into one switcher
 
 User feedback (voice transcript 2026-05-01): "the three Top-10 Reels

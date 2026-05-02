@@ -10,6 +10,7 @@ import TrendChart from "@/components/TrendChart";
 import PostReference from "@/components/PostReference";
 import MetricSelector, { parseMetricParam } from "@/components/MetricSelector";
 import TopReelSwitcher from "@/components/TopReelSwitcher";
+import PaginatedList from "@/components/PaginatedList";
 
 /**
  * TopReelList — ranked list replacement for BarChart on top-10 reels.
@@ -370,12 +371,15 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
     }
   }
 
-  // Reels table — newest first, cap at 25 rows.
+  // Reels table — newest first.
+  // W13 (2026-05-02): cap removed (was 25 rows). All reels in range now
+  // pipe through <PaginatedList pageSize={10}> for incremental browsing,
+  // so a 60-reel period is fully reachable without scrolling a 60-row
+  // table.
   // Per-row metrics prefer derived retention + replay rate over Meta's empty
   // completion / sound-on buckets, matching the KPI strip above.
   const tableRows = [...reels]
     .sort((a, b) => new Date(b.created_time).getTime() - new Date(a.created_time).getTime())
-    .slice(0, 25)
     .map((r) => {
       const p = postById.get(r.post_id);
       const dateStr = r.created_time
@@ -590,143 +594,156 @@ export default async function ReelsPage({ searchParams }: { searchParams: Record
           each row is rendered as a stacked card with the same fields
           laid out in a 3-column metric grid. Desktop keeps the dense
           table because it's great at scanning. */}
+      {/* W13 (2026-05-02): Recent Reels now paginated via the reusable
+          <PaginatedList> shell (10 rows per page). Cap of 25 removed —
+          a 60-reel period is fully reachable. Same desktop table /
+          mobile card-list dual render; PaginatedList just slices the
+          rows it hands to each render and renders the Prev / Next
+          control strip below. The SAME render function is used for
+          both desktop + mobile because PaginatedList is layout-
+          agnostic — its job is paging state, not presentation. */}
       <Card className="!p-0 overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-br from-white to-slate-50/50">
           <h3 className="text-base font-semibold text-slate-900">Recent Reels</h3>
-          <p className="text-xs text-slate-500 mt-0.5">Newest first · up to 25 rows</p>
+          <p className="text-xs text-slate-500 mt-0.5">Newest first · 10 per page</p>
         </div>
 
-        {/* Desktop / tablet table (md+). Visual polish pass:
-            - zebra striping (slate-50/30 on odd rows) for scannability
-            - colored pillar pill (canonicalColor) instead of pale grey text
-            - darker hero column (Plays) vs dimmer supporting columns
-              (Replays, Replay %) to create a clear primary→secondary hierarchy
-            - Hook 3s column tinted green/amber/rose based on thresholds so
-              underperforming retention reads red at a glance
-            - Follows column keeps its brand-green emphasis */}
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-100/70 text-[11px] uppercase tracking-wider text-slate-600">
-              <tr>
-                <th className="text-left px-4 py-2.5 font-semibold">Date</th>
-                <th className="text-left px-4 py-2.5 font-semibold">Caption</th>
-                <th className="text-left px-4 py-2.5 font-semibold">Pillar</th>
-                <th className="text-right px-4 py-2.5 font-semibold">Plays</th>
-                <th className="text-right px-4 py-2.5 font-semibold">Replays</th>
-                <th className="text-right px-4 py-2.5 font-semibold">Watch (s)</th>
-                <th className="text-right px-4 py-2.5 font-semibold">Hook 3s %</th>
-                <th className="text-right px-4 py-2.5 font-semibold">Replay %</th>
-                <th className="text-right px-4 py-2.5 font-semibold">Follows</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tableRows.map((row, i) => {
-                // Hook-3s retention thresholds: <40% = concerning (rose),
-                // 40-60% = ok (slate), >60% = strong (emerald). These match
-                // the industry rule-of-thumb for short-form retention and
-                // turn a row of black numbers into a scannable signal.
-                const hookNum = parseFloat(row.hook3);
-                const hookColor =
-                  hookNum >= 60
-                    ? "text-emerald-600 font-semibold"
-                    : hookNum < 40
-                    ? "text-rose-600 font-semibold"
-                    : "text-slate-700";
-                const pillarBg = canonicalColor("pillar", row.pillar);
-                return (
-                  <tr
-                    key={row.id + i}
-                    className={`border-t border-slate-100 transition-colors hover:bg-indigo-50/30 ${
-                      i % 2 === 1 ? "bg-slate-50/40" : ""
-                    }`}
-                  >
-                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap tabular-nums">{row.date}</td>
-                    <td className="px-4 py-3 text-slate-800 max-w-[360px]">
-                      <PostReference caption={row.captionFull} permalinkUrl={row.permalink} maxChars={60} className="max-w-full" />
-                    </td>
-                    <td className="px-4 py-3">
+        <PaginatedList items={tableRows} pageSize={10} ariaLabel="Recent Reels pagination">
+          {({ visibleItems }) => (
+            <>
+              {/* Desktop / tablet table (md+). Visual polish pass:
+                  - zebra striping (slate-50/30 on odd rows) for scannability
+                  - colored pillar pill (canonicalColor) instead of pale grey text
+                  - darker hero column (Plays) vs dimmer supporting columns
+                    (Replays, Replay %) to create a clear primary→secondary hierarchy
+                  - Hook 3s column tinted green/amber/rose based on thresholds so
+                    underperforming retention reads red at a glance
+                  - Follows column keeps its brand-green emphasis */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-100/70 text-[11px] uppercase tracking-wider text-slate-600">
+                    <tr>
+                      <th className="text-left px-4 py-2.5 font-semibold">Date</th>
+                      <th className="text-left px-4 py-2.5 font-semibold">Caption</th>
+                      <th className="text-left px-4 py-2.5 font-semibold">Pillar</th>
+                      <th className="text-right px-4 py-2.5 font-semibold">Plays</th>
+                      <th className="text-right px-4 py-2.5 font-semibold">Replays</th>
+                      <th className="text-right px-4 py-2.5 font-semibold">Watch (s)</th>
+                      <th className="text-right px-4 py-2.5 font-semibold">Hook 3s %</th>
+                      <th className="text-right px-4 py-2.5 font-semibold">Replay %</th>
+                      <th className="text-right px-4 py-2.5 font-semibold">Follows</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleItems.map((row, i) => {
+                      // Hook-3s retention thresholds: <40% = concerning (rose),
+                      // 40-60% = ok (slate), >60% = strong (emerald). Industry
+                      // rule-of-thumb for short-form retention.
+                      const hookNum = parseFloat(row.hook3);
+                      const hookColor =
+                        hookNum >= 60
+                          ? "text-emerald-600 font-semibold"
+                          : hookNum < 40
+                          ? "text-rose-600 font-semibold"
+                          : "text-slate-700";
+                      const pillarBg = canonicalColor("pillar", row.pillar);
+                      return (
+                        <tr
+                          key={row.id + i}
+                          className={`border-t border-slate-100 transition-colors hover:bg-indigo-50/30 ${
+                            i % 2 === 1 ? "bg-slate-50/40" : ""
+                          }`}
+                        >
+                          <td className="px-4 py-3 text-slate-500 whitespace-nowrap tabular-nums">{row.date}</td>
+                          <td className="px-4 py-3 text-slate-800 max-w-[360px]">
+                            <PostReference caption={row.captionFull} permalinkUrl={row.permalink} maxChars={60} className="max-w-full" />
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium text-white"
+                              style={{ backgroundColor: pillarBg }}
+                            >
+                              {row.pillar}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right tabular-nums font-semibold text-slate-900">{row.plays.toLocaleString()}</td>
+                          <td className="px-4 py-3 text-right tabular-nums text-slate-400">{row.replays.toLocaleString()}</td>
+                          <td className="px-4 py-3 text-right tabular-nums text-slate-700">{row.watch}</td>
+                          <td className={`px-4 py-3 text-right tabular-nums ${hookColor}`}>{row.hook3}%</td>
+                          <td className="px-4 py-3 text-right tabular-nums text-slate-400">{row.replayRate}%</td>
+                          <td className={`px-4 py-3 text-right tabular-nums font-semibold ${row.follows > 0 ? "text-brand-green" : "text-slate-400"}`}>
+                            {row.follows > 0 ? `+${row.follows}` : "0"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile card list (below md) — matching polish: colored pillar pill,
+                  hook-3s retention tint, zebra striping. */}
+              <ul className="md:hidden divide-y divide-slate-100">
+                {visibleItems.map((row, i) => (
+                  <li key={row.id + i} className={`px-4 py-3 ${i % 2 === 1 ? "bg-slate-50/40" : ""}`}>
+                    <div className="flex items-baseline justify-between gap-2 mb-1.5">
+                      <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 whitespace-nowrap">
+                        {row.date}
+                      </div>
                       <span
-                        className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium text-white"
-                        style={{ backgroundColor: pillarBg }}
+                        className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium text-white max-w-[60%] truncate"
+                        style={{ backgroundColor: canonicalColor("pillar", row.pillar) }}
                       >
                         {row.pillar}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums font-semibold text-slate-900">{row.plays.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-slate-400">{row.replays.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-slate-700">{row.watch}</td>
-                    <td className={`px-4 py-3 text-right tabular-nums ${hookColor}`}>{row.hook3}%</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-slate-400">{row.replayRate}%</td>
-                    <td className={`px-4 py-3 text-right tabular-nums font-semibold ${row.follows > 0 ? "text-brand-green" : "text-slate-400"}`}>
-                      {row.follows > 0 ? `+${row.follows}` : "0"}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Mobile card list (below md) — matching polish: colored pillar pill,
-            hook-3s retention tint, zebra striping. */}
-        <ul className="md:hidden divide-y divide-slate-100">
-          {tableRows.map((row, i) => (
-            <li key={row.id + i} className={`px-4 py-3 ${i % 2 === 1 ? "bg-slate-50/40" : ""}`}>
-              <div className="flex items-baseline justify-between gap-2 mb-1.5">
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 whitespace-nowrap">
-                  {row.date}
-                </div>
-                <span
-                  className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium text-white max-w-[60%] truncate"
-                  style={{ backgroundColor: canonicalColor("pillar", row.pillar) }}
-                >
-                  {row.pillar}
-                </span>
-              </div>
-              <div className="text-sm text-slate-800 mb-2">
-                <PostReference caption={row.captionFull} permalinkUrl={row.permalink} maxChars={90} className="w-full" />
-              </div>
-              <div className="grid grid-cols-3 gap-x-2 gap-y-2 text-xs">
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Plays</div>
-                  <div className="text-sm font-semibold text-slate-900 tabular-nums">{row.plays.toLocaleString()}</div>
-                </div>
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Watch</div>
-                  <div className="text-sm font-semibold text-slate-900 tabular-nums">{row.watch}s</div>
-                </div>
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Follows</div>
-                  <div className="text-sm font-semibold text-brand-green tabular-nums">
-                    {row.follows > 0 ? `+${row.follows}` : "0"}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Hook 3s</div>
-                  <div
-                    className={`text-sm tabular-nums font-semibold ${
-                      parseFloat(row.hook3) >= 60
-                        ? "text-emerald-600"
-                        : parseFloat(row.hook3) < 40
-                        ? "text-rose-600"
-                        : "text-slate-700"
-                    }`}
-                  >
-                    {row.hook3}%
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Replay %</div>
-                  <div className="text-sm text-slate-700 tabular-nums">{row.replayRate}%</div>
-                </div>
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Replays</div>
-                  <div className="text-sm text-slate-700 tabular-nums">{row.replays.toLocaleString()}</div>
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
+                    </div>
+                    <div className="text-sm text-slate-800 mb-2">
+                      <PostReference caption={row.captionFull} permalinkUrl={row.permalink} maxChars={90} className="w-full" />
+                    </div>
+                    <div className="grid grid-cols-3 gap-x-2 gap-y-2 text-xs">
+                      <div>
+                        <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Plays</div>
+                        <div className="text-sm font-semibold text-slate-900 tabular-nums">{row.plays.toLocaleString()}</div>
+                      </div>
+                      <div>
+                        <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Watch</div>
+                        <div className="text-sm font-semibold text-slate-900 tabular-nums">{row.watch}s</div>
+                      </div>
+                      <div>
+                        <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Follows</div>
+                        <div className="text-sm font-semibold text-brand-green tabular-nums">
+                          {row.follows > 0 ? `+${row.follows}` : "0"}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Hook 3s</div>
+                        <div
+                          className={`text-sm tabular-nums font-semibold ${
+                            parseFloat(row.hook3) >= 60
+                              ? "text-emerald-600"
+                              : parseFloat(row.hook3) < 40
+                              ? "text-rose-600"
+                              : "text-slate-700"
+                          }`}
+                        >
+                          {row.hook3}%
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Replay %</div>
+                        <div className="text-sm text-slate-700 tabular-nums">{row.replayRate}%</div>
+                      </div>
+                      <div>
+                        <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Replays</div>
+                        <div className="text-sm text-slate-700 tabular-nums">{row.replays.toLocaleString()}</div>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </PaginatedList>
       </Card>
     </div>
   );
