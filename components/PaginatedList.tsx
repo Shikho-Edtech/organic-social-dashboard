@@ -32,6 +32,10 @@ type PaginatedListProps<T> = {
   ariaLabel?: string;
   /** Hide the controls even if items.length > pageSize. Rare. */
   hideControls?: boolean;
+  /** Where to render the controls strip. "bottom" is default; "both" puts a
+   *  copy above the list too — useful for long tables (Recent Reels) where
+   *  the user shouldn't have to scroll to discover that pagination exists. */
+  controlsPosition?: "bottom" | "both" | "top";
   /** Render-prop: caller renders the visible slice however it wants. */
   children: (args: {
     visibleItems: T[];
@@ -49,6 +53,7 @@ export default function PaginatedList<T>({
   initialPage = 0,
   ariaLabel = "Pagination",
   hideControls = false,
+  controlsPosition = "bottom",
   children,
 }: PaginatedListProps<T>) {
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
@@ -68,57 +73,67 @@ export default function PaginatedList<T>({
   const showControls = !hideControls && items.length > pageSize;
   const canPrev = page > 0;
   const canNext = page < totalPages - 1;
+  const showTop = showControls && (controlsPosition === "top" || controlsPosition === "both");
+  const showBottom = showControls && (controlsPosition === "bottom" || controlsPosition === "both");
+
+  // Single-source render of the controls so top + bottom strips stay in sync.
+  const Controls = ({ position }: { position: "top" | "bottom" }) => (
+    <nav
+      aria-label={`${ariaLabel} (${position})`}
+      className={[
+        "flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 py-2.5",
+        position === "top"
+          ? "border-b border-ink-100"
+          : "border-t border-ink-100 mt-4",
+      ].join(" ")}
+    >
+      <p className="text-xs text-ink-muted tabular-nums">
+        Showing <span className="font-medium text-ink-secondary">{startIndex + 1}–{endIndex}</span> of{" "}
+        <span className="font-medium text-ink-secondary">{items.length}</span>
+      </p>
+      <div className="flex items-center gap-1.5 self-end sm:self-auto">
+        <button
+          type="button"
+          onClick={() => canPrev && setPage(page - 1)}
+          disabled={!canPrev}
+          aria-label="Previous page"
+          className={[
+            "px-3 py-1.5 rounded-md text-xs font-medium border transition-colors duration-base",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-shikho-indigo focus-visible:ring-offset-1",
+            canPrev
+              ? "bg-ink-paper text-ink-secondary border-ink-100 hover:bg-ink-50"
+              : "bg-ink-50 text-ink-muted border-ink-100 cursor-not-allowed opacity-60",
+          ].join(" ")}
+        >
+          ‹ Prev
+        </button>
+        <span className="px-2.5 text-xs text-ink-muted tabular-nums whitespace-nowrap">
+          Page <span className="font-semibold text-ink-secondary">{page + 1}</span> of {totalPages}
+        </span>
+        <button
+          type="button"
+          onClick={() => canNext && setPage(page + 1)}
+          disabled={!canNext}
+          aria-label="Next page"
+          className={[
+            "px-3 py-1.5 rounded-md text-xs font-medium border transition-colors duration-base",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-shikho-indigo focus-visible:ring-offset-1",
+            canNext
+              ? "bg-ink-paper text-ink-secondary border-ink-100 hover:bg-ink-50"
+              : "bg-ink-50 text-ink-muted border-ink-100 cursor-not-allowed opacity-60",
+          ].join(" ")}
+        >
+          Next ›
+        </button>
+      </div>
+    </nav>
+  );
 
   return (
     <div>
+      {showTop && <Controls position="top" />}
       {children({ visibleItems, page, totalPages, setPage, startIndex, endIndex })}
-
-      {showControls && (
-        <nav
-          aria-label={ariaLabel}
-          className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mt-4 px-4 py-3 border-t border-ink-100"
-        >
-          <p className="text-xs text-ink-muted tabular-nums">
-            Showing <span className="font-medium text-ink-secondary">{startIndex + 1}–{endIndex}</span> of{" "}
-            <span className="font-medium text-ink-secondary">{items.length}</span>
-          </p>
-          <div className="flex items-center gap-1.5 self-end sm:self-auto">
-            <button
-              type="button"
-              onClick={() => canPrev && setPage(page - 1)}
-              disabled={!canPrev}
-              aria-label="Previous page"
-              className={[
-                "px-3 py-1.5 rounded-md text-xs font-medium border transition-colors duration-base",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-shikho-indigo focus-visible:ring-offset-1",
-                canPrev
-                  ? "bg-ink-paper text-ink-secondary border-ink-100 hover:bg-ink-50"
-                  : "bg-ink-50 text-ink-muted border-ink-100 cursor-not-allowed opacity-60",
-              ].join(" ")}
-            >
-              ‹ Prev
-            </button>
-            <span className="px-2.5 text-xs text-ink-muted tabular-nums whitespace-nowrap">
-              Page <span className="font-semibold text-ink-secondary">{page + 1}</span> of {totalPages}
-            </span>
-            <button
-              type="button"
-              onClick={() => canNext && setPage(page + 1)}
-              disabled={!canNext}
-              aria-label="Next page"
-              className={[
-                "px-3 py-1.5 rounded-md text-xs font-medium border transition-colors duration-base",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-shikho-indigo focus-visible:ring-offset-1",
-                canNext
-                  ? "bg-ink-paper text-ink-secondary border-ink-100 hover:bg-ink-50"
-                  : "bg-ink-50 text-ink-muted border-ink-100 cursor-not-allowed opacity-60",
-              ].join(" ")}
-            >
-              Next ›
-            </button>
-          </div>
-        </nav>
-      )}
+      {showBottom && <Controls position="bottom" />}
     </div>
   );
 }

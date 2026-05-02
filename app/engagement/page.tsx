@@ -436,47 +436,51 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
             <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
               Winning pattern this period
             </div>
-            {/* Sprint P7 v4.18 (2026-05-02): explicit dimension labels.
-                Pre-v4.18 the sentence read 'Video × Product/Program Promo
-                × Educational tone, hooked with Announcement, spotlighting
-                product.' Readers had to infer what each token represented
-                — the first 'Video' is a format, the second is a pillar,
-                etc. Now each value carries an inline muted label so the
-                sentence answers 'what is this' without requiring schema
-                memory. */}
+            {/* Natural-prose form (2026-05-02 user feedback): bracketed
+                "(format)" / "(pillar)" labels read like footnotes mid-
+                sentence and made the line jittery. Replaced with a flowing
+                sentence that names the dimension verbally — "{format} {pillar}
+                posts using a {tone} tone, opening with {hook} hooks, and
+                spotlighting {spotlight}". Color-coded values still encode
+                the dimension via canonical color tokens, so type identity
+                is preserved without explicit labels. */}
             <div className="text-base sm:text-lg leading-snug text-ink-primary">
               {bestFormat && (
-                <span>
-                  <span style={{ color: canonicalColor("format", bestFormat.key) }} className="font-semibold">{bestFormat.key}</span>
-                  <span className="text-[11px] text-ink-muted font-normal ml-1">(format)</span>
+                <span style={{ color: canonicalColor("format", bestFormat.key) }} className="font-semibold">
+                  {bestFormat.key}
                 </span>
               )}
+              {bestFormat && bestPillar && <span className="text-ink-muted"> </span>}
               {bestPillar && (
-                <>
-                  <span className="text-ink-muted">{" × "}</span>
-                  <span style={{ color: canonicalColor("pillar", bestPillar.key) }} className="font-semibold">{bestPillar.key}</span>
-                  <span className="text-[11px] text-ink-muted font-normal ml-1">(pillar)</span>
-                </>
+                <span style={{ color: canonicalColor("pillar", bestPillar.key) }} className="font-semibold">
+                  {bestPillar.key}
+                </span>
               )}
+              {(bestFormat || bestPillar) && <span className="text-ink-muted"> posts</span>}
               {bestTone && (
                 <>
-                  <span className="text-ink-muted">{" × "}</span>
-                  <span style={{ color: canonicalColor("tone", bestTone.key) }} className="font-semibold">{bestTone.key}</span>
-                  <span className="text-[11px] text-ink-muted font-normal ml-1">(caption tone)</span>
+                  <span className="text-ink-muted">{" using a "}</span>
+                  <span style={{ color: canonicalColor("tone", bestTone.key) }} className="font-semibold">
+                    {bestTone.key}
+                  </span>
+                  <span className="text-ink-muted"> tone</span>
                 </>
               )}
               {bestHook && (
                 <>
-                  <span className="text-ink-muted">{", hooked with "}</span>
-                  <span style={{ color: canonicalColor("hook", bestHook.key) }} className="font-semibold">{bestHook.key}</span>
-                  <span className="text-[11px] text-ink-muted font-normal ml-1">(hook)</span>
+                  <span className="text-ink-muted">{", opening with "}</span>
+                  <span style={{ color: canonicalColor("hook", bestHook.key) }} className="font-semibold">
+                    {bestHook.key}
+                  </span>
+                  <span className="text-ink-muted"> hooks</span>
                 </>
               )}
               {bestSpotlight && (
                 <>
                   <span className="text-ink-muted">{", spotlighting "}</span>
-                  <span style={{ color: canonicalColor("spotlight", bestSpotlight.key) }} className="font-semibold">{bestSpotlight.key.toLowerCase()}</span>
-                  <span className="text-[11px] text-ink-muted font-normal ml-1">(spotlight type)</span>
+                  <span style={{ color: canonicalColor("spotlight", bestSpotlight.key) }} className="font-semibold">
+                    {bestSpotlight.key.toLowerCase()}
+                  </span>
                 </>
               )}
               <span className="text-ink-muted">.</span>

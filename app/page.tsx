@@ -248,11 +248,16 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
   // the percentile-rank composite score for each pillar in the current and
   // prior period (each evaluated against ITS OWN period's pillar
   // distribution so percentiles are honest), then takes WoW delta of the
-  // 0-100 scores. Floor = single-metric average so the mover list stays
-  // gated to non-trivial pillars regardless of mode.
-  const floor = isComposite
-    ? Object.values(moverFloor).reduce((s, v) => s + v, 0) / Object.values(moverFloor).length
-    : moverFloor[primaryMetric];
+  // 0-100 scores.
+  //
+  // Hotfix (2026-05-02 user feedback): composite scores are 0-100, but the
+  // pre-fix floor averaged the per-metric raw-value floors → ~1264. That's
+  // unreachable for any 0-100 score, so every pillar got filtered out and
+  // the panel rendered "TOP 0 OF 0 PILLARS · Not enough pillars clear the
+  // composite-score floor." Fix: composite mode uses a 0-100-space floor
+  // (5 = "above the 5th percentile in either period"), single-metric mode
+  // keeps its raw-value floor.
+  const floor = isComposite ? 5 : moverFloor[primaryMetric];
   const currStatsAll = groupStats(inRange, "content_pillar");
   const moverRaw: Mover[] = currStatsAll
     .map((s) => {

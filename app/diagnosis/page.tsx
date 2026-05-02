@@ -688,7 +688,7 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
               // to expand. Auto-expanding #1 cuts the click cost while
               // keeping the rest collapsed for scanability.
               return (
-                <details key={i} open={i === 0} className="group bg-ink-paper border border-ink-100 rounded-xl shadow-sm hover:shadow-md hover:border-brand-cyan/50 hover:-translate-y-0.5 transition-all duration-200">
+                <details key={i} open className="group bg-ink-paper border border-ink-100 rounded-xl shadow-sm hover:shadow-md hover:border-brand-cyan/50 hover:-translate-y-0.5 transition-all duration-200">
                   <summary className="list-none cursor-pointer p-4">
                     <div className="flex items-start gap-3">
                       <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-brand-cyan/15 to-brand-cyan/5 text-brand-cyan font-bold text-xs flex items-center justify-center ring-1 ring-brand-cyan/20">
@@ -781,7 +781,7 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
               const primarySrc = sourceIds.length > 0 ? postById.get(sourceIds[0]) : undefined;
               const hasDetail = Boolean(body || tp.why_it_worked || tp.replicable_elements || sourceIds.length);
               return (
-                <details key={i} className="group bg-ink-paper border border-ink-100 rounded-xl border-l-4 !border-l-brand-green shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-brand-green/50 transition-all duration-200">
+                <details key={i} open className="group bg-ink-paper border border-ink-100 rounded-xl border-l-4 !border-l-brand-green shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-brand-green/50 transition-all duration-200">
                   <summary className="list-none cursor-pointer p-4">
                     <div className="flex items-center gap-3">
                       <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-gradient-to-br from-brand-green/15 to-brand-green/5 text-brand-green font-bold text-xs flex items-center justify-center ring-1 ring-brand-green/20">
@@ -887,7 +887,7 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
               const primarySrc = sourceIds.length > 0 ? postById.get(sourceIds[0]) : undefined;
               const hasDetail = Boolean(body || up.why_it_failed || up.lesson || sourceIds.length);
               return (
-                <details key={i} className="group bg-ink-paper border border-ink-100 rounded-xl border-l-4 !border-l-brand-red shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-brand-red/50 transition-all duration-200">
+                <details key={i} open className="group bg-ink-paper border border-ink-100 rounded-xl border-l-4 !border-l-brand-red shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-brand-red/50 transition-all duration-200">
                   <summary className="list-none cursor-pointer p-4">
                     <div className="flex items-center gap-3">
                       <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-gradient-to-br from-brand-red/15 to-brand-red/5 text-brand-red font-bold text-xs flex items-center justify-center ring-1 ring-brand-red/20">
@@ -990,7 +990,7 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
                 : undefined;
               const hasDetail = Boolean(body);
               return (
-                <details key={i} className="group bg-gradient-to-br from-amber-50/40 to-amber-50/10 border border-amber-200/50 rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-amber-300/80 transition-all duration-200">
+                <details key={i} open className="group bg-gradient-to-br from-amber-50/40 to-amber-50/10 border border-amber-200/50 rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-amber-300/80 transition-all duration-200">
                   <summary className="list-none cursor-pointer p-4">
                     <div className="flex items-start gap-3">
                       <div className="flex-shrink-0 w-7 h-7 rounded-full bg-brand-amber/15 text-brand-amber flex items-center justify-center">

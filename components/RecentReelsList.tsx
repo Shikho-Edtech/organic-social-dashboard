@@ -33,7 +33,7 @@ export type ReelTableRow = {
 
 export default function RecentReelsList({ rows }: { rows: ReelTableRow[] }) {
   return (
-    <PaginatedList items={rows} pageSize={10} ariaLabel="Recent Reels pagination">
+    <PaginatedList items={rows} pageSize={10} ariaLabel="Recent Reels pagination" controlsPosition="both">
       {({ visibleItems }) => (
         <>
           {/* Desktop / tablet table (md+). Visual polish pass:
