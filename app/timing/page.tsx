@@ -218,8 +218,13 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
       {(bestDayReach || bestDayEng || bestHourReach || bestHourEng) && (
         <Card className="mb-4 border-l-4 border-l-brand-shikho-indigo">
           <div className="flex flex-col gap-1.5">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-              Best posting window this period
+            <div className="flex items-baseline justify-between gap-2 flex-wrap">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+                Best posting window (Timing detail)
+              </div>
+              <a href="/" className="text-[10px] text-ink-muted hover:text-brand-shikho-indigo underline">
+                See merged playbook on Overview →
+              </a>
             </div>
             <div className="text-base sm:text-lg leading-snug text-ink-primary">
               {bestDayReach && bestDayEng && bestDayReach.label === bestDayEng.label ? (

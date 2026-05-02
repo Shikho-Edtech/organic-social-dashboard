@@ -1,5 +1,37 @@
 # Changelog
 
+## 2026-05-02 — v4.18 R4: Recommended-this-period consolidated on Overview
+
+User feedback: "the recommendation sections on Engagement and Timing
+are saying related things in different places. I have to bounce
+between two pages to compose a single weekly plan thought."
+
+Implementation: new `components/RecommendedThisPeriod.tsx` —
+presentation-only synthesis card. Takes pre-computed bests as props
+(`bestFormat`, `bestPillar`, `bestHook`, `bestSpotlight`, `bestTone`,
+optional `bestDayReach` / `bestHourReach`), renders them as a 3-up
+grid on desktop / 1-up on mobile, each with the dimension's canonical
+color as a left-border accent. Cross-links to /engagement and /timing
+for the deep-dive views.
+
+Wired onto Overview right under the KPI strip — single landing for
+"what should I do this period". Reuses Engagement's reach-weighted
+ER ranking semantics (computed inline on Overview from
+`groupStats(inRange, ...)`) so the recommendations agree across pages.
+
+Engagement page kept its detailed Recommended cards but the section
+header now reads "Recommended this period (Engagement detail)" with
+a cross-link pointing operators to Overview for the merged playbook.
+Timing's "Best posting window" header gains the same cross-link.
+
+Posting day/hour intentionally omitted from Overview's card — those
+use Timing's CI-based stats which are heavier to import. Kept as
+explicit cross-link in the card header. R4 v2 may inline a lighter
+day/hour rank from a simpler aggregator.
+
+Build green; Overview bundle stable at 10.6 kB; new component is
+~3.8 kB unminified (server-rendered, no client JS).
+
 ## 2026-05-02 — v4.18 R1: Pulse + Weekly bucket header compression
 
 User feedback (transcript backlog): "the headers on Pulse and Weekly

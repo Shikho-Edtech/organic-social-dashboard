@@ -726,12 +726,13 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           section treating it as generic body copy. */}
       {(bestFormat || bestPillar || bestHook || bestSpotlight || bestTone) && (
         <section className="mb-6">
-          <div className="flex items-baseline gap-2 mb-3">
+          <div className="flex items-baseline gap-2 mb-3 flex-wrap">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-brand-shikho-indigo">
-              Recommended this period
+              Recommended this period (Engagement detail)
             </div>
             <div className="text-[11px] text-ink-muted">
-              Synthesised from the winning buckets above · treat as a test, not a guarantee
+              Synthesised from winning buckets above · also surfaced on{" "}
+              <a href="/" className="underline hover:text-brand-shikho-indigo">Overview</a> alongside Timing&apos;s posting window
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

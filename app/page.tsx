@@ -10,6 +10,7 @@ import Donut from "@/components/Donut";
 import BarChartBase from "@/components/BarChart";
 import { canonicalColor } from "@/lib/colors";
 import MetricSelector, { parseMetricParam, parseWeightsParam } from "@/components/MetricSelector";
+import RecommendedThisPeriod, { type BestStat, type BestSlot } from "@/components/RecommendedThisPeriod";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -173,6 +174,34 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
     }
   }
 
+  // R4 (2026-05-02): consolidated "Recommended this period" — merges the
+  // playbook bests (Engagement-page logic) into one Overview card.
+  // Same `groupStats` + reach-weighted ER ranking as Engagement, just
+  // applied here too so Overview is the single landing for "what should
+  // I do this period". Engagement page keeps its detailed cards (deep-
+  // dive surface); Overview gets the synthesis. Posting day/hour
+  // intentionally omitted — those use Timing's CI-based stats which
+  // are heavier to import. Cross-link below points to /timing for the
+  // when-to-post lens. R4 v2 may inline a lighter day/hour rank.
+  const hookStatsOverview = groupStats(inRange, "hook_type").filter((s) => s.key && s.key.toLowerCase() !== "none");
+  const spotlightStatsOverview = groupStats(inRange, "spotlight_type").filter((s) => s.key && s.key.toLowerCase() !== "none");
+  const toneStatsOverview = groupStats(inRange, "caption_tone").filter((s) => s.key);
+  const formatStatsForRec = formatStats.filter((s) => s.key);
+  const pillarStatsForRec = pillarStatsAll.filter((s) => s.key);
+  const rankByER = <T extends { avg_engagement_rate: number }>(rows: T[]): T | undefined => {
+    if (!rows.length) return undefined;
+    return [...rows].sort((a, b) => b.avg_engagement_rate - a.avg_engagement_rate)[0];
+  };
+  const toBestStat = (
+    row: { key: string; avg_engagement_rate: number; count: number } | undefined,
+  ): BestStat | undefined =>
+    row ? { key: row.key, rate: row.avg_engagement_rate, count: row.count } : undefined;
+  const bestFormatRec = toBestStat(rankByER(formatStatsForRec));
+  const bestPillarRec = toBestStat(rankByER(pillarStatsForRec));
+  const bestHookRec = toBestStat(rankByER(hookStatsOverview));
+  const bestSpotlightRec = toBestStat(rankByER(spotlightStatsOverview));
+  const bestToneRec = toBestStat(rankByER(toneStatsOverview));
+
   // Biggest movers — pillar-level deltas vs the previous equal-length
   // period. The old "Engagement Mix" donut (reactions vs comments vs shares)
   // was aesthetically pleasing but non-actionable: the mix rarely shifts
@@ -276,6 +305,21 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
           sublabel={`${netFollowers >= 0 ? "+" : ""}${netFollowers.toLocaleString()} net in range · stock`}
         />
       </div>
+
+      {/* R4 (2026-05-02): Recommended this period — synthesised playbook.
+          Merges what was previously 4-card grid on Engagement + posting-
+          window hero on Timing into one Overview card. Each card uses
+          its dimension's canonical color so the eye lands on the
+          recommendation type first, then the value. Cross-links push
+          operators to Engagement / Timing detail when they want depth. */}
+      <RecommendedThisPeriod
+        bestFormat={bestFormatRec}
+        bestPillar={bestPillarRec}
+        bestHook={bestHookRec}
+        bestSpotlight={bestSpotlightRec}
+        bestTone={bestToneRec}
+        colorFor={(axis, key) => canonicalColor(axis, key)}
+      />
 
       {/* Primary chart: trend re-keys to active primary metric.
           v3.5 (2026-04-29): when 2+ metrics active, swap to the
