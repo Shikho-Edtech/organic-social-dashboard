@@ -381,35 +381,8 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
     <div>
       <PageHeader title="Engagement" subtitle="What drives interaction" dateLabel={range.label} lastScrapedAt={runStatus.last_run_at} compact />
 
-      {/* R2 (2026-05-02): feature-flag banner. Visible only when ?layout=r2.
-          Tells operators they're in a preview layout + offers a one-click
-          exit. Wireframe spec: docs/wireframes/R2_engagement_consolidation_v1.html. */}
-      {isR2Layout ? (
-        <div className="mb-4 rounded-lg border border-shikho-magenta-100 bg-shikho-magenta-50/40 px-3 py-2 flex items-start sm:items-center gap-2 flex-wrap">
-          <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-brand-shikho-magenta bg-shikho-magenta-50 rounded px-1.5 py-0.5 border border-shikho-magenta-100">
-            R2 preview
-          </span>
-          <span className="text-xs text-ink-secondary leading-snug">
-            Consolidated dimension view: 5 stacked charts → 1 chart with a switcher. Old layout is the default; this is opt-in.
-          </span>
-          <Link
-            href="/engagement"
-            className="ml-auto text-[11px] font-semibold uppercase tracking-wider text-brand-shikho-indigo hover:underline"
-          >
-            ← Default layout
-          </Link>
-        </div>
-      ) : (
-        <div className="mb-4 px-3 py-1.5 flex items-center justify-end">
-          <Link
-            href="/engagement?layout=r2"
-            className="text-[11px] font-medium text-ink-muted hover:text-brand-shikho-magenta inline-flex items-center gap-1"
-            title="Preview the consolidated dimension switcher (5 charts → 1 with toggle)"
-          >
-            Try R2 consolidated layout →
-          </Link>
-        </div>
-      )}
+      {/* R2 banner removed 2026-05-02: dimension switcher is now default,
+          ?layout=r2 retired. */}
 
       {/* "Best X" strip — reach-weighted, with category-semantic colour on
           the winning value. A Reel winner reads pink (same as Plan's reel
@@ -492,131 +465,9 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
         </Card>
       )}
 
-      {/* Best-X strip — compact variant. Prior pass used text-xl/2xl with
-          `break-words` which let long winners ("Study Tips & Exam Prep",
-          "Teacher Spotlight") wrap to 3+ lines, pushing each card to ~160px
-          tall and squeezing the charts below the fold on mobile. Now:
-          text-base/lg, line-clamp-2 + title attribute so the value never
-          occupies more than two lines but the full label is still
-          discoverable on hover/long-press. Cards now cap around ~100px.
-          R2 (2026-05-02): hidden when ?layout=r2 active — the dimension
-          switcher's inline "Winner this period" KPI replaces this strip
-          (per wireframe spec "the whole concept of a separate Best strip
-          dies"). */}
-      {!isR2Layout && (
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
-        <Card className="!p-4">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Best Format</div>
-          <div
-            className="text-base sm:text-lg font-bold mt-1.5 break-words leading-snug line-clamp-2"
-            style={{ color: canonicalColor("format", bestFormat?.key) }}
-            title={bestFormat?.key || undefined}
-          >
-            {bestFormat?.key || "—"}
-          </div>
-          {bestFormat ? (
-            <>
-              <div className="text-xs text-slate-500 mt-1">
-                {bestFormat.avg_engagement_rate.toFixed(2)}% engagement rate
-              </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">
-                {reliabilityLabel(bestFormat.count)}
-              </div>
-            </>
-          ) : (
-            <div className="text-xs text-slate-500 mt-1">Not enough posts in range to rank ({MIN_N}+ needed per format).</div>
-          )}
-        </Card>
-        <Card className="!p-4">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Best Pillar</div>
-          <div
-            className="text-base sm:text-lg font-bold mt-1.5 break-words leading-snug line-clamp-2"
-            style={{ color: canonicalColor("pillar", bestPillar?.key) }}
-            title={bestPillar?.key || undefined}
-          >
-            {bestPillar?.key || "—"}
-          </div>
-          {bestPillar ? (
-            <>
-              <div className="text-xs text-slate-500 mt-1">
-                {bestPillar.avg_engagement_rate.toFixed(2)}% engagement rate
-              </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">
-                {reliabilityLabel(bestPillar.count)}
-              </div>
-            </>
-          ) : (
-            <div className="text-xs text-slate-500 mt-1">Not enough posts in range to rank ({MIN_N}+ needed per pillar).</div>
-          )}
-        </Card>
-        <Card className="!p-4">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Best Hook</div>
-          <div
-            className="text-base sm:text-lg font-bold mt-1.5 break-words leading-snug line-clamp-2"
-            style={{ color: canonicalColor("hook", bestHook?.key) }}
-            title={bestHook?.key || undefined}
-          >
-            {bestHook?.key || "—"}
-          </div>
-          {bestHook ? (
-            <>
-              <div className="text-xs text-slate-500 mt-1">
-                {bestHook.avg_engagement_rate.toFixed(2)}% engagement rate
-              </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">
-                {reliabilityLabel(bestHook.count)}
-              </div>
-            </>
-          ) : (
-            <div className="text-xs text-slate-500 mt-1">Not enough posts in range to rank ({MIN_N}+ needed per hook type).</div>
-          )}
-        </Card>
-        <Card className="!p-4">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Best Spotlight Type</div>
-          <div
-            className="text-base sm:text-lg font-bold mt-1.5 break-words leading-snug line-clamp-2"
-            style={{ color: canonicalColor("spotlight", bestSpotlight?.key) }}
-            title={bestSpotlight?.key || undefined}
-          >
-            {bestSpotlight?.key || "—"}
-          </div>
-          {bestSpotlight ? (
-            <>
-              <div className="text-xs text-slate-500 mt-1">
-                {bestSpotlight.avg_engagement_rate.toFixed(2)}% engagement rate
-              </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">
-                {reliabilityLabel(bestSpotlight.count)}
-              </div>
-            </>
-          ) : (
-            <div className="text-xs text-slate-500 mt-1">Not enough posts in range to rank ({MIN_N}+ needed per spotlight type).</div>
-          )}
-        </Card>
-        <Card className="!p-4">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">Best Tone</div>
-          <div
-            className="text-base sm:text-lg font-bold mt-1.5 break-words leading-snug line-clamp-2"
-            style={{ color: canonicalColor("tone", bestTone?.key) }}
-            title={bestTone?.key || undefined}
-          >
-            {bestTone?.key || "—"}
-          </div>
-          {bestTone ? (
-            <>
-              <div className="text-xs text-ink-400 mt-1">
-                {bestTone.avg_engagement_rate.toFixed(2)}% engagement rate
-              </div>
-              <div className="text-[11px] text-ink-400 mt-0.5">
-                {reliabilityLabel(bestTone.count)}
-              </div>
-            </>
-          ) : (
-            <div className="text-xs text-ink-400 mt-1">Not enough posts in range to rank ({MIN_N}+ needed per tone).</div>
-          )}
-        </Card>
-      </div>
-      )}
+      {/* Best-X 5-card strip removed 2026-05-02: the dimension switcher
+          below now shows the winner inline above its bar chart, so this
+          strip duplicates the same information. */}
 
       {/* Sprint P7 Phase 1 (2026-04-28): the second derived-metrics row
           (Virality / Discussion Quality / Sentiment Polarity / Save Rate)
@@ -660,437 +511,93 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
         <span className="text-brand-shikho-coral font-semibold">BOFU</span> (bottom) covers direct conversion — price, discount, enrollment deadline, last-call posts.
       </div>
 
-      {/* Item 38: format × hour-of-day reach heatmap. Small inline grid
-          (not the full Heatmap component — that's 7 rows × 24 cols and
-          this is 3-6 formats × 24 hours, different shape). Mean reach
-          per cell; cells with fewer than MATRIX_MIN_N posts render at
-          reduced opacity so a single-post bucket can't hijack the
-          color scale. Uses Shikho indigo (same scale as Timing heatmap)
-          for visual consistency across "when" views. */}
-      {matrixFormats.length > 0 && matrixMax > 0 && (
-        <div className="mb-6">
-          {/* Sprint P7 Phase 1.4 box-level metric selector. Pills are
-              <Link>s that change the URL query param so server-rendering
-              picks up the new metric on the next request. Preview of
-              the page-level multi-metric pills landing in Phase 3. */}
-          <FormatHourMetricPills active={fhMetric} searchParams={searchParams} />
-          <ChartCard
-            title={`Format × Hour · ${FH_METRIC_TITLES[fhMetric]}`}
-            kind="derived"
-            subtitle={`${FH_METRIC_SUBTITLES[fhMetric]} for each (format, publish hour) cell`}
-            definition={`For each (format, hour) cell: ${FH_METRIC_DEFINITIONS[fhMetric]}. Color intensity encodes the value relative to the strongest cell on the grid. Cells with fewer than ${MATRIX_MIN_N} posts are dimmed — still visible so you can see where coverage is thin, but the color isn't trustworthy. Top ${matrixFormats.length} formats shown.`}
-            sampleSize={`${matrixFormats.length} format${matrixFormats.length === 1 ? "" : "s"} × 24 hours, n = ${inRange.length} post${inRange.length === 1 ? "" : "s"}`}
-            caption="Reels at 8pm behave nothing like Carousels at 8pm. Find the dark cells per format, not just overall."
-          >
-            {/* Sprint P6: hour axis narrowed to 10..23 (BDT) per user
-                feedback — Shikho's posting window is daytime/evening,
-                so compressing 24→14 columns roughly doubles cell width
-                at 360px without losing any realistically-populated
-                cell. Labels in 24hr every 2h ("10 12 14 16 18 20 22").
-                Bumped alpha floor 0.08 → 0.22 and low-n reducer 0.35 →
-                0.55 so the table reads noticeably darker end-to-end —
-                prior pass was so faint that the format-vs-format shape
-                comparison required squinting. Cell height 20px → 22px
-                for the same reason (more ink per row). */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr>
-                    <th className="text-left font-semibold text-ink-500 px-2 py-1.5 whitespace-nowrap">Format</th>
-                    {Array.from({ length: 14 }, (_, i) => {
-                      const h = 10 + i;
-                      const showLabel = h % 2 === 0;
-                      return (
-                        <th
-                          key={h}
-                          className="text-center font-semibold text-ink-500 px-0.5 py-1.5 tabular-nums"
-                          title={`${h.toString().padStart(2, "0")}:00 BDT`}
-                        >
-                          {showLabel ? h.toString().padStart(2, "0") : ""}
-                        </th>
-                      );
-                    })}
-                  </tr>
-                </thead>
-                <tbody>
-                  {matrixFormats.map((f) => (
-                    <tr key={f}>
-                      <td className="px-2 py-1 whitespace-nowrap">
-                        <span
-                          className="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium text-white"
-                          style={{ backgroundColor: canonicalColor("format", f) }}
-                        >
-                          {f}
-                        </span>
-                      </td>
-                      {Array.from({ length: 14 }, (_, i) => {
-                        const h = 10 + i;
-                        const cell = fhMatrix[f][h];
-                        const n = cell?.n ?? 0;
-                        const mean = cell?.mean ?? 0;
-                        const intensity = matrixMax > 0 ? Math.min(1, mean / matrixMax) : 0;
-                        const isReliable = n >= MATRIX_MIN_N;
-                        // Darker by default (floor 0.22) + less-aggressive dimming
-                        // for low-n cells (0.55 vs 0.35) so the format-vs-format
-                        // pattern reads at a glance.
-                        const alpha = n === 0 ? 0 : isReliable ? intensity : intensity * 0.55;
-                        const bg = n === 0
-                          ? "transparent"
-                          : `rgba(48, 64, 144, ${Math.max(0.22, alpha)})`;
-                        return (
-                          <td
-                            key={h}
-                            className="px-0 py-0.5 text-center"
-                            title={n === 0 ? `${f} @ ${h.toString().padStart(2, "0")}:00 — no posts` : `${f} @ ${h.toString().padStart(2, "0")}:00 — mean ${FH_METRIC_NOUNS[fhMetric]} ${formatFhValue(mean, fhMetric)} over ${n} post${n === 1 ? "" : "s"}${isReliable ? "" : " (low-n, dimmed)"}`}
-                          >
-                            <div
-                              className="mx-0.5 h-[22px] rounded-xs"
-                              style={{ backgroundColor: bg, border: n === 0 ? "1px dashed #E6E8F0" : "none" }}
-                            />
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div className="mt-2 flex items-center gap-3 text-[11px] text-ink-500">
-                <span>Darker = more reach</span>
-                <span>·</span>
-                <span>Dashed outline = no posts in that cell</span>
-                <span>·</span>
-                {/* Sprint P7 v4.6 (2026-04-30): MIN_N=2 means faded = exactly
-                    n=1, not "fewer than 2." Wording was off. */}
-                <span>Faded fill = {MATRIX_MIN_N === 2 ? "1 post" : `fewer than ${MATRIX_MIN_N} posts`} (low confidence)</span>
-                <span>·</span>
-                <span>BDT 10:00–24:00</span>
-              </div>
-            </div>
-          </ChartCard>
-        </div>
-      )}
+      {/* Format × Hour heatmap moved to /timing (2026-05-02 user feedback):
+          "when to post which format" is a Timing-page question. The
+          heatmap now appears as one of the dimension options on the
+          Timing page's R3 dynamic heatmap (Day × Hour | Format × Hour). */}
 
-      {/* Recommendations — synthesizes the 4 Best X signals above into
-          2-3 sentences a human can act on. Prior layout assumed the
-          reader would eyeball the four cards and mentally compose the
-          recommendation; in practice the cards were treated as
-          standalone trivia. Putting the synthesis directly under them
-          closes the loop from "here are the winners" to "so do this". */}
-      {/* Recommended this period — redesigned as a grid of distinct
-          playbook cards (one per axis: lead, open, spotlight, tone).
-          Each card uses the axis's canonical colour for its rail + icon
-          so the eye lands on the recommendation type first, then the
-          winning value. Prior pass rendered these as a bulleted <ul>
-          where every bullet looked identical — users skimmed past the
-          section treating it as generic body copy. */}
-      {!isR2Layout && (bestFormat || bestPillar || bestHook || bestSpotlight || bestTone) && (
-        <section className="mb-6">
-          <div className="flex items-baseline gap-2 mb-3 flex-wrap">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-brand-shikho-indigo">
-              Recommended this period (Engagement detail)
-            </div>
-            <div className="text-[11px] text-ink-muted">
-              Synthesised from winning buckets above · also surfaced on{" "}
-              <a href="/" className="underline hover:text-brand-shikho-indigo">Overview</a> alongside Timing&apos;s posting window
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {bestFormat && bestPillar && (
-              <div
-                className="relative rounded-xl bg-ink-paper border border-ink-100 p-4 overflow-hidden"
-                style={{ borderLeftWidth: 4, borderLeftColor: canonicalColor("format", bestFormat.key) }}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <span
-                    className="inline-flex items-center justify-center w-6 h-6 rounded-md text-white"
-                    style={{ backgroundColor: canonicalColor("format", bestFormat.key) }}
-                    aria-hidden="true"
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                    </svg>
-                  </span>
-                  <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-500">Lead format × pillar</div>
-                </div>
-                <div className="text-[15px] font-semibold text-ink-900 leading-snug">
-                  <span style={{ color: canonicalColor("format", bestFormat.key) }}>{bestFormat.key}</span>
-                  <span className="text-ink-400 mx-1.5">·</span>
-                  <span style={{ color: canonicalColor("pillar", bestPillar.key) }}>{bestPillar.key}</span>
-                </div>
-                <div className="text-[12px] text-ink-muted mt-1.5 leading-relaxed">
-                  {bestFormat.key} averages <span className="font-semibold text-ink-700">{bestFormat.avg_engagement_rate.toFixed(2)}%</span> engagement rate
-                  ({bestFormat.count} post{bestFormat.count === 1 ? "" : "s"}) · {bestPillar.key} averages <span className="font-semibold text-ink-700">{bestPillar.avg_engagement_rate.toFixed(2)}%</span>
-                  ({bestPillar.count} post{bestPillar.count === 1 ? "" : "s"}). The intersection is untested — treat it as a hypothesis.
-                </div>
-              </div>
-            )}
-            {bestHook && (
-              <div
-                className="relative rounded-xl bg-ink-paper border border-ink-100 p-4 overflow-hidden"
-                style={{ borderLeftWidth: 4, borderLeftColor: canonicalColor("hook", bestHook.key) }}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <span
-                    className="inline-flex items-center justify-center w-6 h-6 rounded-md text-white"
-                    style={{ backgroundColor: canonicalColor("hook", bestHook.key) }}
-                    aria-hidden="true"
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10"></circle>
-                      <line x1="12" y1="8" x2="12" y2="12"></line>
-                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                    </svg>
-                  </span>
-                  <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-500">Opening hook</div>
-                </div>
-                <div className="text-[15px] font-semibold leading-snug" style={{ color: canonicalColor("hook", bestHook.key) }}>
-                  {bestHook.key}
-                </div>
-                <div className="text-[12px] text-ink-muted mt-1.5 leading-relaxed">
-                  <span className="font-semibold text-ink-700">{bestHook.avg_engagement_rate.toFixed(2)}%</span> engagement rate across {bestHook.count} post{bestHook.count === 1 ? "" : "s"}. Try this hook on the other pillars to see whether the opening or the topic is doing the work.
-                </div>
-              </div>
-            )}
-            {bestSpotlight && (
-              <div
-                className="relative rounded-xl bg-ink-paper border border-ink-100 p-4 overflow-hidden"
-                style={{ borderLeftWidth: 4, borderLeftColor: canonicalColor("spotlight", bestSpotlight.key) }}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <span
-                    className="inline-flex items-center justify-center w-6 h-6 rounded-md text-white"
-                    style={{ backgroundColor: canonicalColor("spotlight", bestSpotlight.key) }}
-                    aria-hidden="true"
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="4"></circle>
-                      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
-                    </svg>
-                  </span>
-                  <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-500">Feature spotlight</div>
-                </div>
-                <div className="text-[15px] font-semibold leading-snug" style={{ color: canonicalColor("spotlight", bestSpotlight.key) }}>
-                  {bestSpotlight.key}
-                </div>
-                <div className="text-[12px] text-ink-muted mt-1.5 leading-relaxed">
-                  Highest reach-weighted engagement among spotlight categories — <span className="font-semibold text-ink-700">{bestSpotlight.avg_engagement_rate.toFixed(2)}%</span> across {bestSpotlight.count} post{bestSpotlight.count === 1 ? "" : "s"}.
-                </div>
-              </div>
-            )}
-            {bestTone && (
-              <div
-                className="relative rounded-xl bg-ink-paper border border-ink-100 p-4 overflow-hidden"
-                style={{ borderLeftWidth: 4, borderLeftColor: canonicalColor("tone", bestTone.key) }}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <span
-                    className="inline-flex items-center justify-center w-6 h-6 rounded-md text-white"
-                    style={{ backgroundColor: canonicalColor("tone", bestTone.key) }}
-                    aria-hidden="true"
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                    </svg>
-                  </span>
-                  <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-500">Caption tone</div>
-                </div>
-                <div className="text-[15px] font-semibold leading-snug" style={{ color: canonicalColor("tone", bestTone.key) }}>
-                  {bestTone.key}
-                </div>
-                <div className="text-[12px] text-ink-muted mt-1.5 leading-relaxed">
-                  <span className="font-semibold text-ink-700">{bestTone.avg_engagement_rate.toFixed(2)}%</span> engagement rate across {bestTone.count} post{bestTone.count === 1 ? "" : "s"}. Tone is the caption's overall register (Educational vs Urgent / FOMO) — independent of the hook.
-                </div>
-              </div>
-            )}
-          </div>
-        </section>
-      )}
+      {/* Recommended-this-period 4-card grid removed (2026-05-02 user feedback):
+          redundant with Overview's RecommendedThisPeriod card (the canonical
+          synthesis) + the Winning Pattern hero above + the dimension switcher
+          below. Three layers saying the same thing. Kept Winning Pattern
+          (one-line synthesis sentence) and the dimension switcher (per-axis
+          detail); dropped the 4-card middle layer. */}
 
-      {/* R2 (2026-05-02): when ?layout=r2 active, render the consolidated
-          dimension switcher INSTEAD of the per-dimension chart stack below.
-          Funnel + Format×Hour + Recommended cards still render in both
-          layouts (they don't fit the dimension-switcher pattern). */}
-      {isR2Layout ? (
-        <EngagementDimensionView
-          active={activeEngDim}
-          totalPosts={inRange.length}
-          searchParams={searchParams}
-          colorFor={(axis, key) => canonicalColor(axis, key)}
-          dimensions={[
-            {
-              id: "format",
-              label: "Format",
-              subtitle: "Avg engagement rate by post format",
-              definition: `Engagement rate = total interactions (reactions + comments + shares) ÷ total unique reach for posts in that format — reach-weighted so viral outliers don't dominate. Formats with fewer than ${MIN_N} posts are hidden.`,
-              caption: "A format that consistently beats the average is worth doubling down on.",
-              noun: "format",
-              series: formatER,
-              winner: bestFormat ? { key: bestFormat.key, rate: bestFormat.avg_engagement_rate, count: bestFormat.count } : undefined,
-              minN: MIN_N,
-              horizontal: false,
-            },
-            {
-              id: "pillar",
-              label: "Pillar",
-              subtitle: "Avg engagement rate by content pillar",
-              definition: `Reach-weighted engagement rate per pillar. Only pillars with ${MIN_N}+ posts in the period are shown.`,
-              caption: "Identify which content themes resonate most with the audience.",
-              noun: "pillar",
-              series: pillarER,
-              winner: bestPillar ? { key: bestPillar.key, rate: bestPillar.avg_engagement_rate, count: bestPillar.count } : undefined,
-              minN: MIN_N,
-              horizontal: true,
-            },
-            {
-              id: "hook",
-              label: "Hook",
-              subtitle: "Avg engagement rate by opening hook",
-              definition: `Posts grouped by classified hook type (Question, Stat, Curiosity, etc.). Reach-weighted engagement rate. Only hook types with ${MIN_N}+ posts shown. Hook is assigned by the weekly pipeline from the post's opening line.`,
-              caption: "If one hook dominates, test the same content with a different opening.",
-              noun: "hook type",
-              series: hookER,
-              winner: bestHook ? { key: bestHook.key, rate: bestHook.avg_engagement_rate, count: bestHook.count } : undefined,
-              minN: MIN_N,
-              horizontal: true,
-            },
-            {
-              id: "spotlight",
-              label: "Spotlight",
-              subtitle: "Avg engagement rate by spotlight type",
-              definition: `Posts grouped by what they spotlight: Teacher / Product / Program / Campaign. Reach-weighted ER. Only types with ${MIN_N}+ posts shown.`,
-              caption: "If Teacher posts outperform Product posts, lean into the faculty.",
-              noun: "spotlight type",
-              series: spotlightER,
-              winner: bestSpotlight ? { key: bestSpotlight.key, rate: bestSpotlight.avg_engagement_rate, count: bestSpotlight.count } : undefined,
-              minN: MIN_N,
-              horizontal: true,
-            },
-            {
-              id: "tone",
-              label: "Caption Tone",
-              subtitle: "Avg engagement rate by caption tone",
-              definition: `Posts grouped by classified caption_tone field (Educational / Urgent / Conversational / etc.). Reach-weighted ER. Only tones with ${MIN_N}+ posts shown.`,
-              caption: "Tone is the caption's overall register — independent of the hook line.",
-              noun: "tone",
-              series: toneER,
-              winner: bestTone ? { key: bestTone.key, rate: bestTone.avg_engagement_rate, count: bestTone.count } : undefined,
-              minN: MIN_N,
-              horizontal: true,
-            },
-          ]}
-        />
-      ) : (
-      <>
-      <div className="grid lg:grid-cols-2 gap-4 mb-6">
-        <ChartCard
-          title="Format Performance"
-          kind="ai"
-          subtitle="Avg engagement rate by format"
-          definition={`Engagement rate = total interactions (reactions + comments + shares) ÷ total unique reach across posts in that format — reach-weighted so viral outliers don't dominate. Formats with fewer than ${MIN_N} posts are hidden.`}
-          sampleSize={`n = ${inRange.length} post${inRange.length === 1 ? "" : "s"}`}
-          caption="Higher is better. A format that consistently beats the average is worth doubling down on."
-        >
-          <BarChartBase data={formatER} valueFormat="percent" metricName="Engagement rate" valueAxisLabel="Engagement rate" categoryAxisLabel="Format" />
-        </ChartCard>
-        <ChartCard
-          title="Shares per Post"
-          kind="ai"
-          subtitle="Avg shares by format"
-          definition="Total shares in period ÷ number of posts in that format. Shares expand reach beyond the existing follower base — the strongest virality signal."
-          caption="A format averaging high shares is pulling in new audience, not just engaging the existing one."
-        >
-          <BarChartBase data={formatShares} metricName="Avg shares" valueAxisLabel="Avg shares / post" categoryAxisLabel="Format" />
-        </ChartCard>
-      </div>
-
-      <div className="mb-6">
-        <ChartCard
-          title="Pillar Performance"
-          kind="ai"
-          subtitle="Avg engagement rate by content pillar"
-          definition={`Reach-weighted engagement rate per pillar (Σ interactions ÷ Σ reach). Only pillars with ${MIN_N}+ posts in the period are shown, so a single outlier can't win.`}
-          sampleSize={`${pillarStats.length} pillar${pillarStats.length === 1 ? "" : "s"} shown (${MIN_N}+ posts)`}
-          caption="Identify which content themes resonate most with the audience. Use alongside the Strategy tab's top-performer list."
-        >
-          <BarChartBase data={pillarER} horizontal height={Math.max(240, pillarER.length * 32)} valueFormat="percent" metricName="Engagement rate" valueAxisLabel="Engagement rate" />
-        </ChartCard>
-      </div>
-
-      {spotlightStats.length > 0 && (
-        <div className="grid lg:grid-cols-2 gap-4 mb-6">
-          <ChartCard
-            title="Spotlight Performance — Engagement"
-            kind="ai"
-            subtitle="Avg engagement rate by spotlight type"
-            definition={`Posts grouped by what they spotlight: Teacher, Product, Program, or Campaign. Reach-weighted engagement rate. Only types with ${MIN_N}+ posts shown. Assigned by the v2.2 classifier.`}
-            sampleSize={(() => {
-              const nTypes = spotlightStats.length;
-              const nPosts = spotlightStats.reduce((s, x) => s + x.count, 0);
-              return `${nTypes} spotlight type${nTypes === 1 ? "" : "s"}, n = ${nPosts} post${nPosts === 1 ? "" : "s"}`;
-            })()}
-            caption="Which spotlight category the audience engages with most. If Teacher posts outperform Product posts, lean into the faculty."
-          >
-            <BarChartBase data={spotlightER} horizontal height={Math.max(180, spotlightER.length * 36)} valueFormat="percent" metricName="Engagement rate" valueAxisLabel="Engagement rate" />
-          </ChartCard>
-          <ChartCard
-            title="Spotlight Performance — Reach"
-            kind="ai"
-            subtitle="Avg reach per post by spotlight type"
-            definition="Average unique reach per post for each spotlight type. Pairs with the engagement-rate view to surface the full picture: a type can have high engagement on small reach, or vice versa."
-            caption="High reach + high engagement means the spotlight type is working on both axes."
-          >
-            <BarChartBase data={spotlightReach} horizontal height={Math.max(180, spotlightReach.length * 36)} metricName="Avg reach" valueAxisLabel="Avg reach / post" />
-          </ChartCard>
-        </div>
-      )}
-
-      {toneStats.length > 0 && (
-        <div className="mb-6">
-          <ChartCard
-            title="Caption Tone Effectiveness"
-            kind="ai"
-            subtitle="Avg engagement rate by caption tone"
-            definition={`Posts grouped by classified caption tone (Educational, Motivational, Promotional, Entertaining, Informational, Celebratory, Urgent / FOMO). Reach-weighted engagement rate. Only tones with ${MIN_N}+ posts are shown. Tone is assigned by the weekly pipeline from the full caption text — not just the hook.`}
-            sampleSize={`${toneStats.length} tone${toneStats.length === 1 ? "" : "s"} shown (${MIN_N}+ posts)`}
-            caption="Tone and hook answer different questions: tone is the caption's overall register, hook is only the opening line. A winning tone on a losing hook (or vice versa) is worth A/B testing — keep the tone, vary the hook."
-          >
-            <BarChartBase data={toneER} horizontal height={Math.max(200, toneER.length * 36)} valueFormat="percent" metricName="Engagement rate" valueAxisLabel="Engagement rate" />
-          </ChartCard>
-        </div>
-      )}
-
-      <div className="grid lg:grid-cols-2 gap-4">
-        <ChartCard
-          title="Hook Type Effectiveness"
-          kind="ai"
-          subtitle="Avg engagement rate by opening hook"
-          definition={`Posts grouped by classified hook type (Question, Stat, Celebration, etc.). Reach-weighted engagement rate. Only hook types with ${MIN_N}+ posts are shown. Hook type is assigned by the weekly pipeline from the post's opening line.`}
-          sampleSize={`${hookStats.length} hook type${hookStats.length === 1 ? "" : "s"} shown`}
-          caption="If one hook dominates, try testing the same content with a different opening to see if it's the hook or the topic."
-        >
-          <BarChartBase data={hookER} horizontal height={Math.max(220, hookER.length * 32)} valueFormat="percent" metricName="Engagement rate" valueAxisLabel="Engagement rate" />
-        </ChartCard>
-        <ChartCard
-          title="Engagement Breakdown"
-          kind="observed"
-          subtitle="Volume by interaction type"
-          definition="Total count of each reaction / comment / share across all posts in the period. Bars are sorted by volume so the dominant interaction type is always on top — with 6 categories, ranking is easier on a common-axis bar chart than a pie/donut where slice-size discrimination breaks down past 4 categories."
-          sampleSize={`n = ${inRange.length} post${inRange.length === 1 ? "" : "s"}`}
-          caption="High comment share suggests active community dialogue; high share ratio suggests virality potential."
-        >
-          <BarChartBase
-            data={reactionBreakdown}
-            horizontal
-            height={Math.max(220, reactionBreakdown.length * 36)}
-            colorByIndex
-            metricName="Interactions"
-            valueAxisLabel="Count"
-            showPercent
-          />
-        </ChartCard>
-      </div>
-      </>
-      )}
+      {/* R2 promoted to default (2026-05-02 user feedback): the dimension
+          switcher IS the per-dimension view. No more legacy 7-chart stack,
+          no more `?layout=r2` flag. Funnel + Winning Pattern still render
+          above. Best-X strip + "Recommended this period (Engagement
+          detail)" 4-card grid removed — the switcher's inline winner KPI
+          is the canonical "Best X" surface, and Overview's
+          RecommendedThisPeriod is the canonical synthesis. */}
+      <EngagementDimensionView
+        active={activeEngDim}
+        totalPosts={inRange.length}
+        searchParams={searchParams}
+        colorFor={(axis, key) => canonicalColor(axis, key)}
+        dimensions={[
+          {
+            id: "format",
+            label: "Format",
+            subtitle: "Avg engagement rate by post format",
+            definition: `Engagement rate = total interactions (reactions + comments + shares) ÷ total unique reach for posts in that format — reach-weighted so viral outliers don't dominate. Formats with fewer than ${MIN_N} posts are hidden.`,
+            caption: "A format that consistently beats the average is worth doubling down on.",
+            noun: "format",
+            series: formatER,
+            winner: bestFormat ? { key: bestFormat.key, rate: bestFormat.avg_engagement_rate, count: bestFormat.count } : undefined,
+            minN: MIN_N,
+            horizontal: false,
+          },
+          {
+            id: "pillar",
+            label: "Pillar",
+            subtitle: "Avg engagement rate by content pillar",
+            definition: `Reach-weighted engagement rate per pillar. Only pillars with ${MIN_N}+ posts in the period are shown.`,
+            caption: "Identify which content themes resonate most with the audience.",
+            noun: "pillar",
+            series: pillarER,
+            winner: bestPillar ? { key: bestPillar.key, rate: bestPillar.avg_engagement_rate, count: bestPillar.count } : undefined,
+            minN: MIN_N,
+            horizontal: true,
+          },
+          {
+            id: "hook",
+            label: "Hook",
+            subtitle: "Avg engagement rate by opening hook",
+            definition: `Posts grouped by classified hook type (Question, Stat, Curiosity, etc.). Reach-weighted engagement rate. Only hook types with ${MIN_N}+ posts shown. Hook is assigned by the weekly pipeline from the post's opening line.`,
+            caption: "If one hook dominates, test the same content with a different opening.",
+            noun: "hook type",
+            series: hookER,
+            winner: bestHook ? { key: bestHook.key, rate: bestHook.avg_engagement_rate, count: bestHook.count } : undefined,
+            minN: MIN_N,
+            horizontal: true,
+          },
+          {
+            id: "spotlight",
+            label: "Spotlight",
+            subtitle: "Avg engagement rate by spotlight type",
+            definition: `Posts grouped by what they spotlight: Teacher / Product / Program / Campaign. Reach-weighted ER. Only types with ${MIN_N}+ posts shown.`,
+            caption: "If Teacher posts outperform Product posts, lean into the faculty.",
+            noun: "spotlight type",
+            series: spotlightER,
+            winner: bestSpotlight ? { key: bestSpotlight.key, rate: bestSpotlight.avg_engagement_rate, count: bestSpotlight.count } : undefined,
+            minN: MIN_N,
+            horizontal: true,
+          },
+          {
+            id: "tone",
+            label: "Caption Tone",
+            subtitle: "Avg engagement rate by caption tone",
+            definition: `Posts grouped by classified caption_tone field (Educational / Urgent / Conversational / etc.). Reach-weighted ER. Only tones with ${MIN_N}+ posts shown.`,
+            caption: "Tone is the caption's overall register — independent of the hook line.",
+            noun: "tone",
+            series: toneER,
+            winner: bestTone ? { key: bestTone.key, rate: bestTone.avg_engagement_rate, count: bestTone.count } : undefined,
+            minN: MIN_N,
+            horizontal: true,
+          },
+        ]}
+      />
     </div>
   );
 }

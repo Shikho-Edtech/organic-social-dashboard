@@ -1,7 +1,8 @@
 import { getPosts, getRunStatus } from "@/lib/sheets";
-import { filterPosts, bdt, reach, totalInteractions } from "@/lib/aggregate";
+import { filterPosts, bdt, reach, totalInteractions, formatHourMatrix } from "@/lib/aggregate";
 import { summarize, bestByLowerBound, reliabilityLabel, minPostsForRange, type Summary } from "@/lib/stats";
 import { resolveRange, rangeDays as computeRangeDays } from "@/lib/daterange";
+import { canonicalColor } from "@/lib/colors";
 import PageHeader from "@/components/PageHeader";
 import { Card, ChartCard } from "@/components/Card";
 import Heatmap, { type HeatmapCell } from "@/components/Heatmap";
@@ -36,20 +37,27 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
   const activeMetrics = parseMetricParam(searchParams.metric);
   const primaryMetric = activeMetrics[0];
 
-  // R3 (2026-05-02): feature-flagged dynamic-heatmap layout. When
-  // ?layout=r3 is active, the page renders ONE heatmap with a metric
-  // switcher above it (?heat_view=engagement|reach|shares|interactions)
-  // instead of the 2-3 stacked heatmaps that ship in the default
-  // layout. Same data model — just one chart at a time. URL param
-  // makes deep-links / refreshes preserve the active view.
-  const layoutParam = typeof searchParams?.layout === "string" ? searchParams.layout : "";
-  const isR3Layout = layoutParam === "r3";
+  // R3 promoted to default (2026-05-02 user feedback): the dynamic heatmap
+  // IS the canonical "when to post" view. No more `?layout=r3` flag — the
+  // page always renders ONE heatmap with two switchers above it:
+  //   - dimension: Day × Hour | Format × Hour  (?heat_dim=day|format)
+  //   - metric:    Engagement Rate | Avg Reach | Avg Shares | Avg Interactions
+  //               (?heat_view=engagement|reach|shares|interactions)
+  // Format × Hour was lifted from /engagement (R2 cleanup) and now lives
+  // here because "when to post which format" is fundamentally a Timing-page
+  // question.
   const heatViewParam = typeof searchParams?.heat_view === "string" ? searchParams.heat_view : "";
   const validHeatViews = ["engagement", "reach", "shares", "interactions"] as const;
   type HeatView = (typeof validHeatViews)[number];
   const activeHeatView: HeatView = (validHeatViews as readonly string[]).includes(heatViewParam)
     ? (heatViewParam as HeatView)
     : "engagement"; // default: engagement (the canonical "when" signal)
+  const heatDimParam = typeof searchParams?.heat_dim === "string" ? searchParams.heat_dim : "";
+  const validHeatDims = ["day", "format"] as const;
+  type HeatDim = (typeof validHeatDims)[number];
+  const activeHeatDim: HeatDim = (validHeatDims as readonly string[]).includes(heatDimParam)
+    ? (heatDimParam as HeatDim)
+    : "day";
 
   const [posts, runStatus] = await Promise.all([getPosts(), getRunStatus()]);
   const inRange = filterPosts(posts, { start: range.start, end: range.end });
@@ -231,6 +239,41 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
       ]),
   };
 
+  // R3 v2 (2026-05-02): Format × Hour matrix, computed for the ACTIVE
+  // heat view metric. Format × Hour was lifted from /engagement so the
+  // operator picks "when to post which format" on the same page they
+  // pick "when to post in general". The matrix builder lives in
+  // lib/aggregate; we map the page-level HeatView to its expected
+  // FormatHourMetric type.
+  const fhMetricMap: Record<HeatView, "reach" | "interactions" | "engagement" | "shares"> = {
+    engagement: "engagement",
+    reach: "reach",
+    shares: "shares",
+    interactions: "interactions",
+  };
+  const fhMatrix = formatHourMatrix(inRange, fhMetricMap[activeHeatView]);
+  const fhFormats = Object.keys(fhMatrix)
+    .filter((f) => Object.values(fhMatrix[f]).some((c) => c.n > 0))
+    .sort((a, b) => {
+      const na = Object.values(fhMatrix[a]).reduce((s, c) => s + c.n, 0);
+      const nb = Object.values(fhMatrix[b]).reduce((s, c) => s + c.n, 0);
+      return nb - na;
+    });
+  let fhMatrixMax = 0;
+  for (const f of fhFormats) {
+    for (const h of Object.keys(fhMatrix[f])) {
+      const c = fhMatrix[f][Number(h)];
+      if (c.n >= CELL_MIN_N && c.mean > fhMatrixMax) fhMatrixMax = c.mean;
+    }
+  }
+  const FH_MATRIX_MIN_N = 2;
+  const fhFormatValue = (mean: number, view: HeatView): string => {
+    if (view === "engagement") return `${mean.toFixed(2)}%`;
+    if (view === "shares") return `${mean.toFixed(1)} shares/post`;
+    if (view === "interactions") return `${mean.toFixed(1)} interactions/post`;
+    return `${Math.round(mean).toLocaleString()} reach/post`;
+  };
+
   return (
     <div>
       <PageHeader title="Timing" subtitle="When to post for max reach and engagement" dateLabel={`${range.label} · Bangladesh Time (UTC+6)`} lastScrapedAt={runStatus.last_run_at} compact />
@@ -342,265 +385,256 @@ export default async function TimingPage({ searchParams }: { searchParams: Recor
         </Card>
       </div>
 
-      {/* R3 (2026-05-02): dynamic single heatmap with metric switcher.
-          When ?layout=r3 active, this replaces the 2-3 stacked heatmaps
-          below. Operator picks the view; URL ?heat_view= preserves it. */}
-      {isR3Layout ? (
-        <div className="mb-6">
-          {/* R3 banner — at the top of the dynamic heatmap section, not at
-              page-top, so it doesn't compete with the existing best-window
-              hero card. Magenta accent matches R2's preview banner. */}
-          <div className="mb-3 rounded-lg border border-shikho-magenta-100 bg-shikho-magenta-50/40 px-3 py-2 flex items-start sm:items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-brand-shikho-magenta bg-shikho-magenta-50 rounded px-1.5 py-0.5 border border-shikho-magenta-100">
-              R3 preview
-            </span>
-            <span className="text-xs text-ink-secondary leading-snug">
-              Dynamic heatmap: 2-3 stacked grids → 1 grid with a switcher.
-            </span>
-            <Link
-              href={(() => {
-                const p = new URLSearchParams();
-                for (const [k, v] of Object.entries(searchParams)) {
-                  if (k === "layout" || k === "heat_view") continue;
-                  if (typeof v === "string") p.set(k, v);
-                  else if (Array.isArray(v) && v.length) p.set(k, v[0]);
-                }
-                const qs = p.toString();
-                return qs ? `/timing?${qs}` : "/timing";
-              })()}
-              className="ml-auto text-[11px] font-semibold uppercase tracking-wider text-brand-shikho-indigo hover:underline"
+      {/* R3 promoted to default + Format×Hour added (2026-05-02 user feedback):
+          ONE dynamic heatmap with TWO switchers above:
+            - Dimension: Day × Hour | Format × Hour
+            - Metric:    Engagement Rate | Avg Reach | Avg Shares | Avg Interactions
+          URL params ?heat_dim and ?heat_view drive selection. Operator can
+          deep-link any combination. Replaces the legacy 2-3 stacked
+          heatmaps and the now-removed Format×Hour from /engagement. */}
+      {(() => {
+        const buildHref = (k: "heat_view" | "heat_dim", v: string): string => {
+          const p = new URLSearchParams();
+          for (const [pk, pv] of Object.entries(searchParams)) {
+            if (pk === k) continue;
+            if (typeof pv === "string") p.set(pk, pv);
+            else if (Array.isArray(pv) && pv.length) p.set(pk, pv[0]);
+          }
+          p.set(k, v);
+          return `/timing?${p.toString()}`;
+        };
+        type ViewMeta = {
+          label: string;
+          sublabel: string;
+          minColor: string;
+          maxColor: string;
+          valueFormat: "percent" | "number";
+          metricLabel: string;
+          cells: HeatmapCell[];
+          tagline: string;
+        };
+        const viewMeta: Record<HeatView, ViewMeta> = {
+          engagement: {
+            label: "Engagement Rate",
+            sublabel: "Reach-weighted engagement rate per cell",
+            minColor: "#FCEAF3",
+            maxColor: "#C02080",
+            valueFormat: "percent",
+            metricLabel: "engagement rate",
+            cells: erCells,
+            tagline: "(Σ interactions ÷ Σ reach) × 100 per cell. Reach-weighted so a single viral post can't hijack a cell's color.",
+          },
+          reach: {
+            label: "Avg Reach",
+            sublabel: "Mean unique reach per post",
+            minColor: "#EEF0FA",
+            maxColor: "#304090",
+            valueFormat: "number",
+            metricLabel: "avg reach",
+            cells: reachCells,
+            tagline: "Σ reach ÷ N posts per cell. Pair with the engagement-rate view — a high-reach cell can still have low ER.",
+          },
+          shares: {
+            label: "Avg Shares",
+            sublabel: "Mean shares per post",
+            minColor: "#FEF3D9",
+            maxColor: "#E0A010",
+            valueFormat: "number",
+            metricLabel: "avg shares",
+            cells: sharesCells,
+            tagline: "Σ shares ÷ N posts per cell. Surfaces unpaid-distribution windows.",
+          },
+          interactions: {
+            label: "Avg Interactions",
+            sublabel: "Mean (reactions + comments + shares) per post",
+            minColor: "#FCEAF3",
+            maxColor: "#C02080",
+            valueFormat: "number",
+            metricLabel: "avg interactions",
+            cells: interactionsCells,
+            tagline: "Σ (reactions + comments + shares) ÷ N posts per cell. Combines all interaction types.",
+          },
+        };
+        const current = viewMeta[activeHeatView];
+        const dimLabel = activeHeatDim === "day" ? "Day × Hour" : "Format × Hour";
+        return (
+          <div className="mb-6">
+            {/* TWO switchers stacked: dimension on top, metric below.
+                Both are URL-driven so deep-link / refresh preserves selection. */}
+            <nav
+              aria-label="Heatmap dimension"
+              className="mb-2 flex flex-wrap items-center gap-1.5"
             >
-              ← Default layout
-            </Link>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted mr-1">
+                Dimension:
+              </span>
+              {(["day", "format"] as HeatDim[]).map((d) => {
+                const isActive = d === activeHeatDim;
+                const label = d === "day" ? "Day × Hour" : "Format × Hour";
+                return (
+                  <Link
+                    key={d}
+                    href={buildHref("heat_dim", d)}
+                    scroll={false}
+                    aria-pressed={isActive}
+                    className={`px-2.5 py-1 rounded-md border text-[11px] font-medium transition-colors duration-base ${
+                      isActive
+                        ? "bg-brand-shikho-indigo text-white border-brand-shikho-indigo shadow-sm"
+                        : "bg-ink-paper text-ink-secondary border-ink-100 hover:border-brand-shikho-indigo hover:text-brand-shikho-indigo"
+                    }`}
+                  >
+                    {label}
+                  </Link>
+                );
+              })}
+            </nav>
+            <nav
+              aria-label="Heatmap metric"
+              className="mb-3 flex flex-wrap items-center gap-1.5"
+            >
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted mr-1">
+                Metric:
+              </span>
+              {(Object.keys(viewMeta) as HeatView[]).map((v) => {
+                const isActive = v === activeHeatView;
+                return (
+                  <Link
+                    key={v}
+                    href={buildHref("heat_view", v)}
+                    scroll={false}
+                    aria-pressed={isActive}
+                    className={`px-2.5 py-1 rounded-md border text-[11px] font-medium transition-colors duration-base ${
+                      isActive
+                        ? "bg-brand-shikho-indigo text-white border-brand-shikho-indigo shadow-sm"
+                        : "bg-ink-paper text-ink-secondary border-ink-100 hover:border-brand-shikho-indigo hover:text-brand-shikho-indigo"
+                    }`}
+                  >
+                    {viewMeta[v].label}
+                  </Link>
+                );
+              })}
+            </nav>
+
+            <ChartCard
+              title={`${current.label} · ${dimLabel}`}
+              kind={activeHeatView === "engagement" ? "derived" : "observed"}
+              subtitle={current.sublabel + (activeHeatDim === "format" ? ` for each (format, publish hour) cell` : ` for each (day-of-week, publish hour) cell`)}
+              definition={`${current.tagline} Color saturation encodes the value relative to the strongest cell. Cells with fewer than ${CELL_MIN_N} posts are dimmed (still visible so zero-post slots are distinguishable from low-confidence ones).`}
+              sampleSize={
+                activeHeatDim === "day"
+                  ? `${totalCellsReliable} / ${totalCellsWithPosts} cells reliable (n≥${CELL_MIN_N}), ${inRange.length} posts total`
+                  : `${fhFormats.length} format${fhFormats.length === 1 ? "" : "s"} × 24 hours, n = ${inRange.length} post${inRange.length === 1 ? "" : "s"}`
+              }
+              caption={
+                activeHeatDim === "day"
+                  ? "Read left-to-right for daily patterns, top-to-bottom for weekday patterns. Dark diagonal bands suggest consistent best-time windows. Bangladesh Time (UTC+6)."
+                  : "Reels at 8pm behave nothing like Carousels at 8pm. Find the dark cells per format, not just overall."
+              }
+            >
+              {totalCellsWithPosts === 0 ? (
+                <EmptyChart
+                  message="No posts in this date range"
+                  hint="Widen the range or check that posts exist for this window."
+                />
+              ) : activeHeatDim === "day" ? (
+                <Heatmap
+                  cells={current.cells}
+                  minN={CELL_MIN_N}
+                  metricLabel={current.metricLabel}
+                  valueFormat={current.valueFormat}
+                  minColor={current.minColor}
+                  maxColor={current.maxColor}
+                />
+              ) : (
+                /* Format × Hour grid — inline render (matches Heatmap visual
+                   language but rows are formats, not weekdays). Hours
+                   compressed to 10–23 BDT (Shikho's posting window). */
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr>
+                        <th className="text-left font-semibold text-ink-500 px-2 py-1.5 whitespace-nowrap">Format</th>
+                        {Array.from({ length: 14 }, (_, i) => {
+                          const h = 10 + i;
+                          const showLabel = h % 2 === 0;
+                          return (
+                            <th
+                              key={h}
+                              className="text-center font-semibold text-ink-500 px-0.5 py-1.5 tabular-nums"
+                              title={`${h.toString().padStart(2, "0")}:00 BDT`}
+                            >
+                              {showLabel ? h.toString().padStart(2, "0") : ""}
+                            </th>
+                          );
+                        })}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {fhFormats.map((f) => (
+                        <tr key={f}>
+                          <td className="px-2 py-1 whitespace-nowrap">
+                            <span
+                              className="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium text-white"
+                              style={{ backgroundColor: canonicalColor("format", f) }}
+                            >
+                              {f}
+                            </span>
+                          </td>
+                          {Array.from({ length: 14 }, (_, i) => {
+                            const h = 10 + i;
+                            const cell = fhMatrix[f][h];
+                            const n = cell?.n ?? 0;
+                            const mean = cell?.mean ?? 0;
+                            const intensity = fhMatrixMax > 0 ? Math.min(1, mean / fhMatrixMax) : 0;
+                            const isReliable = n >= FH_MATRIX_MIN_N;
+                            const alpha = n === 0 ? 0 : isReliable ? intensity : intensity * 0.55;
+                            const rgbStr =
+                              activeHeatView === "engagement"
+                                ? "192, 32, 128" // shikho-magenta-500
+                                : activeHeatView === "shares"
+                                  ? "224, 160, 16" // sunrise
+                                  : activeHeatView === "interactions"
+                                    ? "192, 32, 128" // magenta
+                                    : "48, 64, 144"; // indigo
+                            const bg = n === 0
+                              ? "transparent"
+                              : `rgba(${rgbStr}, ${Math.max(0.22, alpha)})`;
+                            return (
+                              <td
+                                key={h}
+                                className="px-0 py-0.5 text-center"
+                                title={
+                                  n === 0
+                                    ? `${f} @ ${h.toString().padStart(2, "0")}:00 — no posts`
+                                    : `${f} @ ${h.toString().padStart(2, "0")}:00 — ${fhFormatValue(mean, activeHeatView)} over ${n} post${n === 1 ? "" : "s"}${isReliable ? "" : " (low-n, dimmed)"}`
+                                }
+                              >
+                                <div
+                                  className="mx-0.5 h-[22px] rounded-xs"
+                                  style={{ backgroundColor: bg, border: n === 0 ? "1px dashed #E6E8F0" : "none" }}
+                                />
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div className="mt-2 flex items-center gap-3 text-[11px] text-ink-500 flex-wrap">
+                    <span>Darker = higher {current.metricLabel}</span>
+                    <span>·</span>
+                    <span>Dashed outline = no posts in that cell</span>
+                    <span>·</span>
+                    <span>Faded fill = 1 post (low confidence)</span>
+                    <span>·</span>
+                    <span>BDT 10:00–24:00</span>
+                  </div>
+                </div>
+              )}
+            </ChartCard>
           </div>
-
-          {/* View switcher pills — Links so URL is the source of truth. */}
-          {(() => {
-            const buildViewHref = (view: HeatView): string => {
-              const p = new URLSearchParams();
-              for (const [k, v] of Object.entries(searchParams)) {
-                if (k === "heat_view") continue;
-                if (typeof v === "string") p.set(k, v);
-                else if (Array.isArray(v) && v.length) p.set(k, v[0]);
-              }
-              p.set("heat_view", view);
-              return `/timing?${p.toString()}`;
-            };
-            const viewMeta: Record<HeatView, { label: string; sublabel: string; minColor: string; maxColor: string; valueFormat: "percent" | "number"; metricLabel: string; cells: HeatmapCell[]; tagline: string }> = {
-              engagement: {
-                label: "Engagement Rate",
-                sublabel: "Reach-weighted ER per cell",
-                minColor: "#FCEAF3",
-                maxColor: "#C02080",
-                valueFormat: "percent",
-                metricLabel: "engagement rate",
-                cells: erCells,
-                tagline: "(Σ interactions ÷ Σ reach) × 100 per (day, hour) cell. Reach-weighted so a single viral post can't hijack a cell's color.",
-              },
-              reach: {
-                label: "Avg Reach",
-                sublabel: "Mean unique reach per post",
-                minColor: "#EEF0FA",
-                maxColor: "#304090",
-                valueFormat: "number",
-                metricLabel: "avg reach",
-                cells: reachCells,
-                tagline: "Σ reach ÷ N posts per cell. Pair with the engagement-rate view — a high-reach cell can still have low ER.",
-              },
-              shares: {
-                label: "Avg Shares",
-                sublabel: "Mean shares per post",
-                minColor: "#FEF3D9",
-                maxColor: "#E0A010",
-                valueFormat: "number",
-                metricLabel: "avg shares",
-                cells: sharesCells,
-                tagline: "Σ shares ÷ N posts per cell. Surfaces unpaid-distribution windows.",
-              },
-              interactions: {
-                label: "Avg Interactions",
-                sublabel: "Mean (reactions + comments + shares) per post",
-                minColor: "#FCEAF3",
-                maxColor: "#C02080",
-                valueFormat: "number",
-                metricLabel: "avg interactions",
-                cells: interactionsCells,
-                tagline: "Σ (reactions + comments + shares) ÷ N posts per cell. Combines all interaction types.",
-              },
-            };
-            const current = viewMeta[activeHeatView];
-            return (
-              <>
-                <nav
-                  aria-label="Heatmap metric"
-                  className="mb-3 flex flex-wrap items-center gap-1.5"
-                >
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted mr-1">
-                    View:
-                  </span>
-                  {(Object.keys(viewMeta) as HeatView[]).map((v) => {
-                    const isActive = v === activeHeatView;
-                    return (
-                      <Link
-                        key={v}
-                        href={buildViewHref(v)}
-                        scroll={false}
-                        aria-pressed={isActive}
-                        className={`px-2.5 py-1 rounded-md border text-[11px] font-medium transition-colors duration-base ${
-                          isActive
-                            ? "bg-brand-shikho-indigo text-white border-brand-shikho-indigo shadow-sm"
-                            : "bg-ink-paper text-ink-secondary border-ink-100 hover:border-brand-shikho-indigo hover:text-brand-shikho-indigo"
-                        }`}
-                      >
-                        {viewMeta[v].label}
-                      </Link>
-                    );
-                  })}
-                </nav>
-                <ChartCard
-                  title={`${current.label} · Day × Hour`}
-                  kind={activeHeatView === "engagement" ? "derived" : "observed"}
-                  subtitle={current.sublabel}
-                  definition={`${current.tagline} Color saturation encodes the value relative to the strongest cell. Cells with fewer than ${CELL_MIN_N} posts are dimmed (still visible so zero-post slots are distinguishable from low-confidence ones).`}
-                  sampleSize={`${totalCellsReliable} / ${totalCellsWithPosts} cells reliable (n≥${CELL_MIN_N}), ${inRange.length} posts total`}
-                  caption="Read left-to-right for daily patterns, top-to-bottom for weekday patterns. Dark diagonal bands suggest consistent best-time windows. Bangladesh Time (UTC+6)."
-                >
-                  {totalCellsWithPosts === 0 ? (
-                    <EmptyChart
-                      message="No posts in this date range"
-                      hint="Widen the range or check that posts exist for this window."
-                    />
-                  ) : (
-                    <Heatmap
-                      cells={current.cells}
-                      minN={CELL_MIN_N}
-                      metricLabel={current.metricLabel}
-                      valueFormat={current.valueFormat}
-                      minColor={current.minColor}
-                      maxColor={current.maxColor}
-                    />
-                  )}
-                </ChartCard>
-              </>
-            );
-          })()}
-        </div>
-      ) : (
-        <>
-        {/* Default layout: discovery hint to try R3 */}
-        <div className="mb-3 px-3 py-1.5 flex items-center justify-end">
-          <Link
-            href={(() => {
-              const p = new URLSearchParams();
-              for (const [k, v] of Object.entries(searchParams)) {
-                if (typeof v === "string") p.set(k, v);
-                else if (Array.isArray(v) && v.length) p.set(k, v[0]);
-              }
-              p.set("layout", "r3");
-              return `/timing?${p.toString()}`;
-            })()}
-            className="text-[11px] font-medium text-ink-muted hover:text-brand-shikho-magenta inline-flex items-center gap-1"
-            title="Preview the dynamic single-heatmap layout (2-3 grids → 1 with toggle)"
-          >
-            Try R3 dynamic heatmap →
-          </Link>
-        </div>
-
-      {/* Primary heatmap: engagement rate by day×hour */}
-      <div className="mb-6">
-        <ChartCard
-          title="Engagement Rate · Day × Hour"
-          kind="derived"
-          subtitle="Reach-weighted engagement rate for each (day-of-week, publish hour) cell"
-          definition={`For each (day, hour) cell: (Σ interactions ÷ Σ reach) × 100 across all posts that cell. Color saturation encodes the rate — darker = stronger engagement. Cells with fewer than ${CELL_MIN_N} posts are dimmed (still visible so zero-post slots are distinguishable from low-confidence ones). Reach-weighted so a single viral post can't hijack a cell's color.`}
-          sampleSize={`${totalCellsReliable} / ${totalCellsWithPosts} cells reliable (n≥${CELL_MIN_N}), ${inRange.length} posts total`}
-          caption={`Read left-to-right for daily patterns, top-to-bottom for weekday patterns. Dark diagonal bands suggest consistent "best time" windows. Bangladesh Time (UTC+6).`}
-          viewData={erViewData}
-        >
-          {totalCellsWithPosts === 0 ? (
-            <EmptyChart
-              message="No posts in this date range"
-              hint="Widen the range or check that posts exist for this window."
-            />
-          ) : (
-            <Heatmap
-              cells={erCells}
-              minN={CELL_MIN_N}
-              metricLabel="engagement rate"
-              valueFormat="percent"
-              minColor="#FCEAF3" // shikho-magenta-50
-              maxColor="#C02080" // shikho-magenta-500 — matches the "ER" family color
-            />
-          )}
-        </ChartCard>
-      </div>
-
-      {/* Secondary heatmap: avg reach by day×hour */}
-      <div className="mb-6">
-        <ChartCard
-          title="Avg Reach · Day × Hour"
-          kind="observed"
-          subtitle="Per-post unique reach averaged for each (day, hour) cell"
-          definition={`For each (day, hour) cell: Σ reach ÷ N posts that cell. Color encodes average reach per post; cells with fewer than ${CELL_MIN_N} posts are dimmed. Pair with the engagement rate heatmap above — reach and engagement rate can diverge (a cell can deliver high reach with low engagement rate, or vice versa).`}
-          sampleSize={`${totalCellsReliable} / ${totalCellsWithPosts} cells reliable (n≥${CELL_MIN_N})`}
-          caption={`Dark cells here + dark cells above = that day/hour is your best publish window on both axes.`}
-          viewData={reachViewData}
-        >
-          {totalCellsWithPosts === 0 ? (
-            <EmptyChart
-              message="No posts in this date range"
-              hint="Widen the range or check that posts exist for this window."
-            />
-          ) : (
-            <Heatmap
-              cells={reachCells}
-              minN={CELL_MIN_N}
-              metricLabel="avg reach"
-              valueFormat="number"
-              minColor="#EEF0FA" // shikho-indigo-50
-              maxColor="#304090" // shikho-indigo-600
-            />
-          )}
-        </ChartCard>
-      </div>
-
-      {/* Sprint P7 QA pass (2026-04-28): third heatmap rendered when the
-          active metric is shares or interactions. Reach + engagement
-          are the canonical timing pair (always shown); shares /
-          interactions add a third dimension when those are the focus.
-          Honors the spec philosophy "every chart with a comparable
-          metric should re-key" while preserving the dual-view value of
-          the canonical pair. */}
-      {(primaryMetric === "shares" || primaryMetric === "interactions") && (
-        <div className="mb-6">
-          <ChartCard
-            title={`Avg ${primaryMetric === "shares" ? "Shares" : "Interactions"} · Day × Hour`}
-            kind="observed"
-            subtitle={`Per-post ${primaryMetric === "shares" ? "shares" : "total interactions"} averaged for each (day, hour) cell`}
-            definition={`For each (day, hour) cell: Σ ${primaryMetric === "shares" ? "shares" : "interactions (reactions + comments + shares)"} ÷ N posts that cell. Color encodes the per-post average; cells with fewer than ${CELL_MIN_N} posts are dimmed. Surfaced because you've selected ${primaryMetric === "shares" ? "Shares" : "Interactions"} at the page level.`}
-            sampleSize={`${totalCellsReliable} / ${totalCellsWithPosts} cells reliable (n≥${CELL_MIN_N})`}
-            caption={`Compare against the reach heatmap above — a cell can deliver high reach with low ${primaryMetric === "shares" ? "shares" : "interactions"} per post (passive consumption) or vice versa (engaged niche audience).`}
-          >
-            {totalCellsWithPosts === 0 ? (
-              <EmptyChart
-                message="No posts in this date range"
-                hint="Widen the range or check that posts exist for this window."
-              />
-            ) : (
-              <Heatmap
-                cells={metricCells}
-                minN={CELL_MIN_N}
-                metricLabel={`avg ${primaryMetric}`}
-                valueFormat="number"
-                minColor={primaryMetric === "shares" ? "#FEF3D9" : "#FCEAF3"}
-                maxColor={primaryMetric === "shares" ? "#E0A010" : "#C02080"}
-              />
-            )}
-          </ChartCard>
-        </div>
-      )}
-      </>
-      )}
+        );
+      })()}
     </div>
   );
 }
