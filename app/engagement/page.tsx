@@ -494,7 +494,12 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           tall and squeezing the charts below the fold on mobile. Now:
           text-base/lg, line-clamp-2 + title attribute so the value never
           occupies more than two lines but the full label is still
-          discoverable on hover/long-press. Cards now cap around ~100px. */}
+          discoverable on hover/long-press. Cards now cap around ~100px.
+          R2 (2026-05-02): hidden when ?layout=r2 active — the dimension
+          switcher's inline "Winner this period" KPI replaces this strip
+          (per wireframe spec "the whole concept of a separate Best strip
+          dies"). */}
+      {!isR2Layout && (
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
         <Card className="!p-4">
           <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Best Format</div>
@@ -607,6 +612,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           )}
         </Card>
       </div>
+      )}
 
       {/* Sprint P7 Phase 1 (2026-04-28): the second derived-metrics row
           (Virality / Discussion Quality / Sentiment Polarity / Save Rate)
@@ -773,7 +779,7 @@ export default async function EngagementPage({ searchParams }: { searchParams: R
           winning value. Prior pass rendered these as a bulleted <ul>
           where every bullet looked identical — users skimmed past the
           section treating it as generic body copy. */}
-      {(bestFormat || bestPillar || bestHook || bestSpotlight || bestTone) && (
+      {!isR2Layout && (bestFormat || bestPillar || bestHook || bestSpotlight || bestTone) && (
         <section className="mb-6">
           <div className="flex items-baseline gap-2 mb-3 flex-wrap">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-brand-shikho-indigo">

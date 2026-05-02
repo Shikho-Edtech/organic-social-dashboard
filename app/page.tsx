@@ -11,6 +11,9 @@ import BarChartBase from "@/components/BarChart";
 import { canonicalColor } from "@/lib/colors";
 import MetricSelector, { parseMetricParam, parseWeightsParam } from "@/components/MetricSelector";
 import RecommendedThisPeriod, { type BestStat, type BestSlot } from "@/components/RecommendedThisPeriod";
+import { isLowConfidence } from "@/lib/aggregate";
+import { minPostsForRange } from "@/lib/stats";
+import { rangeDays as computeRangeDays } from "@/lib/daterange";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -176,18 +179,31 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
 
   // R4 (2026-05-02): consolidated "Recommended this period" — merges the
   // playbook bests (Engagement-page logic) into one Overview card.
-  // Same `groupStats` + reach-weighted ER ranking as Engagement, just
-  // applied here too so Overview is the single landing for "what should
-  // I do this period". Engagement page keeps its detailed cards (deep-
-  // dive surface); Overview gets the synthesis. Posting day/hour
-  // intentionally omitted — those use Timing's CI-based stats which
-  // are heavier to import. Cross-link below points to /timing for the
-  // when-to-post lens. R4 v2 may inline a lighter day/hour rank.
-  const hookStatsOverview = groupStats(inRange, "hook_type").filter((s) => s.key && s.key.toLowerCase() !== "none");
-  const spotlightStatsOverview = groupStats(inRange, "spotlight_type").filter((s) => s.key && s.key.toLowerCase() !== "none");
-  const toneStatsOverview = groupStats(inRange, "caption_tone").filter((s) => s.key);
-  const formatStatsForRec = formatStats.filter((s) => s.key);
-  const pillarStatsForRec = pillarStatsAll.filter((s) => s.key);
+  //
+  // R4 hotfix (2026-05-02 live check): live check found Overview's
+  // recommendations disagreed with Engagement's because Overview wasn't
+  // applying the same `inRangeConfident` + MIN_N gate Engagement uses.
+  // Tiny-sample buckets (e.g. Celebration on 4 posts) were winning over
+  // statistically reliable buckets (Announcement on 80 posts). Now
+  // mirrored: drop low-confidence classifications, gate at MIN_N posts,
+  // exclude None/Unknown labels — exactly what Engagement does.
+  const inRangeConfidentOverview = inRange.filter((p) => !isLowConfidence(p));
+  const REC_MIN_N = minPostsForRange(computeRangeDays(range));
+  const filterRec = <T extends { key: string; count: number }>(rows: T[], excludeNone = true): T[] =>
+    rows.filter(
+      (s) =>
+        s.count >= REC_MIN_N &&
+        s.key &&
+        (!excludeNone ||
+          (s.key.toLowerCase() !== "none" && s.key.toLowerCase() !== "unknown")),
+    );
+  const hookStatsOverview = filterRec(groupStats(inRangeConfidentOverview, "hook_type"));
+  const spotlightStatsOverview = filterRec(groupStats(inRangeConfidentOverview, "spotlight_type"));
+  const toneStatsOverview = filterRec(groupStats(inRangeConfidentOverview, "caption_tone"));
+  // Format isn't classifier-derived — keep using inRange (matches Engagement).
+  const formatStatsForRec = formatStats.filter((s) => s.count >= REC_MIN_N && s.key);
+  // Pillars: use confidence-filtered set (matches Engagement's pillarStats).
+  const pillarStatsForRec = filterRec(groupStats(inRangeConfidentOverview, "content_pillar"), false);
   const rankByER = <T extends { avg_engagement_rate: number }>(rows: T[]): T | undefined => {
     if (!rows.length) return undefined;
     return [...rows].sort((a, b) => b.avg_engagement_rate - a.avg_engagement_rate)[0];

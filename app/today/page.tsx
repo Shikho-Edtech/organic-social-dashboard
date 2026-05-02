@@ -235,7 +235,12 @@ export default async function TodayPage() {
           <div>
             <h2 className="text-lg font-semibold text-ink-primary">Today&apos;s Plan</h2>
             <p className="text-xs text-ink-muted mt-0.5">
-              {todaysSlotsByTime.length} slots planned · {slotPublishStatus.filter(s => s.published).length} published · {slotPublishStatus.filter(s => !s.published).length} upcoming
+              {(() => {
+                const planned = todaysSlotsByTime.length;
+                const published = slotPublishStatus.filter(s => s.published).length;
+                const upcoming = slotPublishStatus.filter(s => !s.published).length;
+                return `${planned} slot${planned === 1 ? "" : "s"} planned · ${published} published · ${upcoming} upcoming`;
+              })()}
             </p>
           </div>
           <Link
@@ -324,7 +329,14 @@ export default async function TodayPage() {
           <div>
             <h2 className="text-lg font-semibold text-ink-primary">Yesterday</h2>
             <p className="text-xs text-ink-muted mt-0.5">
-              {yesterdaysPosts.length} posts published · {yesterdayOutcomes.filter(r => r.verdict === "hit" || r.verdict === "exceeded").length} hits · {yesterdayOutcomes.filter(r => r.verdict === "missed").length} missed
+              {(() => {
+                const hits = yesterdayOutcomes.filter(r => r.verdict === "hit" || r.verdict === "exceeded").length;
+                const missed = yesterdayOutcomes.filter(r => r.verdict === "missed").length;
+                const postsLabel = `${yesterdaysPosts.length} post${yesterdaysPosts.length === 1 ? "" : "s"}`;
+                const hitsLabel = `${hits} hit${hits === 1 ? "" : "s"}`;
+                const missedLabel = `${missed} missed`;
+                return `${postsLabel} published · ${hitsLabel} · ${missedLabel}`;
+              })()}
             </p>
           </div>
           <Link
@@ -394,7 +406,12 @@ export default async function TodayPage() {
           <div>
             <h2 className="text-lg font-semibold text-ink-primary">This Week So Far</h2>
             <p className="text-xs text-ink-muted mt-0.5">
-              Mon–Sun BDT · {weekRange(weekStartIso)} · {thisWeekPosts.length} posts published · {hits + exceeded} hits · {missed} missed · {pending} pending
+              {(() => {
+                const totalHits = hits + exceeded;
+                const postsLabel = `${thisWeekPosts.length} post${thisWeekPosts.length === 1 ? "" : "s"}`;
+                const hitsLabel = `${totalHits} hit${totalHits === 1 ? "" : "s"}`;
+                return `Mon–Sun BDT · ${weekRange(weekStartIso)} · ${postsLabel} published · ${hitsLabel} · ${missed} missed · ${pending} pending`;
+              })()}
             </p>
           </div>
           <Link
