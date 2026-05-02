@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-05-02 — v4.18 W2 Wed (W5 + W6): Reference content pass
+
+W5 — concrete examples added under every Hook Type, Caption Tone,
+Spotlight Type, and Language. Each example is a real Bangla / Banglish
+caption-line (or scenario for Spotlight Types) so operators can
+pattern-match the classifier's call against actual openers they've
+seen, not just abstract descriptions. Examples render in italic with
+a left border separator, indented under the value name. The Mixed
+language gets its own example showing code-switching ("SSC '26
+batch-এ enroll করার last day আজ — don't miss it!"), addressing the
+specific user ask "what do you mean by mixed?"
+
+W6 — every definition restructured from `{term, def}` to
+`{term, key, def}`:
+- `key` is a 1-line punchy summary (the headline-grade idea, ~12-18
+  words). Reads like a "tldr" — scannable in <1s.
+- `def` is the longer explanation, demoted to smaller / muted text.
+- Cold-read test: scrolling the Definitions section reading only
+  bolded keys now gives ~80% of the vocabulary without reading the
+  full text. The defs are there for the curious operator who wants
+  the precise mechanics.
+
+Read-time presentation only. No data, schema, or classifier changes.
+
 ## 2026-05-02 — v4.18 W2 Tue (W4): Reference layout rework
 
 Reference page restructured per the locked plan's W2 Tue ticket. Three changes:

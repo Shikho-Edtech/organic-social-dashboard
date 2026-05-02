@@ -19,6 +19,14 @@
 // Audiences nested under Students/Parents/Teachers/General groups, list
 // spacing tightened to reduce cross-card height variance.
 //
+// W5 + W6 content pass (2026-05-02): concrete Bangla caption examples added
+// for every Hook Type, Caption Tone, Spotlight Type, and Language so operators
+// can pattern-match the classifier's call against actual openers. Definitions
+// restructured to {term, key, def} — bold "key" line surfaces the headline-
+// grade idea (scannable), smaller "def" carries the longer explanation. Cold-
+// read test: a new operator can scan the keys-only column and understand 80%
+// of the dashboard's vocabulary without reading the long defs.
+//
 // Pure server component, ISR with 5-min cache.
 
 import { getPosts } from "@/lib/sheets";
@@ -67,6 +75,15 @@ const SPOTLIGHT_TYPE_DESCRIPTIONS: Record<string, string> = {
   None: "No explicit spotlight; generic content.",
 };
 
+const SPOTLIGHT_TYPE_EXAMPLES: Record<string, string> = {
+  Teacher: "A reel of Abdullah Bhaiya solving a physics MCQ on camera.",
+  Product: "A walkthrough of Shikho AI's doubt-clearing feature.",
+  Program: "Promo for the SSC '26 Master Course batch opening.",
+  Brand: "A generic 'Why Shikho' brand-warmth post with no specific face/feature.",
+  Campaign: "Pohela Boishakh Quiz Series — 7 themed posts under one campaign tag.",
+  None: "Generic study tip with no person, product, or program attached.",
+};
+
 const HOOK_TYPE_DESCRIPTIONS: Record<string, string> = {
   Question: "Opens with a question to pull viewer attention.",
   Stat: "Opens with a number/statistic ('100+ MCQs', '83% of students…').",
@@ -78,6 +95,20 @@ const HOOK_TYPE_DESCRIPTIONS: Record<string, string> = {
   None: "No identifiable hook pattern.",
 };
 
+// W5: concrete caption-line examples for each hook type. Italic ex.
+// rendered under each list item so operators can pattern-match the
+// classifier's call against actual openers they've seen.
+const HOOK_TYPE_EXAMPLES: Record<string, string> = {
+  Question: "তুমি কি জানো SSC-তে কোন chapter সবচেয়ে বেশি আসে?",
+  Stat: "৯৩% শিক্ষার্থী এই ভুলটা করে।",
+  Announcement: "নতুন HSC '26 ব্যাচ শুরু হচ্ছে রোববার থেকে।",
+  Story: "একদিন আমার এক ছাত্র এসে বললো…",
+  Problem: "Maths-এ ভয় লাগে? তুমি একা না।",
+  Curiosity: "এই trick জানলে আর কখনো ভুলবে না।",
+  Direct: "এখনই enroll করো — শেষ ২৪ ঘন্টা।",
+  None: "(no opener pattern; just dives into the content)",
+};
+
 const TONE_DESCRIPTIONS: Record<string, string> = {
   Educational: "Teacher-voice instructive tone.",
   Urgent: "Time-pressure / FOMO tone.",
@@ -87,6 +118,17 @@ const TONE_DESCRIPTIONS: Record<string, string> = {
   Informational: "Neutral fact-delivery tone.",
   Humorous: "Light/funny tone.",
   Emotional: "Story-led emotional resonance.",
+};
+
+const TONE_EXAMPLES: Record<string, string> = {
+  Educational: "চলো আজ শিখি কিভাবে এই অংকটা সমাধান করতে হয়।",
+  Urgent: "মাত্র আজ রাত ১২টা পর্যন্ত — মিস করো না।",
+  Conversational: "আরে ভাই, এটা তো আমিও জানতাম না!",
+  Promotional: "আজই আমাদের HSC মাস্টার কোর্সে enroll করো।",
+  Inspirational: "তুমি পারবে — শুধু একটু বেশি চেষ্টা চাই।",
+  Informational: "SSC '26 routine প্রকাশিত হয়েছে।",
+  Humorous: "MCQ পরীক্ষায় ৫টা বাকি থাকতে যেই অবস্থা… 😅",
+  Emotional: "মা যখন বললেন, 'তুই পারবি বাবা'…",
 };
 
 const AUDIENCE_DESCRIPTIONS: Record<string, string> = {
@@ -117,6 +159,13 @@ const LANGUAGE_DESCRIPTIONS: Record<string, string> = {
   Banglish: "Bangla written in Latin script.",
 };
 
+const LANGUAGE_EXAMPLES: Record<string, string> = {
+  Bangla: "তুমি কি জানো এই trick-টা?",
+  English: "The 5 most common SSC physics mistakes.",
+  Mixed: "SSC '26 batch-এ enroll করার last day আজ — don't miss it!",
+  Banglish: "Tumi ki janoo SSC-tey kon chapter sobcheye beshi ashe?",
+};
+
 function dedupSorted(arr: string[]): string[] {
   return Array.from(new Set(arr.map((s) => (s || "").trim()).filter(Boolean))).sort();
 }
@@ -140,6 +189,7 @@ export default async function ReferencePage() {
     description: string;
     values: string[];
     valueDescriptions?: Record<string, string>;
+    valueExamples?: Record<string, string>;
     accent: string;
   };
 
@@ -170,6 +220,7 @@ export default async function ReferencePage() {
       description: "The opening pattern of the caption / first frame. Each hook tracked independently in Priors_HookType for fatigue detection. Same hook on same pillar blocked for 6 weeks; cross-pillar blocked for 2 weeks.",
       values: hookTypes,
       valueDescriptions: HOOK_TYPE_DESCRIPTIONS,
+      valueExamples: HOOK_TYPE_EXAMPLES,
       accent: "from-brand-shikho-magenta to-brand-shikho-coral",
     },
     {
@@ -177,6 +228,7 @@ export default async function ReferencePage() {
       description: "What the post features. Strategy stage's teacher_rotation array uses these to balance creator visibility week to week.",
       values: spotlightTypes,
       valueDescriptions: SPOTLIGHT_TYPE_DESCRIPTIONS,
+      valueExamples: SPOTLIGHT_TYPE_EXAMPLES,
       accent: "from-brand-amber to-brand-shikho-coral",
     },
     {
@@ -184,6 +236,7 @@ export default async function ReferencePage() {
       description: "Caption voice / register (matches the caption_tone classifier field). Lower-cardinality dimension; useful for cross-format pattern detection.",
       values: tones,
       valueDescriptions: TONE_DESCRIPTIONS,
+      valueExamples: TONE_EXAMPLES,
       accent: "from-brand-cyan to-brand-green",
     },
   ];
@@ -197,66 +250,84 @@ export default async function ReferencePage() {
   })).filter((g) => g.presentMembers.length > 0);
   const otherAudiences = audiences.filter((a) => !knownAudienceMembers.has(a.toLowerCase()));
 
-  const definitions: { term: string; def: string }[] = [
+  // W6: each definition gets a 1-line "key" (the headline-grade idea, scannable)
+  // + a compact "def" (the longer explanation). Renders as bold key on top,
+  // smaller def below — operators scanning the page can read just the keys.
+  const definitions: { term: string; key: string; def: string }[] = [
     {
       term: "Week (Mon-Sun BDT)",
-      def: "Every per-week tab is keyed by the running Monday in Bangladesh time (BDT). 'Week of Apr 27' covers Apr 27 (Monday) through May 3 (Sunday). The Bangladesh team's working schedule means Sunday is a working day; Friday + Saturday are the weekend.",
+      key: "Every per-week tab is anchored to its running Monday in Bangladesh time.",
+      def: "'Week of Apr 27' covers Apr 27 (Monday) through May 3 (Sunday). The Bangladesh team's working schedule means Sunday is a working day; Friday + Saturday are the weekend.",
     },
     {
       term: "Reach (unique reach)",
-      def: "Distinct people who saw the post. Facebook insights' post_total_media_view_unique field. The dashboard's primary scoring metric. Different from media_views (total impressions including re-views) and from views (Reels-specific).",
+      key: "Distinct people who saw the post — the dashboard's primary scoring metric.",
+      def: "Facebook insights' post_total_media_view_unique field. Different from media_views (total impressions including re-views) and from views (Reels-specific).",
     },
     {
       term: "Engagement Rate",
-      def: "(Reactions + Comments + Shares) ÷ Reach. Per-post. Captures interaction density without bias toward larger-audience posts. Currently shown on Diagnosis verdict (~2.43% typical).",
+      key: "(Reactions + Comments + Shares) ÷ Reach, per post.",
+      def: "Captures interaction density without bias toward larger-audience posts. Currently shown on Diagnosis verdict (~2.43% typical).",
     },
     {
       term: "Quality Engagement (candidate)",
-      def: "Shares × 2, Comments × 1, summed weekly. Excludes reactions because they're a low-effort reach proxy. Shares double-weighted because each share = unpaid distribution and algorithm reward. CANDIDATE north-star; being trialed alongside reach for 4 to 8 weeks before a canonical anchor decision.",
+      key: "Shares × 2 + Comments × 1, summed weekly — the high-intent subset of engagement.",
+      def: "Excludes reactions because they're a low-effort reach proxy. Shares double-weighted because each share = unpaid distribution + algorithm reward. CANDIDATE north-star; being trialed alongside reach for 4 to 8 weeks before a canonical anchor decision.",
     },
     {
       term: "Interactions",
-      def: "Reactions, Comments, and Shares summed. Dominated by reactions (~80-90% of total) so behaves as a reach proxy. Why we don't use this as the candidate north-star: Quality Engagement is the high-intent subset.",
+      key: "Reactions + Comments + Shares summed — dominated by reactions, behaves as a reach proxy.",
+      def: "Reactions are ~80-90% of total. That's why we don't use this as the candidate north-star: Quality Engagement is the high-intent subset that strips reactions out.",
     },
     {
       term: "Hypothesis (h0 / h1 / h2 …)",
-      def: "Weekly bets the strategy stage emits. h1 = primary strategic hypothesis (always set). h2+ = experiments to run. h0 = status-quo / null hypothesis. Each slot in the plan ties to a hypothesis_id; the chip on Plan/Outcomes/Diagnosis surfaces the actual statement on hover.",
+      key: "The weekly bets the strategy stage emits — what we're testing this week.",
+      def: "h1 = primary strategic hypothesis (always set). h2+ = experiments to run. h0 = status-quo / null hypothesis. Each slot in the plan ties to a hypothesis_id; the chip on Plan/Outcomes/Diagnosis surfaces the actual statement on hover.",
     },
     {
       term: "Forecast band (CI)",
-      def: "80% confidence interval for unique reach, computed from Priors_Pillar × Priors_Format × Priors_AcademicSeason at plan time. Stamped immutably on every slot. Outcome scoring compares actual reach against this band.",
+      key: "The 80% confidence interval for unique reach, stamped on every plan slot.",
+      def: "Computed from Priors_Pillar × Priors_Format × Priors_AcademicSeason at plan time. Immutable once stamped. Outcome scoring compares actual reach against this band.",
     },
     {
       term: "Verdicts",
-      def: "Hit = actual landed inside the forecast band. Exceeded = actual > band high. Missed = actual < band low. No-data = no matched post yet (forward-looking week or matcher couldn't join). Preliminary = post < 7 days old; reach hasn't fully decayed; verdict shown but excluded from Calibration_Log.",
+      key: "Hit / Exceeded / Missed / No-data / Preliminary — what happened vs the forecast band.",
+      def: "Hit = actual landed inside the band. Exceeded = actual > band high. Missed = actual < band low. No-data = no matched post yet (forward-looking week or matcher couldn't join). Preliminary = post <7 days old; reach hasn't fully decayed; verdict shown but excluded from Calibration_Log.",
     },
     {
       term: "\"Scored on reach\" warning",
-      def: "On Outcomes Target Metric column. Appears when a slot's stated success_metric (e.g. 'Follows > 150') isn't a reach metric. The deterministic verdict still scores reach because that's the only dimension we have 90-day priors for. The chip tells you the slot's intent isn't being measured directly.",
+      key: "Appears on Outcomes when the slot targeted something other than reach (e.g. follows).",
+      def: "The deterministic verdict still scores reach because that's the only dimension we have 90-day priors for. The chip tells you the slot's intent isn't being measured directly.",
     },
     {
       term: "\"Week-level fallback\" on source posts",
-      def: "On Diagnosis Key Findings and Watch-outs. Appears when a finding doesn't carry its own source_post_ids; the page falls back to the diagnosis's top and under performers as best-available citation. Distinct from a precise per-finding citation; tells operators the link is inferred, not exact.",
+      key: "Diagnosis citation falls back to the week's top + under performers when a finding lacks specific post IDs.",
+      def: "Appears on Key Findings and Watch-outs. Distinct from a precise per-finding citation; tells operators the link is inferred, not exact.",
     },
     {
       term: "Calibration",
-      def: "How well the forecast bands actually contain reality. Target: 80% of slots should land inside the 80% CI. Drift below 70% over 4 weeks = priors are over-confident. Drift above 90% = bands too wide (calibrated but un-sharp).",
+      key: "How well the forecast bands actually contain reality — target is 80%.",
+      def: "Target: 80% of slots should land inside the 80% CI. Drift below 70% over 4 weeks = priors are over-confident. Drift above 90% = bands too wide (calibrated but un-sharp).",
     },
     {
       term: "Hit Rate",
-      def: "(Hit + Exceeded) ÷ (Hit + Exceeded + Missed). Excludes No-data and Preliminary. Shown on Outcomes rollup. Different from Calibration (which counts only Hit).",
+      key: "(Hit + Exceeded) ÷ (Hit + Exceeded + Missed) — excludes No-data and Preliminary.",
+      def: "Shown on Outcomes rollup. Different from Calibration (which counts only Hit, not Exceeded).",
     },
     {
       term: "Mid-week vs End-of-week diagnosis",
-      def: "Pipeline runs diagnosis twice per week. Mid-week (Thursday morning) writes engine='ai-midweek' on Mon-Wed data → labeled 'Preliminary, mid-week' on Diagnosis This Week. End-of-week (Monday morning) writes engine='ai' on the completed Mon-Sun → the canonical retrospective.",
+      key: "Pipeline runs diagnosis twice per week — Thursday preliminary + Monday canonical.",
+      def: "Mid-week (Thursday morning) writes engine='ai-midweek' on Mon-Wed data → labeled 'Preliminary, mid-week' on Diagnosis This Week. End-of-week (Monday morning) writes engine='ai' on the completed Mon-Sun → the canonical retrospective.",
     },
     {
       term: "\"Past-week immutability\"",
-      def: "Architectural rule: once a Monday rolls over, that week's Plan + Outcomes are frozen. Pipeline writer refuses to overwrite past weeks unless force_regenerate=true is explicitly set. Preserves the contract Outcomes scores against.",
+      key: "Once a Monday rolls over, that week's Plan + Outcomes are frozen.",
+      def: "Pipeline writer refuses to overwrite past weeks unless force_regenerate=true is explicitly set. Preserves the contract Outcomes scores against.",
     },
     {
       term: "System Suggestions",
-      def: "Auto-derived prescriptions written to System_Suggestions tab each weekly run (calibration drift, hypothesis retire, pillar over/underperform). NEVER auto-applied; strategy prompt reads them as advisory context. The team / human decides whether to follow each suggestion.",
+      key: "Auto-derived advisory suggestions, never auto-applied — the human decides each one.",
+      def: "Written to System_Suggestions tab each weekly run (calibration drift, hypothesis retire, pillar over/underperform). The strategy prompt reads them as advisory context only. The team / human decides whether to follow each suggestion.",
     },
   ];
 
@@ -289,12 +360,19 @@ export default async function ReferencePage() {
               {sec.values.length === 0 ? (
                 <p className="text-xs text-ink-muted italic">No values found in current data.</p>
               ) : (
-                <ul className="space-y-1">
+                <ul className="space-y-1.5">
                   {sec.values.map((v) => (
                     <li key={v} className="text-sm leading-snug">
-                      <span className="font-medium text-ink-primary">{v}</span>
-                      {sec.valueDescriptions?.[v] && (
-                        <span className="ml-1.5 text-xs text-ink-muted">· {sec.valueDescriptions[v]}</span>
+                      <div>
+                        <span className="font-medium text-ink-primary">{v}</span>
+                        {sec.valueDescriptions?.[v] && (
+                          <span className="ml-1.5 text-xs text-ink-muted">· {sec.valueDescriptions[v]}</span>
+                        )}
+                      </div>
+                      {sec.valueExamples?.[v] && (
+                        <div className="mt-0.5 text-[11px] text-ink-secondary italic leading-snug pl-2 border-l border-ink-100">
+                          e.g. {sec.valueExamples[v]}
+                        </div>
                       )}
                     </li>
                   ))}
@@ -376,14 +454,21 @@ export default async function ReferencePage() {
                     </span>
                   ))}
                 </div>
-                {languages.some((l) => LANGUAGE_DESCRIPTIONS[l]) && (
-                  <ul className="space-y-0.5 pt-1">
+                {languages.some((l) => LANGUAGE_DESCRIPTIONS[l] || LANGUAGE_EXAMPLES[l]) && (
+                  <ul className="space-y-1 pt-1">
                     {languages
-                      .filter((l) => LANGUAGE_DESCRIPTIONS[l])
+                      .filter((l) => LANGUAGE_DESCRIPTIONS[l] || LANGUAGE_EXAMPLES[l])
                       .map((l) => (
-                        <li key={l} className="text-[11px] text-ink-muted leading-snug">
-                          <span className="font-medium text-ink-secondary">{l}</span>
-                          <span className="ml-1.5">· {LANGUAGE_DESCRIPTIONS[l]}</span>
+                        <li key={l} className="leading-snug">
+                          <div className="text-[11px] text-ink-muted">
+                            <span className="font-medium text-ink-secondary">{l}</span>
+                            {LANGUAGE_DESCRIPTIONS[l] && <span className="ml-1.5">· {LANGUAGE_DESCRIPTIONS[l]}</span>}
+                          </div>
+                          {LANGUAGE_EXAMPLES[l] && (
+                            <div className="mt-0.5 text-[11px] text-ink-secondary italic leading-snug pl-2 border-l border-ink-100">
+                              e.g. {LANGUAGE_EXAMPLES[l]}
+                            </div>
+                          )}
                         </li>
                       ))}
                   </ul>
@@ -436,7 +521,8 @@ export default async function ReferencePage() {
           {definitions.map((d, i) => (
             <Card key={i} className="">
               <h3 className="text-sm font-semibold text-ink-primary mb-1">{d.term}</h3>
-              <p className="text-xs text-ink-secondary leading-relaxed">{d.def}</p>
+              <p className="text-xs font-medium text-ink-secondary leading-snug mb-1.5">{d.key}</p>
+              <p className="text-[11px] text-ink-muted leading-relaxed">{d.def}</p>
             </Card>
           ))}
         </div>
