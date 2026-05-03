@@ -3,6 +3,7 @@ import { getCalendar, getCalendarByRunId, getCalendarByWeekStarting, getRunStatu
 import { Card } from "@/components/Card";
 import PageHeader from "@/components/PageHeader";
 import StalenessBanner from "@/components/StalenessBanner";
+import StaleDataBanner from "@/components/StaleDataBanner";
 import AIDisabledEmptyState from "@/components/AIDisabledEmptyState";
 import ArchivalLine from "@/components/ArchivalLine";
 import PlanNarrativeCard from "@/components/PlanNarrativeCard";
@@ -10,6 +11,7 @@ import AcademicContextStrip from "@/components/AcademicContextStrip";
 import WeekSelector, { computeWeekEndings, weekRange } from "@/components/WeekSelector";
 // RegenerateThisWeekButton removed in v4.18 — admin-only, returns with SaaS access layers.
 import { STAGES } from "@/lib/stages";
+import { isStaleNow, getStaleReasons } from "@/lib/cache";
 
 /**
  * Sprint P7 v4.7 (2026-04-30, P1.8): glossary tooltips for slot pills.
@@ -199,6 +201,10 @@ export default async function PlanPage({ searchParams }: { searchParams: Record<
   const calendar = isArchival ? archivedCalendar : weekCalendar;
   const staleness = computeStaleness("calendar", runStatus);
   const aiDisabled = calendarEngine === "native" || calendarEngine === "off";
+  // Read-side resilience: caught any cache fallback during the data
+  // fetches above? StaleDataBanner renders a soft heads-up.
+  const staleData = isStaleNow();
+  const staleReasons = staleData ? getStaleReasons() : undefined;
   const byDay: Record<string, typeof calendar> = {};
   for (const slot of calendar) {
     (byDay[slot.day] = byDay[slot.day] || []).push(slot);
@@ -213,6 +219,7 @@ export default async function PlanPage({ searchParams }: { searchParams: Record<
   if (aiDisabled && !isArchival) {
     return (
       <div>
+        <StaleDataBanner stale={staleData} reasons={staleReasons} />
         <StalenessBanner
           info={staleness}
           artifact="calendar"
@@ -244,6 +251,7 @@ export default async function PlanPage({ searchParams }: { searchParams: Record<
 
   return (
     <div className={isArchival ? "opacity-[0.97] [filter:saturate(0.9)]" : ""}>
+      <StaleDataBanner stale={staleData} reasons={staleReasons} />
       {isArchival ? (
         // Pass "" (not archivedParam) when we can't resolve a real date —
         // ArchivalLine falls back to "Viewing archived run" without a "from X"

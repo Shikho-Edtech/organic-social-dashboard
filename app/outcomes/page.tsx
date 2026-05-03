@@ -31,6 +31,8 @@ import PostReference from "@/components/PostReference";
 import Link from "next/link";
 import { bdt, bdtNow, dateStr, startOfWeekBDT } from "@/lib/aggregate";
 import { postReach as postReachFn, qualityEngagementForPost } from "@/lib/qualityEngagement";
+import StaleDataBanner from "@/components/StaleDataBanner";
+import { isStaleNow, getStaleReasons } from "@/lib/cache";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -267,8 +269,14 @@ export default async function OutcomesPage({
       }
     : null;
 
+  // Read-side resilience: catch any cache fallback during the data
+  // fetches above. Soft "data refreshing" banner if reads were stale.
+  const staleData = isStaleNow();
+  const staleReasons = staleData ? getStaleReasons() : undefined;
+
   return (
     <div>
+      <StaleDataBanner stale={staleData} reasons={staleReasons} />
       <PageHeader
         title="Outcomes"
         // Sprint P7 v4.6 (2026-04-30, P0 finding #3): subtitle adapts to

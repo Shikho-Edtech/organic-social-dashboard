@@ -20,6 +20,7 @@ import type {
 } from "./types";
 import { canonicalizeEntity } from "./entities";
 import { bdtNow } from "./aggregate";
+import { withLastGood } from "./cache";
 
 let cachedClient: any = null;
 
@@ -74,7 +75,14 @@ function toBool(v: any): boolean {
 
 // ─── Posts (raw + classifications merged) ───
 
+// Wrapped exports: see lib/cache.ts. The _*Raw functions hold the
+// original logic; the public exports delegate through withLastGood
+// so transient sheets read failures fall back to last-known-good
+// instead of crashing the page.
 export async function getPosts(): Promise<Post[]> {
+  return withLastGood("getPosts", _getPostsRaw, (d) => d.length === 0);
+}
+async function _getPostsRaw(): Promise<Post[]> {
   const [rawRows, classRows] = await Promise.all([
     readTab("Raw_Posts"),
     readTab("Classifications"),
@@ -167,6 +175,9 @@ export async function getPosts(): Promise<Post[]> {
 // ─── Page daily metrics ───
 
 export async function getDailyMetrics(): Promise<DailyMetric[]> {
+  return withLastGood("getDailyMetrics", _getDailyMetricsRaw, (d) => d.length === 0);
+}
+async function _getDailyMetricsRaw(): Promise<DailyMetric[]> {
   const rows = await readTab("Page_Daily");
   return rowsToObjects(rows).map((r) => ({
     date: r["Date"],
@@ -188,6 +199,9 @@ export async function getDailyMetrics(): Promise<DailyMetric[]> {
 // ─── Video metrics ───
 
 export async function getVideoMetrics(): Promise<VideoMetric[]> {
+  return withLastGood("getVideoMetrics", _getVideoMetricsRaw, (d) => d.length === 0);
+}
+async function _getVideoMetricsRaw(): Promise<VideoMetric[]> {
   const rows = await readTab("Raw_Video");
   return rowsToObjects(rows).map((r) => ({
     post_id: r["Post ID"],
@@ -263,6 +277,9 @@ export async function getLatestDiagnosis(): Promise<Diagnosis | null> {
  * state (usually the empty state) with a small "archive not found" toast.
  */
 export async function getDiagnosisByWeek(weekEnding: string): Promise<Diagnosis | null> {
+  return withLastGood(`getDiagnosisByWeek:${weekEnding}`, () => _getDiagnosisByWeekRaw(weekEnding), (d) => d === null);
+}
+async function _getDiagnosisByWeekRaw(weekEnding: string): Promise<Diagnosis | null> {
   if (!weekEnding) return null;
   const rows = await readTab("Weekly_Analysis");
   const objects = rowsToObjects(rows);
@@ -287,6 +304,16 @@ export async function getDiagnosisByWeek(weekEnding: string): Promise<Diagnosis 
  * Returns null when no row matches.
  */
 export async function getDiagnosisByWeekPreferred(
+  weekEnding: string,
+  prefer: "midweek" | "full" = "full",
+): Promise<Diagnosis | null> {
+  return withLastGood(
+    `getDiagnosisByWeekPreferred:${weekEnding}:${prefer}`,
+    () => _getDiagnosisByWeekPreferredRaw(weekEnding, prefer),
+    (d) => d === null,
+  );
+}
+async function _getDiagnosisByWeekPreferredRaw(
   weekEnding: string,
   prefer: "midweek" | "full" = "full",
 ): Promise<Diagnosis | null> {
@@ -381,6 +408,9 @@ const EMPTY_RUN_STATUS: RunStatus = {
 };
 
 export async function getRunStatus(): Promise<RunStatus> {
+  return withLastGood("getRunStatus", _getRunStatusRaw);
+}
+async function _getRunStatusRaw(): Promise<RunStatus> {
   const rows = await readTab("Analysis_Log");
   const objects = rowsToObjects(rows);
   if (objects.length === 0) return EMPTY_RUN_STATUS;
@@ -620,6 +650,9 @@ function calendarFromRows(rows: Record<string, any>[]): CalendarSlot[] {
 }
 
 export async function getCalendar(): Promise<CalendarSlot[]> {
+  return withLastGood("getCalendar", _getCalendarRaw, (d) => d.length === 0);
+}
+async function _getCalendarRaw(): Promise<CalendarSlot[]> {
   const rows = await readTab("Content_Calendar");
   return calendarFromRows(rowsToObjects(rows));
 }
@@ -636,6 +669,9 @@ export async function getCalendar(): Promise<CalendarSlot[]> {
  * selected before Monday's cron has fired for the upcoming week).
  */
 export async function getCalendarByWeekStarting(weekStarting: string): Promise<CalendarSlot[]> {
+  return withLastGood(`getCalendarByWeekStarting:${weekStarting}`, () => _getCalendarByWeekStartingRaw(weekStarting), (d) => d.length === 0);
+}
+async function _getCalendarByWeekStartingRaw(weekStarting: string): Promise<CalendarSlot[]> {
   if (!weekStarting) return [];
   const rows = await readTab("Content_Calendar");
   const objects = rowsToObjects(rows);
@@ -1081,6 +1117,15 @@ function planNarrativeFromRow(r: Record<string, any>): PlanNarrative {
 export async function getPlanNarrative(
   weekEnding?: string,
 ): Promise<PlanNarrative | null> {
+  return withLastGood(
+    `getPlanNarrative:${weekEnding ?? "latest"}`,
+    () => _getPlanNarrativeRaw(weekEnding),
+    (d) => d === null,
+  );
+}
+async function _getPlanNarrativeRaw(
+  weekEnding?: string,
+): Promise<PlanNarrative | null> {
   const rows = await readTab("Plan_Narrative");
   const objects = rowsToObjects(rows);
   if (objects.length === 0) return null;
@@ -1170,6 +1215,9 @@ function outcomeLogFromRow(row: Record<string, any>): OutcomeLogEntry {
  * header-only.
  */
 export async function getOutcomeLog(): Promise<OutcomeLogEntry[]> {
+  return withLastGood("getOutcomeLog", _getOutcomeLogRaw, (d) => d.length === 0);
+}
+async function _getOutcomeLogRaw(): Promise<OutcomeLogEntry[]> {
   const rows = await readTab("Outcome_Log");
   const objects = rowsToObjects(rows);
   return objects
@@ -1193,7 +1241,10 @@ export async function getOutcomeLog(): Promise<OutcomeLogEntry[]> {
  * Outcomes for a single week. Empty array when the week has no rows.
  * Week string matches the pipeline's ISO "YYYY-MM-DD" week_ending.
  */
-export async function getOutcomeLogByWeek(
+export async function getOutcomeLogByWeek(weekEnding: string): Promise<OutcomeLogEntry[]> {
+  return withLastGood(`getOutcomeLogByWeek:${weekEnding}`, () => _getOutcomeLogByWeekRaw(weekEnding), (d) => d.length === 0);
+}
+async function _getOutcomeLogByWeekRaw(
   weekEnding: string,
 ): Promise<OutcomeLogEntry[]> {
   const all = await getOutcomeLog();

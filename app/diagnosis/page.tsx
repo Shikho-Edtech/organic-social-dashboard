@@ -15,6 +15,8 @@ import ArchivalLine from "@/components/ArchivalLine";
 import AcademicContextStrip from "@/components/AcademicContextStrip";
 import PostReference from "@/components/PostReference";
 import { STAGES } from "@/lib/stages";
+import StaleDataBanner from "@/components/StaleDataBanner";
+import { isStaleNow, getStaleReasons } from "@/lib/cache";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -304,6 +306,11 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
     ? weekRange(diagnosis.week_ending)
     : "";
 
+  // Read-side resilience: catch any cache fallback during the data
+  // fetches above. StaleDataBanner renders a soft heads-up.
+  const staleData = isStaleNow();
+  const staleReasons = staleData ? getStaleReasons() : undefined;
+
   // When the AI diagnosis stage is deliberately off AND we're NOT in archival
   // read mode, the primary view is the empty-state card. The regular
   // diagnosis blocks (verdict, key findings, top/under, watch-outs) are
@@ -312,6 +319,7 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
   if (aiDisabled && !isArchival) {
     return (
       <div>
+        <StaleDataBanner stale={staleData} reasons={staleReasons} />
         <StalenessBanner
           info={staleness}
           artifact="diagnosis"
@@ -342,6 +350,7 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
 
   return (
     <div className={isArchival ? "opacity-[0.97] [filter:saturate(0.9)]" : ""}>
+      <StaleDataBanner stale={staleData} reasons={staleReasons} />
       {isArchival ? (
         <ArchivalLine archiveDateLabel={archiveDateLabel} livePath="/diagnosis" />
       ) : (

@@ -37,10 +37,12 @@ import {
 import PageHeader from "@/components/PageHeader";
 import { Card } from "@/components/Card";
 import StalenessBanner from "@/components/StalenessBanner";
+import StaleDataBanner from "@/components/StaleDataBanner";
 import PostReference from "@/components/PostReference";
 import HypothesisChip from "@/components/HypothesisChip";
 import Link from "next/link";
 import { weekRange } from "@/components/WeekSelector";
+import { isStaleNow, getStaleReasons } from "@/lib/cache";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -227,8 +229,15 @@ export default async function TodayPage() {
     timeZone: "Asia/Dhaka",
   });
 
+  // Read-side resilience: capture cache fallback state right after the
+  // data fetches above. Renders a soft "data refreshing" banner if any
+  // of those reads silently fell back to last-known-good.
+  const staleData = isStaleNow();
+  const staleReasons = staleData ? getStaleReasons() : undefined;
+
   return (
     <div>
+      <StaleDataBanner stale={staleData} reasons={staleReasons} />
       <StalenessBanner info={staleness} artifact="calendar" runStatus={runStatus} hasData />
       <PageHeader
         title="Today"
