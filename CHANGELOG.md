@@ -1,5 +1,46 @@
 # Changelog
 
+## 2026-05-03 — Cold-start resilience (incident #2: /diagnosis + /plan errored despite LKG cache)
+
+Live observation: /diagnosis + /plan rendered `error.tsx` ("upstream
+data source momentarily unreachable", reference 3451054532) despite
+the read-side LKG cache I shipped 30 min earlier. Audit revealed
+**8 reader functions in `lib/sheets.ts` were never wrapped** in
+`withLastGood`:
+
+- `getLatestDiagnosis` (used by /diagnosis)
+- `getStageEngine` ✱ (used by /diagnosis AND /plan — root cause)
+- `getCostSummary` (used by Overview)
+- `getLatestStrategy`, `getStrategyLog`, `getStrategyByWeek` (/strategy)
+- `getCalendarByRunId` (/strategy archive view)
+
+Any one of these throwing rejected the page's `Promise.all`, taking
+down the whole render. `getStageEngine` is shared between both
+failing pages — same digest on both = same root throw.
+
+Two-part fix:
+
+**1. Extend `withLastGood` with `coldFallback`.** The original
+re-threw on "no cache + fetch fails" — correct for data-bearing
+reads (no posts = nothing to render) but wrong for metadata reads
+that have a sensible default (`null`, `[]`, `"unknown"`). New
+optional `{ coldFallback }` parameter returns the default + marks
+stale instead of throwing. Cold-start failure now degrades
+gracefully where it can.
+
+**2. Wrap the 8 unprotected readers + add `coldFallback` to all
+nullable/array readers** (12 readers total). Data-bearing reader
+`getPosts` intentionally has NO `coldFallback` — error.tsx is the
+right outcome when posts are unreadable.
+
+Why this kept happening: the 2026-05-02 hardening assumed warm-
+instance behavior. Vercel cold-spins serverless functions
+constantly; "the cache is empty" is the common case, not the
+edge case. Recovery on cold start now matches recovery on warm.
+
+Verified: build green, all 11 wrapped readers compile against the
+new optional param without breaking call sites.
+
 ## 2026-05-03 — false-positive banner fixes (DATA REFRESHING + diagnosis never succeeded)
 
 Two banners on `/diagnosis` were lying:

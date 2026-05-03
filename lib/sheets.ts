@@ -80,6 +80,8 @@ function toBool(v: any): boolean {
 // so transient sheets read failures fall back to last-known-good
 // instead of crashing the page.
 export async function getPosts(): Promise<Post[]> {
+  // No coldFallback — without posts there's nothing useful to render;
+  // error.tsx is the right outcome on cold-start + Sheets failure.
   return withLastGood("getPosts", _getPostsRaw, (d) => d.length === 0);
 }
 async function _getPostsRaw(): Promise<Post[]> {
@@ -175,7 +177,12 @@ async function _getPostsRaw(): Promise<Post[]> {
 // ─── Page daily metrics ───
 
 export async function getDailyMetrics(): Promise<DailyMetric[]> {
-  return withLastGood("getDailyMetrics", _getDailyMetricsRaw, (d) => d.length === 0);
+  return withLastGood(
+    "getDailyMetrics",
+    _getDailyMetricsRaw,
+    (d) => d.length === 0,
+    { coldFallback: [] },
+  );
 }
 async function _getDailyMetricsRaw(): Promise<DailyMetric[]> {
   const rows = await readTab("Page_Daily");
@@ -199,7 +206,12 @@ async function _getDailyMetricsRaw(): Promise<DailyMetric[]> {
 // ─── Video metrics ───
 
 export async function getVideoMetrics(): Promise<VideoMetric[]> {
-  return withLastGood("getVideoMetrics", _getVideoMetricsRaw, (d) => d.length === 0);
+  return withLastGood(
+    "getVideoMetrics",
+    _getVideoMetricsRaw,
+    (d) => d.length === 0,
+    { coldFallback: [] },
+  );
 }
 async function _getVideoMetricsRaw(): Promise<VideoMetric[]> {
   const rows = await readTab("Raw_Video");
@@ -264,6 +276,14 @@ function diagnosisFromRow(row: Record<string, any>): Diagnosis {
 }
 
 export async function getLatestDiagnosis(): Promise<Diagnosis | null> {
+  return withLastGood(
+    "getLatestDiagnosis",
+    _getLatestDiagnosisRaw,
+    (d) => d === null,
+    { coldFallback: null },
+  );
+}
+async function _getLatestDiagnosisRaw(): Promise<Diagnosis | null> {
   const rows = await readTab("Weekly_Analysis");
   const objects = rowsToObjects(rows);
   if (objects.length === 0) return null;
@@ -277,7 +297,12 @@ export async function getLatestDiagnosis(): Promise<Diagnosis | null> {
  * state (usually the empty state) with a small "archive not found" toast.
  */
 export async function getDiagnosisByWeek(weekEnding: string): Promise<Diagnosis | null> {
-  return withLastGood(`getDiagnosisByWeek:${weekEnding}`, () => _getDiagnosisByWeekRaw(weekEnding), (d) => d === null);
+  return withLastGood(
+    `getDiagnosisByWeek:${weekEnding}`,
+    () => _getDiagnosisByWeekRaw(weekEnding),
+    (d) => d === null,
+    { coldFallback: null },
+  );
 }
 async function _getDiagnosisByWeekRaw(weekEnding: string): Promise<Diagnosis | null> {
   if (!weekEnding) return null;
@@ -311,6 +336,7 @@ export async function getDiagnosisByWeekPreferred(
     `getDiagnosisByWeekPreferred:${weekEnding}:${prefer}`,
     () => _getDiagnosisByWeekPreferredRaw(weekEnding, prefer),
     (d) => d === null,
+    { coldFallback: null },
   );
 }
 async function _getDiagnosisByWeekPreferredRaw(
@@ -408,7 +434,12 @@ const EMPTY_RUN_STATUS: RunStatus = {
 };
 
 export async function getRunStatus(): Promise<RunStatus> {
-  return withLastGood("getRunStatus", _getRunStatusRaw);
+  return withLastGood(
+    "getRunStatus",
+    _getRunStatusRaw,
+    undefined,
+    { coldFallback: EMPTY_RUN_STATUS },
+  );
 }
 async function _getRunStatusRaw(): Promise<RunStatus> {
   const rows = await readTab("Analysis_Log");
@@ -677,7 +708,12 @@ function calendarFromRows(rows: Record<string, any>[]): CalendarSlot[] {
 }
 
 export async function getCalendar(): Promise<CalendarSlot[]> {
-  return withLastGood("getCalendar", _getCalendarRaw, (d) => d.length === 0);
+  return withLastGood(
+    "getCalendar",
+    _getCalendarRaw,
+    (d) => d.length === 0,
+    { coldFallback: [] },
+  );
 }
 async function _getCalendarRaw(): Promise<CalendarSlot[]> {
   const rows = await readTab("Content_Calendar");
@@ -696,7 +732,12 @@ async function _getCalendarRaw(): Promise<CalendarSlot[]> {
  * selected before Monday's cron has fired for the upcoming week).
  */
 export async function getCalendarByWeekStarting(weekStarting: string): Promise<CalendarSlot[]> {
-  return withLastGood(`getCalendarByWeekStarting:${weekStarting}`, () => _getCalendarByWeekStartingRaw(weekStarting), (d) => d.length === 0);
+  return withLastGood(
+    `getCalendarByWeekStarting:${weekStarting}`,
+    () => _getCalendarByWeekStartingRaw(weekStarting),
+    (d) => d.length === 0,
+    { coldFallback: [] },
+  );
 }
 async function _getCalendarByWeekStartingRaw(weekStarting: string): Promise<CalendarSlot[]> {
   if (!weekStarting) return [];
@@ -767,6 +808,14 @@ export async function listCalendarWeeks(): Promise<string[]> {
  * page falls back to its "archive not found" message.
  */
 export async function getCalendarByRunId(runId: string): Promise<CalendarSlot[]> {
+  return withLastGood(
+    `getCalendarByRunId:${runId}`,
+    () => _getCalendarByRunIdRaw(runId),
+    (d) => d.length === 0,
+    { coldFallback: [] },
+  );
+}
+async function _getCalendarByRunIdRaw(runId: string): Promise<CalendarSlot[]> {
   if (!runId) return [];
   const rows = await readTab("Calendar_Archive");
   if (rows.length === 0) return [];
@@ -827,6 +876,21 @@ export function isAiRunning(engine: StageEngine): boolean {
 }
 
 export async function getStageEngine(
+  stage: "diagnosis" | "calendar" | "strategy",
+): Promise<StageEngine> {
+  // 2026-05-03 incident #2: this read was throwing on cold-start +
+  // Sheets transient and taking down /diagnosis + /plan via their
+  // Promise.all rejection. Wrapping with withLastGood gives warm-cache
+  // resilience; coldFallback="unknown" handles the cold-start case
+  // (consumers like isAiRunning gracefully handle "unknown" as "off").
+  return withLastGood(
+    `getStageEngine:${stage}`,
+    () => _getStageEngineRaw(stage),
+    (d) => d === "unknown",
+    { coldFallback: "unknown" as StageEngine },
+  );
+}
+async function _getStageEngineRaw(
   stage: "diagnosis" | "calendar" | "strategy",
 ): Promise<StageEngine> {
   const rows = await readTab("Analysis_Log");
@@ -953,7 +1017,22 @@ export function runCostSummary(
 }
 
 /** Async convenience — reads Analysis_Log then delegates to runCostSummary. */
+const _EMPTY_COST_SUMMARY: CostSummary = {
+  this_week: 0,
+  last_week: 0,
+  budget: AI_WEEKLY_BUDGET_USD,
+  pct_of_budget: 0,
+  tracked: false,
+};
 export async function getCostSummary(): Promise<CostSummary> {
+  return withLastGood(
+    "getCostSummary",
+    _getCostSummaryRaw,
+    undefined,
+    { coldFallback: _EMPTY_COST_SUMMARY },
+  );
+}
+async function _getCostSummaryRaw(): Promise<CostSummary> {
   const rows = await readTab("Analysis_Log");
   const objects = rowsToObjects(rows);
   return runCostSummary(objects);
@@ -1040,6 +1119,14 @@ function strategyFromRow(row: Record<string, any>): StrategyEntry {
  * hasn't been populated (pre-Sprint-N runs) or the row is empty.
  */
 export async function getLatestStrategy(): Promise<StrategyEntry | null> {
+  return withLastGood(
+    "getLatestStrategy",
+    _getLatestStrategyRaw,
+    (d) => d === null,
+    { coldFallback: null },
+  );
+}
+async function _getLatestStrategyRaw(): Promise<StrategyEntry | null> {
   const rows = await readTab("Strategy");
   const objects = rowsToObjects(rows);
   if (objects.length === 0) return null;
@@ -1056,6 +1143,14 @@ export async function getLatestStrategy(): Promise<StrategyEntry | null> {
  * doesn't exist yet or carries only the header row.
  */
 export async function getStrategyLog(): Promise<StrategyEntry[]> {
+  return withLastGood(
+    "getStrategyLog",
+    _getStrategyLogRaw,
+    (d) => d.length === 0,
+    { coldFallback: [] },
+  );
+}
+async function _getStrategyLogRaw(): Promise<StrategyEntry[]> {
   const rows = await readTab("Strategy_Log");
   const objects = rowsToObjects(rows);
   return objects
@@ -1070,6 +1165,16 @@ export async function getStrategyLog(): Promise<StrategyEntry[]> {
  * Mirrors the shape of `getDiagnosisByWeek` / `getCalendarByRunId`.
  */
 export async function getStrategyByWeek(
+  weekEnding: string,
+): Promise<StrategyEntry | null> {
+  return withLastGood(
+    `getStrategyByWeek:${weekEnding}`,
+    () => _getStrategyByWeekRaw(weekEnding),
+    (d) => d === null,
+    { coldFallback: null },
+  );
+}
+async function _getStrategyByWeekRaw(
   weekEnding: string,
 ): Promise<StrategyEntry | null> {
   if (!weekEnding) return null;
@@ -1148,6 +1253,7 @@ export async function getPlanNarrative(
     `getPlanNarrative:${weekEnding ?? "latest"}`,
     () => _getPlanNarrativeRaw(weekEnding),
     (d) => d === null,
+    { coldFallback: null },
   );
 }
 async function _getPlanNarrativeRaw(
@@ -1242,7 +1348,12 @@ function outcomeLogFromRow(row: Record<string, any>): OutcomeLogEntry {
  * header-only.
  */
 export async function getOutcomeLog(): Promise<OutcomeLogEntry[]> {
-  return withLastGood("getOutcomeLog", _getOutcomeLogRaw, (d) => d.length === 0);
+  return withLastGood(
+    "getOutcomeLog",
+    _getOutcomeLogRaw,
+    (d) => d.length === 0,
+    { coldFallback: [] },
+  );
 }
 async function _getOutcomeLogRaw(): Promise<OutcomeLogEntry[]> {
   const rows = await readTab("Outcome_Log");
@@ -1269,7 +1380,12 @@ async function _getOutcomeLogRaw(): Promise<OutcomeLogEntry[]> {
  * Week string matches the pipeline's ISO "YYYY-MM-DD" week_ending.
  */
 export async function getOutcomeLogByWeek(weekEnding: string): Promise<OutcomeLogEntry[]> {
-  return withLastGood(`getOutcomeLogByWeek:${weekEnding}`, () => _getOutcomeLogByWeekRaw(weekEnding), (d) => d.length === 0);
+  return withLastGood(
+    `getOutcomeLogByWeek:${weekEnding}`,
+    () => _getOutcomeLogByWeekRaw(weekEnding),
+    (d) => d.length === 0,
+    { coldFallback: [] },
+  );
 }
 async function _getOutcomeLogByWeekRaw(
   weekEnding: string,

@@ -52,17 +52,27 @@ const recentStales = new Map<string, { reason: string; ts: number }>();
  * On fresh fetch success → cache the result, return it, mark non-stale.
  * On fresh fetch failure → if cache has the key (within MAX_CACHE_AGE_MS),
  *                         return cached value, mark stale, log reason.
- *                         Otherwise re-throw the original error so the
- *                         page's error.tsx still fires (no useful fallback).
+ *                         Otherwise: return `coldFallback` if provided,
+ *                         else re-throw the original error so the page's
+ *                         error.tsx still fires.
  * On fresh fetch returning "empty" (per caller's predicate) when cache
- *   has a non-empty version → return cached, mark stale. This catches
- *   the case where Sheets reads succeed at the API level but the data
- *   is genuinely empty (e.g., a tab was wiped and not yet repopulated).
+ *   has a non-empty version → return cached. This catches the case where
+ *   Sheets reads succeed at the API level but the data is genuinely
+ *   empty (e.g., a tab was wiped and not yet repopulated).
+ *
+ * `coldFallback` (added 2026-05-03 incident #2): the "no cache + fetch
+ * fails" case is the COLD-START failure mode. Without this, every cold
+ * Vercel function instance that hits a Sheets transient takes down the
+ * page. Pass a sensible default value (null, [], "unknown", etc.) for
+ * readers whose consumers gracefully handle "no data". For data-bearing
+ * reads where there's nothing useful to render without them (e.g.
+ * getPosts), omit it — re-throwing is correct so error.tsx fires.
  */
 export async function withLastGood<T>(
   key: string,
   fetcher: () => Promise<T>,
   isEmpty?: (data: T) => boolean,
+  opts?: { coldFallback?: T },
 ): Promise<T> {
   let data: T;
   try {
@@ -76,7 +86,16 @@ export async function withLastGood<T>(
       console.warn(`[cache] using last-good for ${key} (${msg.slice(0, 200)})`);
       return cached.data as T;
     }
-    // No cache to fall back to — re-throw and let error.tsx render.
+    // No cache. If caller declared a cold-fallback (the "I have a sensible
+    // default" pattern), return it AND mark stale so any banner can fire.
+    // Otherwise re-throw so error.tsx renders.
+    if (opts && "coldFallback" in opts) {
+      const msg = err instanceof Error ? err.message : String(err);
+      markStale(key, `cold-start fetch failed: ${msg.slice(0, 200)}`);
+      // eslint-disable-next-line no-console
+      console.warn(`[cache] cold-start fail on ${key}; using coldFallback (${msg.slice(0, 200)})`);
+      return opts.coldFallback as T;
+    }
     throw err;
   }
 
