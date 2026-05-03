@@ -167,22 +167,56 @@ export default async function TodayPage() {
     });
   }
 
-  // -------- Match today's posts to today's slots (best-effort) --------
-  // For each slot, find the post with closest time match + same date
+  // -------- Match today's posts to today's slots --------
+  //
+  // Two correctness rules (2026-05-03 user-feedback fix):
+  //   (a) A slot whose time_bdt is in the FUTURE (relative to now) is
+  //       always "Upcoming", regardless of any same-format post that
+  //       happens to be in today's data. Without this, a 19:00 slot
+  //       would show "Published" at 13:00 just because some other
+  //       Reel got posted at 08:00.
+  //   (b) Each post is claimed by at most one slot. Greedy assignment
+  //       walks slots in time order; for each slot, the FIRST unclaimed
+  //       same-format post wins. Without this, two Reels slots (08:00
+  //       and 19:00) would both match a single 08:00 Reel post,
+  //       reporting 2 published when there's actually 1.
+  //
+  // Pre-fix behaviour: format-only filter, no time gate, no claim
+  // tracking — produced the duplicate-match symptom in production
+  // (5/5 slots showing identical "1.3K reach 2 QE" because 1 post
+  // matched all 5 slot rows).
   const formatBucket = (s: string): string => {
     const f = (s || "").toLowerCase();
     if (f === "reel" || f === "video") return "video";
     return f;
   };
+  // "Now" expressed as minutes-since-midnight (BDT) so it can be
+  // compared to slot.time_bdt (e.g. "13:00" → 780).
+  const nowMinutesBDT = now.getHours() * 60 + now.getMinutes();
+  const parseSlotMinutes = (timeBdt: string | undefined): number => {
+    if (!timeBdt) return -1;
+    const m = /^(\d{1,2}):(\d{2})$/.exec(timeBdt.trim());
+    if (!m) return -1;
+    return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+  };
+  const claimedPostIds = new Set<string>();
   const slotPublishStatus = todaysSlotsByTime.map((slot) => {
-    const candidates = todaysPosts.filter((p) => {
-      const ptype = formatBucket(p.type || "");
-      return ptype === formatBucket(slot.format);
+    const slotMinutes = parseSlotMinutes(slot.time_bdt);
+    const slotInPast = slotMinutes >= 0 && slotMinutes <= nowMinutesBDT;
+    if (!slotInPast) {
+      // Future slot — always upcoming, never tries to match.
+      return { slot, published: false, matchedPost: null };
+    }
+    // Past or current slot — find an unclaimed same-format post today.
+    const matchedPost = todaysPosts.find((p) => {
+      if (claimedPostIds.has(p.id)) return false;
+      return formatBucket(p.type || "") === formatBucket(slot.format);
     });
+    if (matchedPost) claimedPostIds.add(matchedPost.id);
     return {
       slot,
-      published: candidates.length > 0,
-      matchedPost: candidates[0] || null,
+      published: Boolean(matchedPost),
+      matchedPost: matchedPost || null,
     };
   });
 
