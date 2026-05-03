@@ -242,13 +242,34 @@ export default async function ReferencePage() {
   ];
 
   // W4: build grouped audience structure from live data.
-  // Any audience value that doesn't match a known group becomes "Other".
-  const knownAudienceMembers = new Set(AUDIENCE_GROUPS.flatMap((g) => g.members.map((m) => m.toLowerCase())));
+  // Live-check follow-up (2026-05-03): the live data carries labels like
+  // "HSC students", "SSC students", "Junior (6-10)" — close to the
+  // canonical AUDIENCE_GROUPS members ("HSC", "SSC", "Junior") but with
+  // suffixes and parenthetical detail. Strict equality dropped them all
+  // into "Other". Fix: substring-aware match — a live value belongs to a
+  // group if any group member appears as a whole word inside it (or
+  // exact-equal). Word-boundary regex keeps "SSC" from accidentally
+  // matching anything containing the letters s-s-c. Falls back to
+  // exact-equal for short labels (3 chars) where boundary noise is low.
+  const audienceMatchesMember = (live: string, member: string): boolean => {
+    const l = live.trim().toLowerCase();
+    const m = member.trim().toLowerCase();
+    if (!l || !m) return false;
+    if (l === m) return true;
+    // Word-boundary substring match. RegExp escape since members include
+    // characters like "(" / ")" / hyphens.
+    const escaped = m.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, "i").test(live);
+  };
   const audienceGroupsLive = AUDIENCE_GROUPS.map((g) => ({
     ...g,
-    presentMembers: audiences.filter((a) => g.members.some((m) => m.toLowerCase() === a.toLowerCase())),
+    presentMembers: audiences.filter((a) => g.members.some((m) => audienceMatchesMember(a, m))),
   })).filter((g) => g.presentMembers.length > 0);
-  const otherAudiences = audiences.filter((a) => !knownAudienceMembers.has(a.toLowerCase()));
+  // "Other" = anything that didn't land in any group.
+  const claimedAudiences = new Set(
+    audienceGroupsLive.flatMap((g) => g.presentMembers.map((a) => a.toLowerCase())),
+  );
+  const otherAudiences = audiences.filter((a) => !claimedAudiences.has(a.toLowerCase()));
 
   // W6: each definition gets a 1-line "key" (the headline-grade idea, scannable)
   // + a compact "def" (the longer explanation). Renders as bold key on top,
