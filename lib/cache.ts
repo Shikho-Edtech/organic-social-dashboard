@@ -30,7 +30,13 @@
 //     read time is the actual gate; setTimeout is a best-effort cleanup.
 
 const MAX_CACHE_AGE_MS = 24 * 60 * 60 * 1000; // 24h
-const STALE_FLAG_TTL_MS = 5 * 60 * 1000; // 5 min
+// Banner-flag TTL. Was 5 min; that was too eager — false-positive
+// "DATA REFRESHING" lingered on pages that had a single legitimately-
+// empty week-specific read (e.g. a week with no diagnosis row). 60s
+// matches the Sheets per-minute quota window: a real outage clears
+// itself within one ISR refresh cycle, but a one-off empty doesn't
+// haunt the page for 5 minutes.
+const STALE_FLAG_TTL_MS = 60 * 1000; // 60 sec
 
 // Module-level cache of (key → last-known-good payload + timestamp).
 const cache = new Map<string, { data: unknown; ts: number }>();
@@ -79,12 +85,18 @@ export async function withLastGood<T>(
   // cached version, prefer the cache. This catches transient sheet
   // wipes / mid-write reads that succeed at the API level but return
   // nothing useful.
+  //
+  // IMPORTANT: this fallback is SILENT — we DON'T call markStale().
+  // Empty-fresh-vs-cached is ambiguous (could be a wipe, could be a
+  // legitimate "no data for this week"). False-positive banners on
+  // legitimately-empty week-specific reads are worse than silent
+  // recovery from a transient wipe. Only fetcher-throw triggers the
+  // banner — that's the case we're certain about.
   if (isEmpty && isEmpty(data)) {
     const cached = cache.get(key);
     if (cached && !isEmpty(cached.data as T)) {
-      markStale(key, "fresh read returned empty; falling back to last-good");
       // eslint-disable-next-line no-console
-      console.warn(`[cache] fresh read of ${key} returned empty; using cached`);
+      console.warn(`[cache] fresh read of ${key} returned empty; using cached (silent)`);
       return cached.data as T;
     }
   }

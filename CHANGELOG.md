@@ -1,5 +1,36 @@
 # Changelog
 
+## 2026-05-03 — false-positive banner fixes (DATA REFRESHING + diagnosis never succeeded)
+
+Two banners on `/diagnosis` were lying:
+
+1. **`StaleDataBanner` "DATA REFRESHING" (amber).** `lib/cache.ts`
+   marked a key stale not just on fetch error, but ALSO when fresh data
+   came back empty and the cache held something non-empty. That second
+   case is ambiguous — a week with legitimately no diagnosis row trips
+   it the same as a sheet wipe. Flag persisted 5 min, painting the
+   banner across pages that were rendering normally.
+
+   Fix: `markStale()` only on `fetcher()` throw. Empty-fresh-vs-cached
+   still falls back to cache silently (the wipe-protection is
+   preserved), but no banner. `STALE_FLAG_TTL_MS` 5 min → 60 s.
+
+2. **`StalenessBanner` "AI diagnosis has never succeeded" (red).**
+   `computeStaleness` returned `severity: "crit", days_since: -1`
+   whenever `last_successful_diagnosis_at` was blank — even when
+   `diagnosis_status === "success"` on the most recent run. The banner
+   trusted the missing timestamp over the success status.
+
+   Fix in `lib/sheets.ts`: when `status === "success"` AND timestamp
+   is missing AND `last_run_at` exists, fall back to `last_run_at` for
+   age computation. The "never succeeded" branch still fires for
+   genuinely fresh installs (no run ever recorded).
+
+Why this matters: false-positive alarms on a live dashboard erode
+trust faster than no alarms at all. The cache module's wipe-protection
+is still in place — just no longer announces itself on legitimate
+empty reads.
+
 ## 2026-05-02 — v4.18 R3: feature-flagged Timing dynamic heatmap
 
 `/timing?layout=r3` swaps the 2-3 stacked Day × Hour heatmaps

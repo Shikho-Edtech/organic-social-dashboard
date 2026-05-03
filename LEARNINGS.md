@@ -1,5 +1,27 @@
 # Learnings
 
+## 2026-05-03 — Last-known-good fallback should be silent; only `throw` deserves a banner
+
+`lib/cache.ts` originally marked a read stale in two cases: (a) fetcher threw, (b) fresh data came back empty AND cache held something non-empty. Case (b) was meant to catch transient sheet-wipes mid-write. In practice it also fired on every legitimate "this week has no diagnosis row yet" read — a `getDiagnosisByWeek("2026-05-04")` call that genuinely returns null because the week hasn't been processed.
+
+**Lesson:** the silent fallback is the right protection (cache > nothing on a wipe), but the banner is too loud for it. A banner says "the data is suspect"; an ambiguous empty-vs-wipe shouldn't make that claim. **Reserve the banner for cases where you're certain the data path is broken** — that's `fetcher()` throwing, period. Empty-fresh-vs-cached: silently prefer cache, no banner.
+
+Also: `STALE_FLAG_TTL_MS` was 5 min. Any flag persisting that long across an ISR refresh cycle is wrong — by the time the user sees it, the underlying issue is either resolved (false positive) or about to recur (banner not the bottleneck). 60s matches the Sheets per-minute quota window: a real outage clears within one ISR cycle.
+
+**Reuse rule:** when adding a "show banner on degraded read" path, ask whether the trigger is unambiguous. If the same trigger could fire on legitimate-empty reads, don't tie a banner to it.
+
+---
+
+## 2026-05-03 — `last_successful_X_at` blank ≠ "never succeeded" when `X_status === "success"`
+
+`computeStaleness` had a strict precedence: missing timestamp → severity=crit, days_since=-1, copy="has never succeeded". This trusts the timestamp over the status flag. When the carry-forward column is blank (cold-start row, orchestrator path that didn't stamp the field, sheet schema drift), but the status column says "success" on the same row, the dashboard called the run a failure. Real production case: force-regenerate ran successfully end-to-end, status=success, but the timestamp column was empty in that row → banner falsely screamed "never succeeded" while the page rendered the AI diagnosis content right below it.
+
+**Lesson:** when two source-of-truth fields disagree, **prefer the more recent signal**. `status === "success"` on the latest row is a stronger statement than "the timestamp column happens to be blank". Fall back to `last_run_at` if the carry-forward cell is missing — bookkeeping gap ≠ outage.
+
+**Reuse rule:** any time a derived UI state depends on multiple sheet columns, encode the conflict-resolution explicitly. Status flag wins over absent timestamp; latest-row data wins over carry-forward when both exist; etc.
+
+---
+
 ## 2026-05-02 — Render-prop pagination is the cleanest cross-page reuse pattern
 
 When a page needs pagination on a heterogeneous list (table on desktop, card list on mobile, ranked leaderboard, etc.), a render-prop component beats a layout-aware one. `<PaginatedList items pageSize>{({visibleItems, page, setPage}) => ...}</PaginatedList>` knows nothing about whether the caller renders a `<table>` or a `<ul>` or a `<div>` — it just hands over the visible slice + the paging API.

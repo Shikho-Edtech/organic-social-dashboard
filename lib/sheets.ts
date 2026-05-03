@@ -490,6 +490,33 @@ export function computeStaleness(
       : run.strategy_status;
   const days = daysBetween(lastSuccessful, now);
 
+  // 2026-05-03 false-positive fix: if the most recent run reports this
+  // artifact as successful but the carry-forward "Last Successful X At"
+  // cell is blank (pre-Day-2O rows, or the orchestrator missed setting
+  // `run_info.last_successful_<artifact>_at` on a force-regenerate path
+  // where the pipeline succeeded but didn't restamp the timestamp),
+  // fall back to `last_run_at` instead of declaring "never succeeded".
+  // We KNOW the run was successful — the missing timestamp is a
+  // bookkeeping gap, not an actual failure.
+  if ((!lastSuccessful || days < 0) && status === "success" && run.last_run_at) {
+    const runDays = daysBetween(run.last_run_at, now);
+    if (runDays >= 0) {
+      const severity: "ok" | "warn" | "crit" =
+        runDays <= warnDays ? "ok" : runDays <= critDays ? "warn" : "crit";
+      return {
+        severity,
+        days_since: runDays,
+        reason:
+          severity === "ok"
+            ? ""
+            : `Last successful timestamp missing; using run date as fallback`,
+        last_successful_at: run.last_run_at,
+        last_run_at: run.last_run_at,
+        last_status: status,
+      };
+    }
+  }
+
   // No successful run ever — blank state. Crit so the page shows the banner
   // and the user understands why the tab looks empty.
   if (!lastSuccessful || days < 0) {
