@@ -232,9 +232,16 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
   // exists for the target week. The "no This-week mid-week row yet"
   // case (Tuesday morning, mid-week cron hasn't fired) renders an
   // appropriate placeholder via the existing empty-state path.
+  // Default: "this week" view shows only the mid-week row (null if not yet
+  // generated) — design intent so users don't see last-week's verdict
+  // mislabeled as this week. BUT when aiDisabled is true (the latest run
+  // logged engine=off), there's no mid-week row coming, so falling back to
+  // liveDiagnosis (most recent Weekly_Analysis row) is more useful than a
+  // dead-end empty state. The aiDisabled banner above the content makes
+  // the provenance honest.
   const diagnosis = isArchival
     ? archivedDiagnosis
-    : (weekDiagnosis || (isThisWeekView ? null : liveDiagnosis));
+    : (weekDiagnosis || (isThisWeekView ? (aiDisabled ? liveDiagnosis : null) : liveDiagnosis));
   const staleness = computeStaleness("diagnosis", runStatus);
   const aiDisabled = diagnosisEngine === "native" || diagnosisEngine === "off";
   const inRange = filterPosts(posts, { start: range.start, end: range.end });
