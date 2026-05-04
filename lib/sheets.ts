@@ -368,25 +368,46 @@ async function _getDiagnosisByWeekPreferredRaw(
   );
   if (matching.length === 0) return null;
   if (matching.length === 1) return diagnosisFromRow(matching[0]);
-  // Multiple rows for the same week_ending — pick by engine preference.
-  // Sprint P7 v4.12 (2026-05-01): when multiple rows of the same engine
-  // exist (week_ending normalization in v4.12 collapses pre-existing rows
-  // that used run-date strings, so a single Mon-anchor week may now have
-  // 3-5 'ai' rows from different historical runs), pick the NEWEST by
-  // generated_at. Previously `.find()` returned the earliest match,
-  // so the dashboard rendered stale diagnoses indefinitely.
+  // Multiple rows for the same week_ending. The pipeline's Weekly_Analysis
+  // tab does NOT actually carry `Engine` or `Generated At` columns (the
+  // schema is the 12-col SHEET_HEADERS list — see facebook-pipeline/src/
+  // sheets.py write_diagnosis). Pre-2026-05-04 this code sorted by
+  // generated_at and filtered by engine — both fields parse to "" /
+  // undefined every time, so the sort was a no-op and `.find()` returned
+  // the FIRST matching row (earliest insert).
+  //
+  // Result: /diagnosis (default fallback to liveDiagnosis = LAST row in
+  // sheet) and /diagnosis?week=last (this function = FIRST match) showed
+  // DIFFERENT verdicts for the same week when 3+ rows existed. User
+  // caught this 2026-05-04 on week 2026-04-27 (4 rows in the sheet).
+  //
+  // Fix: when engine/generated_at metadata IS present, use it (forward-
+  // compatible with future schema where these get added). When absent,
+  // fall back to LAST matching row by sheet-insert order — matches
+  // getLatestDiagnosis convention so the two paths agree.
   const parsed = matching.map(diagnosisFromRow);
-  const byNewestFirst = [...parsed].sort((a, b) => {
-    const ta = a.generated_at ? Date.parse(a.generated_at) : 0;
-    const tb = b.generated_at ? Date.parse(b.generated_at) : 0;
-    return tb - ta;
-  });
-  const midweekRow = byNewestFirst.find((d) => d.engine === "ai-midweek");
-  const fullRow = byNewestFirst.find((d) => d.engine === "ai" || d.engine === "native-insights");
-  if (prefer === "midweek") {
-    return midweekRow || fullRow || byNewestFirst[0];
+  const hasMetadata = parsed.some(
+    (d) => d.generated_at || d.engine,
+  );
+  if (hasMetadata) {
+    const byNewestFirst = [...parsed].sort((a, b) => {
+      const ta = a.generated_at ? Date.parse(a.generated_at) : 0;
+      const tb = b.generated_at ? Date.parse(b.generated_at) : 0;
+      return tb - ta;
+    });
+    const midweekRow = byNewestFirst.find((d) => d.engine === "ai-midweek");
+    const fullRow = byNewestFirst.find(
+      (d) => d.engine === "ai" || d.engine === "native-insights",
+    );
+    if (prefer === "midweek") {
+      return midweekRow || fullRow || byNewestFirst[0];
+    }
+    return fullRow || midweekRow || byNewestFirst[0];
   }
-  return fullRow || midweekRow || byNewestFirst[0];
+  // No engine/generated_at metadata in the sheet (current Weekly_Analysis
+  // schema). LAST matching row by insert order = newest. Matches what
+  // getLatestDiagnosis returns for the all-weeks view.
+  return parsed[parsed.length - 1];
 }
 
 /**
@@ -579,6 +600,36 @@ export function computeDiagnosisBannerState(opts: {
     return { showAiDisabledBanner: false, showFallbackNotice: true };
   }
   return { showAiDisabledBanner: false, showFallbackNotice: false };
+}
+
+/**
+ * /plan variant of computeDiagnosisBannerState. Same rule: aiDisabled
+ * banner ONLY when AI is off, this-week view, and NO calendar slots
+ * exist for the requested week. When slots exist, the user has data to
+ * read; the alarming banner adds noise.
+ *
+ * Bug shipped 2026-05-04 (caught by user manual inspection): /plan
+ * default rendered the banner above 36 slots of legitimate calendar
+ * content. Same shape as the /diagnosis bug already fixed — the fix
+ * just hadn't been ported to /plan yet.
+ */
+export function computeCalendarBannerState(opts: {
+  isArchival: boolean;
+  isThisWeekView: boolean;
+  aiDisabled: boolean;
+  calendar: unknown[];
+}): { showAiDisabledBanner: boolean } {
+  if (opts.isArchival || !opts.isThisWeekView) {
+    return { showAiDisabledBanner: false };
+  }
+  if (!opts.aiDisabled) {
+    return { showAiDisabledBanner: false };
+  }
+  // AI is off + this-week view. Banner only fires when no calendar to show.
+  if ((opts.calendar?.length || 0) > 0) {
+    return { showAiDisabledBanner: false };
+  }
+  return { showAiDisabledBanner: true };
 }
 
 export function computeStaleness(
