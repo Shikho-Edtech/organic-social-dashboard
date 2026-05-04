@@ -214,9 +214,19 @@ export default async function PlanPage({ searchParams }: { searchParams: Record<
   const { weekday: todayWeekday, dateKey: todayKey } = todayInDhaka();
 
   // AI-disabled empty state takes over when the calendar stage is off AND
-  // we're NOT in archival-read mode. Returns a card explaining how to re-
-  // enable the stage + a link to view the archived version if available.
-  if (aiDisabled && !isArchival) {
+  // we're NOT in archival-read mode AND no calendar exists for the
+  // requested week.
+  //
+  // 2026-05-04 UX fix: previously this branch fired whenever the LATEST run
+  // had engine=off, hiding ALL calendar content (even successful AI calendars
+  // for THIS week!) behind a dead-end empty state. The pipeline's
+  // carry-forward of last_successful_calendar_at chain breaks when an
+  // AI-off run logs between AI runs, leaving the dashboard's
+  // runStatus.last_successful_calendar_at empty. Now: fall through to the
+  // regular render path when calendar data exists for the week. The
+  // StalenessBanner below surfaces the "AI off this run" notice via
+  // aiDisabled=true.
+  if (aiDisabled && !isArchival && calendar.length === 0) {
     return (
       <div>
         <StaleDataBanner stale={staleData} reasons={staleReasons} />
@@ -268,6 +278,7 @@ export default async function PlanPage({ searchParams }: { searchParams: Record<
           info={staleness}
           artifact="calendar"
           runStatus={runStatus}
+          aiDisabled={aiDisabled}
           hasData={calendar.length > 0}
         />
       )}

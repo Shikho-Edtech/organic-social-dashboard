@@ -312,11 +312,20 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
   const staleReasons = staleData ? getStaleReasons() : undefined;
 
   // When the AI diagnosis stage is deliberately off AND we're NOT in archival
-  // read mode, the primary view is the empty-state card. The regular
-  // diagnosis blocks (verdict, key findings, top/under, watch-outs) are
-  // suppressed; only the funnel charts render beneath — they read native
-  // classifier data that's always fresh.
-  if (aiDisabled && !isArchival) {
+  // read mode AND there's no diagnosis content to show at all, the primary
+  // view is the empty-state card.
+  //
+  // 2026-05-04 UX fix: previously this branch fired whenever the LATEST run
+  // had engine=off, hiding ALL prior diagnosis content (even successful AI
+  // diagnoses from the same week!) behind a dead-end empty state with no
+  // archive link (because the pipeline's carry-forward of
+  // last_successful_diagnosis_at chain broke when an AI-off run logged in
+  // between AI runs). Now: fall through to the regular render path when
+  // ANY diagnosis row exists (`diagnosis` is the resolved liveDiagnosis /
+  // weekDiagnosis). The StalenessBanner below already surfaces the
+  // "AI off this run, native pipeline is still fresh" copy when
+  // aiDisabled=true is passed.
+  if (aiDisabled && !isArchival && !diagnosis) {
     return (
       <div>
         <StaleDataBanner stale={staleData} reasons={staleReasons} />
@@ -358,6 +367,7 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
           info={staleness}
           artifact="diagnosis"
           runStatus={runStatus}
+          aiDisabled={aiDisabled}
           hasData={!!diagnosis}
         />
       )}
