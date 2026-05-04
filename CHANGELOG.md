@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-05-04 — Docs-hygiene CI gate + backfill of LEARNINGS / DECISIONS / CHANGELOG (PR #4)
+
+User flagged that several commits this session were merged without `CHANGELOG.md` entries — same failure mode as `predeploy` before we made it mechanical: a discipline rule that quietly slipped during a busy session. Two fixes:
+
+1. **Docs-hygiene CI gate** in `.github/workflows/ci.yml`. Fails any PR that changes code under `app/`, `lib/`, `components/`, `scripts/`, `src/`, or `.github/workflows/` without also touching `CHANGELOG.md`. Not a quality gate — can be satisfied with `## hotfix` + empty bullet — but kills the "I forgot entirely" failure mode that hit today. Bypass: none; if a change doesn't warrant a CHANGELOG entry, it shouldn't touch gated paths.
+2. **Backfill** of today's missed entries: 3 CHANGELOG, 3 LEARNINGS (ESM module-instance bug, schema-implied tie-breakers, manual live-walks weakness), 5 DECISIONS (E2E predeploy gating, env-hook vs DI, _clearCacheForTests re-export, calibration thresholds, fix-on-touch as discipline).
+
+Pair with the existing rule in master `CLAUDE.md` ("After any commit, proactively update docs before reporting done"). Discipline rule + mechanical enforcement = the pattern that worked for predeploy. Same here.
+
 ## 2026-05-04 — Playwright E2E scaffold + fix-on-touch grep rule (PR #3)
 
 User feedback after another reactive cycle: "manual live walks miss bugs." True. Two improvements shipped:
