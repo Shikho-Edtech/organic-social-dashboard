@@ -141,12 +141,21 @@ they don't exist.
 Prerequisite for everything below. Without it, we're guessing whether
 later changes help.
 
-- Calibration_Log: weekly "K of N forecasts contained the actual"
-- Pre-registered numeric success metric per `experiments_to_run[]` entry
-- Per-pillar/format hit-rate rolling 4-week dashboard
-- Score outcomes only on posts ≥ 7 days old
-- Slot count derived from page reach-per-post diminishing-returns curve
-- Conditional hook freshness (per-hook decay tracking)
+- ✅ Calibration_Log: weekly "K of N forecasts contained the actual" — pipeline writes it (`src/sheets.py::write_calibration_log`)
+- ✅ Per-pillar/format hit-rate rolling 4-week dashboard — **shipped 2026-05-04**: `/outcomes` page surfaces hit_rate_inside_ci, calibration_error, latest week, and a status pill (calibrated ≥65% / drifting 50–64% / mis-calibrated <50%) above the per-day breakdown. Reader: `getCalibrationLog()` + `summarizeCalibration()` in `lib/sheets.ts`. Live as of 2026-05-04: 54.4% rolling 2-week, status "drifting".
+- ✅ Score outcomes only on posts ≥ 7 days old — `Preliminary` flag exists; `Calibration_Log` excludes preliminary rows
+- 🔵 Pre-registered numeric success metric per `experiments_to_run[]` entry — `Experiment_Log` writer exists; 2 entries logged, both correctly pending (week 2026-05-04 needs through 2026-05-17 for 7-day decay)
+- 🔵 Slot count derived from page reach-per-post diminishing-returns curve — not started
+- 🔵 Conditional hook freshness (per-hook decay tracking) — not started
+
+**With calibration now visible, the next product loop is:** each week,
+read the calibration KPI on `/outcomes`. If hit rate climbs toward 65%,
+the forecast layer is improving. If it stagnates ≤55% for 4+ weeks,
+that's the signal to either widen the asserted CI in the prompt OR
+switch to empirically-fitted CI from past `Outcome_Log` actuals. Tier
+2+ changes (joint priors, bandits, hierarchical Bayesian) all
+inherit the calibration error today; fixing it first makes every
+later change measurable.
 
 ### Tier 2 — Model the interactions
 

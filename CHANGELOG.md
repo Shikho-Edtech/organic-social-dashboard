@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-05-04 — CI gate workflow + forecast calibration KPI on /outcomes
+
+Two changes that move from "we have defenses" to "the defenses are mechanically enforced + the central product signal is visible."
+
+**1. CI gate** (`.github/workflows/ci.yml`). `npm run predeploy` is now enforced on every push to `main` and every PR — runs smoke tests, RSC audit, brand audit, and the production build in CI. Before today, predeploy was a discipline rule; the 48h reactive-fix cycle that just landed was partly caused by skipping it. With branch protection ("Require status checks to pass before merging" → tick `predeploy`), this becomes a hard merge gate. ~60-90s per run.
+
+**2. Forecast calibration KPI** (`58f0150`). `/outcomes` now surfaces the rolling 4-week measurement of "did our 80% CI actually contain 80%?" — the central Tier-1 signal from `docs/PLAN_ALGORITHM_AUDIT.md §1.1`. Live data: 54.4% rolling, status "drifting", latest week 66.7%. Without this KPI visible, every prompt or prior-blending change is unevaluable. New reader: `getCalibrationLog()` + `summarizeCalibration()` in `lib/sheets.ts`. New KPI strip on `/outcomes` between rollup card and Yesterday card. Test-first rule applied: 3 smoke tests written before the implementation (RED → GREEN). 16/16 smoke tests pass.
+
+The next loop: each week, the team reads the calibration KPI and decides whether to tighten/widen forecast bands or change the prompt. With this number visible, "did the change help?" becomes a yes/no read instead of vibes.
+
 ## 2026-05-04 — ACTUAL fix for /diagnosis + /plan error.tsx (RSC serialization bug)
 
 The "cold-start resilience" pass yesterday was a misdiagnosis. The

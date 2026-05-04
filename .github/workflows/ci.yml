@@ -1,0 +1,93 @@
+name: CI
+
+# Mechanical enforcement of the predeploy gate (2026-05-04 incident retro
+# follow-up). Before this workflow, `npm run predeploy` was a discipline
+# rule — relies on a human running it before `git push`. The 48h
+# reactive-fix cycle we just shipped was caused, in part, by skipping
+# the gate. This workflow makes it impossible to bypass:
+#
+#   - Every push to `main` + every PR runs the full predeploy chain:
+#       smoke (reader-layer + decision-function tests)
+#     + rsc:audit (RSC serialization grep linter)
+#     + brand:audit (palette / typography drift)
+#     + build (Next.js production build, type-check)
+#
+#   - Vercel auto-deploys on push to main. If this CI runs in parallel
+#     and fails, Vercel will still deploy (Vercel doesn't gate on
+#     external CI by default). To block bad deploys at the platform
+#     layer, configure Vercel's "Ignored Build Step" to `bash -c "exit 1"`
+#     when this workflow fails — OR enable branch protection on `main`
+#     with this workflow as a required check.
+#
+#   - For PRs: GitHub branch protection (Settings → Branches → main →
+#     "Require status checks to pass before merging" → tick
+#     "predeploy") makes this a hard merge gate.
+#
+# Cost: ~60-90s per run (build dominates). Free tier headroom for a
+# repo with this push frequency.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  predeploy:
+    name: predeploy gate (smoke + rsc:audit + brand:audit + build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Run smoke tests
+        # Synthetic-input tests against lib/sheets.ts. Each prod bug
+        # shipped 2026-05-02 → 2026-05-04 has a corresponding test.
+        # Adding a new test BEFORE shipping a fix is the rule.
+        run: npm run smoke
+
+      - name: Run RSC serialization audit
+        # Catches function-bearing props passed to "use client" components
+        # (the 2026-05-04 digest-3451054532 outage class).
+        run: npm run rsc:audit
+
+      - name: Run brand audit
+        # Palette / typography drift via ratchet baseline.
+        run: npm run brand:audit
+
+      - name: Build Next.js production bundle
+        # Type-check + bundle. Surfaces any compile errors that escaped
+        # the previous gates.
+        run: npm run build
+        env:
+          # Build doesn't need real Sheets creds — pages are dynamic ƒ
+          # routes that lazy-fetch at request time. Stub vars satisfy
+          # any module-load-time env reads.
+          GOOGLE_SHEETS_CREDS_JSON: '{"type":"service_account","project_id":"ci-stub","client_email":"ci@stub.example","private_key":"-----BEGIN PRIVATE KEY-----\nSTUB\n-----END PRIVATE KEY-----\n","token_uri":"https://oauth2.googleapis.com/token"}'
+          GOOGLE_SPREADSHEET_ID: 'ci-stub-spreadsheet-id'
+          AUTH_SECRET: 'ci-stub-secret-at-least-32-chars-long-padding-padding'
+          DASHBOARD_PASSWORD: 'ci-stub'
+
+      - name: Summary
+        if: success()
+        run: |
+          echo "::notice::Predeploy gate green. Safe to deploy."
+          echo "  smoke: 16+ tests"
+          echo "  rsc:audit: clean"
+          echo "  brand:audit: clean"
+          echo "  build: green"
