@@ -20,7 +20,15 @@ import type {
 } from "./types";
 import { canonicalizeEntity } from "./entities";
 import { bdtNow } from "./aggregate";
-import { withLastGood } from "./cache";
+import { withLastGood, _clearCacheForTests } from "./cache";
+
+// Re-export so smoke-tests.ts can clear the cache via the SAME module
+// graph that the readers use. Importing `lib/cache.js` directly from the
+// test runner can resolve to a different module instance under tsx ESM
+// (CI 2026-05-04 saw `cache.clear()` not affecting subsequent reads —
+// because sheets.ts's `./cache` and the test's `../lib/cache.js`
+// resolved to separate module records).
+export { _clearCacheForTests };
 
 let cachedClient: any = null;
 
