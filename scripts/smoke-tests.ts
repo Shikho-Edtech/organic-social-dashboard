@@ -33,13 +33,25 @@ function clearMocks() {
 
 // Force-reset the module-level cache between tests so cached values from
 // one test don't leak into the next.
+//
+// IMPORTANT: import _clearCacheForTests from lib/sheets.js (the SAME module
+// that the readers use), NOT from lib/cache.js directly. On Node ESM under
+// tsx, "./cache" (sheets.ts's specifier) and "../lib/cache.js" (a smoke-test
+// specifier) can resolve to different module records — the cache instance
+// the test would clear isn't the one sheets.ts is reading. CI 2026-05-04
+// caught this: 14 passed, 2 failed, both because the prior test's cached
+// reads bled into the empty-sheet tests. Routing through sheets.js's
+// re-export of _clearCacheForTests forces single-graph consistency.
 async function resetCache() {
   const sheets = await import("../lib/sheets.js");
-  const cacheModule = await import("../lib/cache.js");
-  if ((cacheModule as any)._clearCacheForTests) {
-    (cacheModule as any)._clearCacheForTests();
+  if ((sheets as any)._clearCacheForTests) {
+    (sheets as any)._clearCacheForTests();
+  } else {
+    throw new Error(
+      "lib/sheets.ts must re-export _clearCacheForTests from ./cache — " +
+      "smoke tests need to clear the cache via the SAME module graph",
+    );
   }
-  void sheets;
 }
 
 // ─── Test runner ─────────────────────────────────────────────────────
