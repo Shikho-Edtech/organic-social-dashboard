@@ -306,6 +306,72 @@ test("diagnosis page: no aiDisabled banner when AI is on (regardless of view)", 
   assertEqual(state.showAiDisabledBanner, false, "AI on → no aiDisabled banner");
 });
 
+// ─── Tests: getCalibrationLog (new 2026-05-04 — surfacing the 42% hit-rate signal) ─
+// Calibration_Log is written by the pipeline weekly. Dashboard never read it
+// before today; this test guards the new reader's shape + edge cases.
+
+const CALIBRATION_HEADERS = [
+  "Week Ending", "Total Slots", "Final Slots",
+  "Hits", "Exceeded", "Missed", "No Data",
+  "Preliminary",
+  "Hit Rate Inside CI", "Calibration Error", "Sharpness",
+  "Pillar Breakdown", "Format Breakdown",
+  "Engine", "Generated At",
+];
+function calibRow(overrides: Record<string, string> = {}): string[] {
+  const defaults: Record<string, string> = {
+    "Week Ending": "2026-04-20", "Total Slots": "30", "Final Slots": "30",
+    "Hits": "8", "Exceeded": "2", "Missed": "9", "No Data": "11",
+    "Preliminary": "0",
+    "Hit Rate Inside CI": "0.4211", "Calibration Error": "0.3789",
+    "Sharpness": "1.0394",
+    "Pillar Breakdown": "{}", "Format Breakdown": "{}",
+    "Engine": "deterministic", "Generated At": "2026-04-20T00:00:00",
+  };
+  const merged = { ...defaults, ...overrides };
+  return CALIBRATION_HEADERS.map((h) => merged[h] ?? "");
+}
+
+test("getCalibrationLog returns rows newest-first", async () => {
+  setMockSheet("Calibration_Log", [
+    CALIBRATION_HEADERS,
+    calibRow({ "Week Ending": "2026-04-20", "Hit Rate Inside CI": "0.4211" }),
+    calibRow({ "Week Ending": "2026-04-27", "Hit Rate Inside CI": "0.6667" }),
+    calibRow({ "Week Ending": "2026-05-04", "Hit Rate Inside CI": "" }),
+  ]);
+  const sheets = await import("../lib/sheets.js");
+  if (!(sheets as any).getCalibrationLog) {
+    throw new Error("lib/sheets must export getCalibrationLog");
+  }
+  const rows = await (sheets as any).getCalibrationLog();
+  assertEqual(rows.length, 3, "should return 3 rows");
+  assertEqual(rows[0].week_ending, "2026-05-04", "newest first");
+  assertEqual(rows[2].week_ending, "2026-04-20", "oldest last");
+});
+
+test("getCalibrationLog parses numerics + tolerates blank Hit Rate", async () => {
+  setMockSheet("Calibration_Log", [
+    CALIBRATION_HEADERS,
+    calibRow({ "Week Ending": "2026-04-20", "Hit Rate Inside CI": "0.4211", "Calibration Error": "0.3789" }),
+    calibRow({ "Week Ending": "2026-05-04", "Hit Rate Inside CI": "", "Calibration Error": "" }),
+  ]);
+  const sheets = await import("../lib/sheets.js");
+  const rows = await (sheets as any).getCalibrationLog();
+  const apr20 = rows.find((r: any) => r.week_ending === "2026-04-20");
+  assertEqual(apr20.hit_rate_inside_ci, 0.4211, "0.4211 parses to number");
+  assertEqual(apr20.calibration_error, 0.3789, "0.3789 parses to number");
+  const may04 = rows.find((r: any) => r.week_ending === "2026-05-04");
+  assertEqual(may04.hit_rate_inside_ci, null, "blank parses to null");
+});
+
+test("getCalibrationLog returns [] on empty sheet (no throw)", async () => {
+  setMockSheet("Calibration_Log", [CALIBRATION_HEADERS]);
+  const sheets = await import("../lib/sheets.js");
+  const rows = await assertNoThrow(() => (sheets as any).getCalibrationLog(),
+    "empty sheet should not throw");
+  assertEqual(rows.length, 0, "empty sheet → 0 rows");
+});
+
 // ─── Runner ─────────────────────────────────────────────────────────
 async function main() {
   let passed = 0, failed = 0;

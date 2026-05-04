@@ -1419,6 +1419,125 @@ function outcomeLogFromRow(row: Record<string, any>): OutcomeLogEntry {
   };
 }
 
+// ─── Calibration_Log reader (2026-05-04: surfacing the calibration signal) ───
+//
+// Per-week summary of "did our 80% CI actually contain 80%?" written by the
+// pipeline's write_calibration_log post-process. Currently shows ~42% for
+// week 2026-04-20 — the forecast bands are mis-calibrated, not just imprecise.
+// Surfacing this on /outcomes is the prerequisite for everything in
+// docs/PLAN_ALGORITHM_AUDIT.md Tier 4+; without a visible calibration KPI
+// the team can't tell whether prompt/prior changes are improving or hurting.
+export interface CalibrationLogEntry {
+  week_ending: string;
+  total_slots: number;
+  final_slots: number;
+  hits: number;
+  exceeded: number;
+  missed: number;
+  no_data: number;
+  /** Inside-CI rate: hits / (hits + exceeded + missed). null when unscored. */
+  hit_rate_inside_ci: number | null;
+  /** abs(0.80 - hit_rate). null when unscored. */
+  calibration_error: number | null;
+  /** Mean band width / mean forecast mid. null when bands are missing. */
+  sharpness: number | null;
+  generated_at: string;
+}
+
+export async function getCalibrationLog(): Promise<CalibrationLogEntry[]> {
+  return withLastGood(
+    "getCalibrationLog",
+    _getCalibrationLogRaw,
+    (d) => d.length === 0,
+    { coldFallback: [] },
+  );
+}
+async function _getCalibrationLogRaw(): Promise<CalibrationLogEntry[]> {
+  const rows = await readTab("Calibration_Log");
+  const objects = rowsToObjects(rows);
+  const parsed: CalibrationLogEntry[] = objects
+    .filter((r) => String(r["Week Ending"] || "").trim())
+    .map((r) => {
+      const numOrNull = (v: any): number | null => {
+        const s = String(v ?? "").trim();
+        if (!s) return null;
+        const n = Number(s);
+        return Number.isFinite(n) ? n : null;
+      };
+      const intOr = (v: any, fallback: number): number => {
+        const s = String(v ?? "").trim();
+        if (!s) return fallback;
+        const n = Number(s);
+        return Number.isFinite(n) ? Math.round(n) : fallback;
+      };
+      return {
+        week_ending: String(r["Week Ending"] || "").trim(),
+        total_slots: intOr(r["Total Slots"], 0),
+        final_slots: intOr(r["Final Slots"], 0),
+        hits: intOr(r["Hits"], 0),
+        exceeded: intOr(r["Exceeded"], 0),
+        missed: intOr(r["Missed"], 0),
+        no_data: intOr(r["No Data"], 0),
+        hit_rate_inside_ci: numOrNull(r["Hit Rate Inside CI"]),
+        calibration_error: numOrNull(r["Calibration Error"]),
+        sharpness: numOrNull(r["Sharpness"]),
+        generated_at: String(r["Generated At"] || "").trim(),
+      };
+    });
+  // Newest-first by week_ending (lexicographic on YYYY-MM-DD works).
+  parsed.sort((a, b) => b.week_ending.localeCompare(a.week_ending));
+  return parsed;
+}
+
+/**
+ * Rolling 4-week calibration summary: average hit rate inside CI, average
+ * calibration error, count of weeks with measurable verdicts. Used by the
+ * /outcomes header KPI strip. Returns null when no calibratable weeks exist.
+ */
+export interface CalibrationSummary {
+  weeks_measured: number;
+  avg_hit_rate_inside_ci: number | null;
+  avg_calibration_error: number | null;
+  latest_week: string;
+  latest_hit_rate_inside_ci: number | null;
+  /** "ok" (≥ 0.65), "warn" (0.50–0.64), "crit" (< 0.50). null when no data. */
+  status: "ok" | "warn" | "crit" | null;
+}
+
+export function summarizeCalibration(
+  entries: CalibrationLogEntry[],
+  windowWeeks: number = 4,
+): CalibrationSummary {
+  const measured = entries.filter((e) => e.hit_rate_inside_ci !== null);
+  if (measured.length === 0) {
+    return {
+      weeks_measured: 0,
+      avg_hit_rate_inside_ci: null,
+      avg_calibration_error: null,
+      latest_week: "",
+      latest_hit_rate_inside_ci: null,
+      status: null,
+    };
+  }
+  const recent = measured.slice(0, windowWeeks);
+  const avgHr = recent.reduce((a, e) => a + (e.hit_rate_inside_ci as number), 0) / recent.length;
+  const cesWithValue = recent.filter((e) => e.calibration_error !== null);
+  const avgCe = cesWithValue.length
+    ? cesWithValue.reduce((a, e) => a + (e.calibration_error as number), 0) / cesWithValue.length
+    : null;
+  const latest = recent[0];
+  const status: "ok" | "warn" | "crit" =
+    avgHr >= 0.65 ? "ok" : avgHr >= 0.50 ? "warn" : "crit";
+  return {
+    weeks_measured: recent.length,
+    avg_hit_rate_inside_ci: Math.round(avgHr * 10000) / 10000,
+    avg_calibration_error: avgCe === null ? null : Math.round(avgCe * 10000) / 10000,
+    latest_week: latest.week_ending,
+    latest_hit_rate_inside_ci: latest.hit_rate_inside_ci,
+    status,
+  };
+}
+
 /**
  * Read every Outcome_Log row. Newest-week-first ordering so callers can
  * `groupBy(week_ending)` and take the first group as the latest. Returns

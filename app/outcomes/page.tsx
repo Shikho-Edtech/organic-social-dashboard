@@ -22,6 +22,8 @@ import {
   computeOutcomeRollup,
   getPlanNarrative,
   getPosts,
+  getCalibrationLog,
+  summarizeCalibration,
 } from "@/lib/sheets";
 import WeekSelector, { weekRange, computeWeekEndings, resolveWeekParam } from "@/components/WeekSelector";
 import type { OutcomeLogEntry, OutcomeVerdict } from "@/lib/types";
@@ -163,10 +165,15 @@ export default async function OutcomesPage({
   // canonical Mon-anchor.
   const resolvedWeek = resolveWeekParam(requestedRaw);
 
-  const [allWeeks, latestGraded] = await Promise.all([
+  const [allWeeks, latestGraded, calibrationRows] = await Promise.all([
     listOutcomeWeeks(),
     getLatestGradedOutcomeWeek(),
+    getCalibrationLog(),
   ]);
+  // Rolling 4-week summary of "did our 80% CI actually contain 80%?"
+  // Surfaces the central Tier-1 signal from PLAN_ALGORITHM_AUDIT — without
+  // a visible calibration KPI, prompt/prior changes can't be evaluated.
+  const calibration = summarizeCalibration(calibrationRows, 4);
   // Prefer the URL-resolved week if it has data; else fall back to
   // latest-graded; else the most recent week with any rows. Final
   // fallback to empty when nothing exists yet.
@@ -404,6 +411,108 @@ export default async function OutcomesPage({
               <Breakdown label="Total" value={rollup.slot_count} tone="indigo" />
             </div>
           </Card>
+
+          {/* Calibration KPI strip (2026-05-04): rolling 4-week "did our 80% CI
+              actually contain 80%?" measurement. The central Tier-1 signal
+              from docs/PLAN_ALGORITHM_AUDIT.md — without this visible, prompt
+              and prior changes can't be evaluated. Hidden when no week has
+              been graded yet (typical for a fresh page or a running week
+              with all slots pending). */}
+          {calibration.weeks_measured > 0 && (
+            <Card className="mb-5">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-ink-muted font-semibold">
+                    Forecast calibration · rolling {calibration.weeks_measured}-week
+                  </p>
+                  <h3 className="text-base font-semibold text-ink-primary mt-1">
+                    Did our 80% CI actually contain 80%?
+                  </h3>
+                </div>
+                <span
+                  className={
+                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider self-start " +
+                    (calibration.status === "ok"
+                      ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+                      : calibration.status === "warn"
+                      ? "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+                      : "bg-rose-50 text-rose-700 ring-1 ring-rose-200")
+                  }
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                  {calibration.status === "ok"
+                    ? "calibrated"
+                    : calibration.status === "warn"
+                    ? "drifting"
+                    : "mis-calibrated"}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div>
+                  <div className="text-[11px] uppercase tracking-wider text-ink-muted font-semibold mb-1">
+                    Hit rate inside CI
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-bold text-ink-primary break-words leading-tight tabular-nums">
+                    {calibration.avg_hit_rate_inside_ci !== null
+                      ? `${(calibration.avg_hit_rate_inside_ci * 100).toFixed(1)}%`
+                      : "—"}
+                  </div>
+                  <div className="text-[11px] text-ink-muted mt-0.5">
+                    target 80%
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[11px] uppercase tracking-wider text-ink-muted font-semibold mb-1">
+                    Calibration error
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-bold text-ink-primary break-words leading-tight tabular-nums">
+                    {calibration.avg_calibration_error !== null
+                      ? calibration.avg_calibration_error.toFixed(2)
+                      : "—"}
+                  </div>
+                  <div className="text-[11px] text-ink-muted mt-0.5">
+                    abs(0.80 − hit-rate)
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[11px] uppercase tracking-wider text-ink-muted font-semibold mb-1">
+                    Latest week
+                  </div>
+                  <div className="text-xl sm:text-2xl font-bold text-ink-primary break-words leading-tight tabular-nums">
+                    {calibration.latest_hit_rate_inside_ci !== null
+                      ? `${(calibration.latest_hit_rate_inside_ci * 100).toFixed(1)}%`
+                      : "—"}
+                  </div>
+                  <div className="text-[11px] text-ink-muted mt-0.5">
+                    {calibration.latest_week
+                      ? `wk ${calibration.latest_week.slice(5)}`
+                      : "no data yet"}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[11px] uppercase tracking-wider text-ink-muted font-semibold mb-1">
+                    Weeks measured
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-bold text-ink-primary break-words leading-tight tabular-nums">
+                    {calibration.weeks_measured}
+                  </div>
+                  <div className="text-[11px] text-ink-muted mt-0.5">
+                    of last 4
+                  </div>
+                </div>
+              </div>
+              <p className="text-[12px] text-ink-muted mt-3 leading-relaxed">
+                Of slots whose post aged ≥ 7 days and whose forecast band
+                exists, what fraction landed inside <code className="text-[11px] bg-ink-50 px-1 rounded">[low, high]</code>?
+                The pipeline asserts an 80% CI; this measures whether the
+                bands are empirically calibrated. Drift below 65% means the
+                forecast layer is theatrical — Tier 2+ algorithm changes
+                will inherit the miscalibration. See{" "}
+                <code className="text-[11px] bg-ink-50 px-1 rounded">docs/PLAN_ALGORITHM_AUDIT.md</code>{" "}
+                §1.1 for the full rationale.
+              </p>
+            </Card>
+          )}
 
           {/* R5 (2026-05-02): Yesterday-focused inline card.
               v2 (2026-05-02 user feedback): repositioned BELOW the rollup so
