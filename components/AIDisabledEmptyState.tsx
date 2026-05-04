@@ -17,16 +17,23 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import type { StageDef } from "@/lib/stages";
 
 export default function AIDisabledEmptyState({
-  stage,
+  envVars,
   lastSuccessfulAt,
   archiveKey,
   noun,
   readsDescription,
 }: {
-  stage: StageDef;
+  /**
+   * The stage's env-var names (rendered as copy-on-click chips). 2026-05-04
+   * incident #2: was previously `stage: StageDef` — that object carries
+   * `readStatus` / `readLastSuccessful` FUNCTIONS which can't cross the
+   * server→client RSC boundary. `Functions cannot be passed directly to
+   * Client Components` was the actual digest 3451054532 root cause. Pass
+   * just the serializable string-array slice instead.
+   */
+  envVars: readonly string[];
   /** ISO timestamp of the stage's most recent successful run. "" = never. */
   lastSuccessfulAt: string;
   /**
@@ -85,7 +92,7 @@ export default function AIDisabledEmptyState({
           </div>
           <p className="text-[13px] text-slate-600 leading-relaxed">
             Set{" "}
-            <EnvChips vars={stage.envVars} />
+            <EnvChips vars={envVars} />
             {" "}in the pipeline&apos;s GitHub Actions secrets, then re-run the
             weekly workflow.
           </p>

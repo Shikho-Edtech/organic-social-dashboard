@@ -1,5 +1,39 @@
 # Changelog
 
+## 2026-05-04 — ACTUAL fix for /diagnosis + /plan error.tsx (RSC serialization bug)
+
+The "cold-start resilience" pass yesterday was a misdiagnosis. The
+real bug had nothing to do with Sheets transients or cache misses.
+
+**Actual root cause** (digest 3451054532): both pages passed
+`stage={STAGES.diagnosis}` / `stage={STAGES.calendar}` as a prop to
+`<AIDisabledEmptyState>`, which is a `"use client"` component. The
+`StageDef` object carries `readStatus` and `readLastSuccessful`
+FUNCTIONS that can't cross the server→client RSC boundary. Next.js
+threw `Functions cannot be passed directly to Client Components`
+every time the page hit the `aiDisabled` branch (which fires when
+`getStageEngine` returns "native" or "off" — i.e. whenever the
+pipeline ran with the AI stage off, which has been the case
+recently).
+
+**Fix:** changed `AIDisabledEmptyState`'s `stage: StageDef` prop to
+`envVars: readonly string[]`. The component only used `stage.envVars`
+anyway — passing the whole object was the original sin. Call sites
+in `/diagnosis` and `/plan` now pass `STAGES.diagnosis.envVars`
+(plain string array, serializable). Two-line change in the component
++ one-line change at each call site.
+
+**Why I missed this twice:** the production digest is opaque (Next.js
+omits the actual error message in production for security). I assumed
+the symptom ("upstream data source unreachable" copy in error.tsx)
+matched the cause. Dev-mode reproduction surfaced the real exception
+in 30 seconds. Lesson: when production digest is the same as before a
+fix, reproduce in dev BEFORE shipping more code.
+
+The cold-start resilience work in d601278 isn't wasted — it closes a
+real gap (cold function instances + Sheets transients), just wasn't
+the cause of THIS outage.
+
 ## 2026-05-03 — Cold-start resilience (incident #2: /diagnosis + /plan errored despite LKG cache)
 
 Live observation: /diagnosis + /plan rendered `error.tsx` ("upstream

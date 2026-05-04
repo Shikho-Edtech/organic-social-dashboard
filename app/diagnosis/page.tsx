@@ -336,7 +336,7 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
           compact
         />
         <AIDisabledEmptyState
-          stage={STAGES.diagnosis}
+          envVars={STAGES.diagnosis.envVars}
           lastSuccessfulAt={runStatus.last_successful_diagnosis_at}
           archiveKey={runStatus.last_successful_diagnosis_at
             ? extractWeekEnding(runStatus.last_successful_diagnosis_at)

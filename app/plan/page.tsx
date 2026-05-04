@@ -237,7 +237,7 @@ export default async function PlanPage({ searchParams }: { searchParams: Record<
           compact
         />
         <AIDisabledEmptyState
-          stage={STAGES.calendar}
+          envVars={STAGES.calendar.envVars}
           lastSuccessfulAt={runStatus.last_successful_calendar_at}
           // Calendar_Archive doesn't exist yet; archive link hidden until the
           // pipeline starts writing it. Empty string hides the link.
