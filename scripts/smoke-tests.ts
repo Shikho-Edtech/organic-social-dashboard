@@ -384,6 +384,113 @@ test("getCalibrationLog returns [] on empty sheet (no throw)", async () => {
   assertEqual(rows.length, 0, "empty sheet → 0 rows");
 });
 
+// ─── Tests: bugs caught 2026-05-04 by user manual inspection ────────
+// 3 bugs my live walks missed because I didn't enumerate these states.
+// Following the rule: write the test FIRST, then ship the fix.
+
+// BUG 1: /plan default still showed "AI calendar is off this run" banner
+// even when calendar has content. Same shape as the /diagnosis bug fixed
+// earlier; the fix wasn't applied to /plan, only diagnosis. Test the
+// shared decision rule: aiDisabled banner ONLY when no content.
+//
+// We extract the calendar variant of the rule and parameterize the test.
+test("plan page: no aiDisabled banner when calendar has slots (this-week view)", async () => {
+  const sheets = await import("../lib/sheets.js");
+  if (!(sheets as any).computeCalendarBannerState) {
+    throw new Error(
+      "lib/sheets must export computeCalendarBannerState — extract the /plan " +
+      "page-level banner decision into a pure function so it's unit-testable",
+    );
+  }
+  const state = (sheets as any).computeCalendarBannerState({
+    isArchival: false,
+    isThisWeekView: true,
+    aiDisabled: true,
+    calendar: [{ day: "Monday" }, { day: "Tuesday" }],  // non-empty
+  });
+  assertEqual(state.showAiDisabledBanner, false,
+    "no aiDisabled banner when calendar.length > 0 (we have content to show)");
+});
+
+test("plan page: aiDisabled banner DOES fire when calendar empty + AI off + this-week", async () => {
+  const sheets = await import("../lib/sheets.js");
+  const state = (sheets as any).computeCalendarBannerState({
+    isArchival: false,
+    isThisWeekView: true,
+    aiDisabled: true,
+    calendar: [],
+  });
+  assertEqual(state.showAiDisabledBanner, true,
+    "no content + AI off = banner fires");
+});
+
+test("plan page: no aiDisabled banner on past-week view even when AI off", async () => {
+  const sheets = await import("../lib/sheets.js");
+  const state = (sheets as any).computeCalendarBannerState({
+    isArchival: false,
+    isThisWeekView: false,
+    aiDisabled: true,
+    calendar: [{ day: "Monday" }],
+  });
+  assertEqual(state.showAiDisabledBanner, false,
+    "past-week view never shows aiDisabled banner");
+});
+
+// BUG 3: Multiple Weekly_Analysis rows for same week → /diagnosis (default
+// fallback to liveDiagnosis = LAST row) and /diagnosis?week=last (uses
+// getDiagnosisByWeekPreferred which sorted by non-existent generated_at
+// column, so .find() returned FIRST row) showed DIFFERENT verdicts for
+// the same week. The fix: when no engine/generated_at metadata exists,
+// fall back to LAST matching row (consistent with getLatestDiagnosis).
+
+const WEEKLY_ANALYSIS_HEADERS = [
+  "Week Ending", "Headline", "Posts This Week", "Avg Engagement",
+  "What Happened (JSON)", "Top Performers (JSON)", "Underperformers (JSON)",
+  "Exam Alert", "Negative Signals (JSON)", "Reel Intelligence (JSON)",
+  "Full Diagnosis (JSON)", "Source Post IDs",
+];
+function waRow(weekEnding: string, headline: string, posts: string = "30"): string[] {
+  return WEEKLY_ANALYSIS_HEADERS.map((h) => {
+    if (h === "Week Ending") return weekEnding;
+    if (h === "Headline") return headline;
+    if (h === "Posts This Week") return posts;
+    if (h === "Avg Engagement") return "2.0";
+    if (h === "Exam Alert") return "";
+    if (h === "Source Post IDs") return "";
+    return "{}";
+  });
+}
+
+test("getDiagnosisByWeekPreferred returns LAST matching row when multiple rows exist (no metadata to sort by)", async () => {
+  setMockSheet("Weekly_Analysis", [
+    WEEKLY_ANALYSIS_HEADERS,
+    waRow("2026-04-27", "OLD verdict from earlier run", "35"),
+    waRow("2026-04-20", "Different week", "30"),
+    waRow("2026-04-27", "MIDDLE verdict", "32"),
+    waRow("2026-04-27", "NEWEST verdict from latest run", "32"),
+  ]);
+  const sheets = await import("../lib/sheets.js");
+  const d = await sheets.getDiagnosisByWeekPreferred("2026-04-27", "full");
+  assertTruthy(d, "should return a diagnosis");
+  assertEqual(d!.headline, "NEWEST verdict from latest run",
+    "with no engine/generated_at metadata, should pick the LAST matching row " +
+    "(matches getLatestDiagnosis convention) — NOT first match");
+});
+
+test("getDiagnosisByWeekPreferred + getLatestDiagnosis agree on which row when same week is latest", async () => {
+  setMockSheet("Weekly_Analysis", [
+    WEEKLY_ANALYSIS_HEADERS,
+    waRow("2026-04-27", "OLD"),
+    waRow("2026-04-27", "NEW"),
+  ]);
+  const sheets = await import("../lib/sheets.js");
+  const latest = await sheets.getLatestDiagnosis();
+  const byWeek = await sheets.getDiagnosisByWeekPreferred("2026-04-27", "full");
+  assertEqual(latest!.headline, "NEW", "latest = last row");
+  assertEqual(byWeek!.headline, "NEW",
+    "by-week-preferred should also pick last matching row when no metadata to sort");
+});
+
 // ─── Runner ─────────────────────────────────────────────────────────
 async function main() {
   let passed = 0, failed = 0;
