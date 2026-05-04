@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "brand:audit": "node scripts/brand-audit.mjs"
+    "brand:audit": "node scripts/brand-audit.mjs",
+    "smoke": "npx tsx scripts/smoke-tests.ts",
+    "rsc:audit": "node scripts/rsc-audit.mjs",
+    "predeploy": "npm run smoke && npm run rsc:audit && npm run brand:audit && npm run build"
   },
   "dependencies": {
     "next": "14.2.15",

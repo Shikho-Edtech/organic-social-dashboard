@@ -1,5 +1,39 @@
 # Learnings
 
+## 2026-05-04 — Reactive whack-a-mole pattern: shipping 7 fixes in 48h for what should have been 1 test suite
+
+Between 2026-05-02 and 2026-05-04 the dashboard shipped this sequence of reactive fixes, each caught visually on the live deploy AFTER it broke for the user:
+
+| # | Symptom | What I claimed | Real cause |
+|---|---|---|---|
+| 1 | Sheet wipe on weekly cron | atomic-write helper closes it | fixed (correct) |
+| 2 | "we are battle-tested" | follow-up day showed dashboard crashed on /diagnosis | not battle-tested |
+| 3 | /diagnosis errored (digest 3451054532) | "8 unwrapped readers, cold-start gap" — shipped coldFallback wrapping | misdiagnosis; same digest after deploy |
+| 4 | Same digest persisted | reproduced in dev → real cause was RSC serialization (StageDef passed to client component) | shipped envVars-only prop |
+| 5 | aiDisabled empty-state too aggressive (page rendered empty even when liveDiagnosis existed) | fall-through gating | second commit needed for /diagnosis specifically (this-week view) |
+| 6 | "AI off this run" banner showed on past-week views | aiDisabled gated on isThisWeekView | fixed |
+| 7 | Pipeline carry-forward chain breaking → "AI never succeeded" banner | side-channel writers (viral_refresh, check_graph_version, ab_classifier_sample) appended Analysis_Log rows blanking the chain | shipped write_audit_log_row helper + dashboard read-side walk-backward |
+
+**Each of these would have been caught by a 30-line smoke test or a regex linter run BEFORE the deploy.** Instead each shipped to live users, the user reported it, I diagnosed reactively, shipped a fix, and declared victory — until the next one.
+
+**Why the pattern persisted:**
+
+1. **No automated tests.** Visual verification on live was the only gate. There was no synthetic-input enumeration ("what if `Last Successful X At` is blank? what if engine=off? what if mid-week row doesn't exist?"). I found these one at a time in production.
+2. **Production was the test environment.** Every push → Vercel deploys → I check live. When it broke, real users saw it.
+3. **Declared "fixed" too early.** I kept shipping the symptom-fix. The cold-start coldFallback work was correct in isolation but wasn't the cause of THIS outage; if I'd reproduced in dev (which took 30s when I finally did), I'd have seen the real exception immediately.
+4. **State explosion not enumerated.** Dashboard pages have coupled state: `aiDisabled` × `isThisWeekView` × `isArchival` × `hasData` × `mid-week-row exists`. I kept finding edge cases one cell at a time.
+5. **`docs/LIVE_CHECK_POVS.md` Tier 1 exists but I wasn't running it.** The project's own CLAUDE.md says "post-deploy: walk Tier 1 → if anything fails, fix → re-walk → ship". I shipped without walking it 7 times in 48h.
+
+**Defenses shipped 2026-05-04:**
+
+- **`scripts/smoke-tests.ts`** — 9 reader-layer tests with synthetic Analysis_Log / Content_Calendar inputs. Mocks `readTab` via `SMOKE_TEST_MODE=1` env-var hook. Each test enumerates one of the breaking states from the table above. Runs in <2s. New regressions land here as new tests. **`npm run smoke`** must pass.
+- **`scripts/rsc-audit.mjs`** — regex linter that scans every `app/**/*.tsx` JSX call site for known function-bearing props passed as wholes (currently `STAGES.X` with no further property access). Verified to catch the original `stage={STAGES.diagnosis}` violation. **`npm run rsc:audit`** must pass.
+- **`npm run predeploy`** — chains smoke + rsc:audit + brand:audit + build. The new pre-flight check before `git push`.
+
+**Reuse rule:** when fixing a prod bug, BEFORE shipping the fix, write a smoke test (or RSC linter pattern) that would have caught it. The cost is 30 lines; the saving is the next reactive cycle.
+
+---
+
 ## 2026-05-03 — Last-known-good fallback should be silent; only `throw` deserves a banner
 
 `lib/cache.ts` originally marked a read stale in two cases: (a) fetcher threw, (b) fresh data came back empty AND cache held something non-empty. Case (b) was meant to catch transient sheet-wipes mid-write. In practice it also fired on every legitimate "this week has no diagnosis row yet" read — a `getDiagnosisByWeek("2026-05-04")` call that genuinely returns null because the week hasn't been processed.

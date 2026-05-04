@@ -36,6 +36,15 @@ function getSheetsClient() {
 }
 
 async function readTab(tabName: string): Promise<any[][]> {
+  // Smoke-test hook (scripts/smoke-tests.mjs): if SMOKE_TEST_MODE=1 is set
+  // AND globalThis.__SMOKE_TEST_TABS__ has the tab, return that instead of
+  // hitting the Sheets API. Lets us enumerate edge-case data states without
+  // spinning up real creds. Production paths never set SMOKE_TEST_MODE.
+  if (process.env.SMOKE_TEST_MODE === "1") {
+    const mock = (globalThis as any).__SMOKE_TEST_TABS__?.[tabName];
+    if (mock) return mock;
+    return [];
+  }
   const sheets = getSheetsClient();
   const id = process.env.GOOGLE_SPREADSHEET_ID;
   if (!id) throw new Error("GOOGLE_SPREADSHEET_ID not set");
