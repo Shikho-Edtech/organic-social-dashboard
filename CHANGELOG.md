@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-05-04 — Playwright E2E scaffold + fix-on-touch grep rule (PR #3)
+
+User feedback after another reactive cycle: "manual live walks miss bugs." True. Two improvements shipped:
+
+1. **Playwright E2E suite scaffold** (`tests/e2e/`). 4 starter tests cover the bug shapes user caught today (banner-on-/plan, /diagnosis cross-view consistency, fallback subtitle, calibration KPI presence). Auth via `/api/auth` with persisted `storageState`. `npm run test:e2e` boots local dev server, auths, runs in ~20s. **Not** in predeploy chain yet — would slow it 2x; promote when E2E catches a bug predeploy missed.
+2. **Fix-on-touch grep rule** (`CLAUDE.md`). When fixing a UI bug, grep for the same anti-pattern on sibling pages BEFORE declaring done. ~30s per fix; would have caught today's `/plan` banner bug (same shape as `/diagnosis` fix shipped 2 commits earlier). Discipline, not enforced.
+
+## 2026-05-04 — Three user-caught bugs (PR #2)
+
+User manual inspection caught what my live walks missed. All three fixed test-first (RED→GREEN), 5 new smoke tests added (21/21 total).
+
+- **/plan default banner** showed "AI calendar is off this run" above 36 slots of legit content. Same shape as the /diagnosis fix from earlier today, not ported to /plan. Fix: new `computeCalendarBannerState` pure function in `lib/sheets.ts` (parallel to `computeDiagnosisBannerState`).
+- **/diagnosis cross-view inconsistency**. Same week (2026-04-27) showed different verdicts on `/diagnosis` (default fallback to `liveDiagnosis` = LAST row) vs `/diagnosis?week=last` (`getDiagnosisByWeekPreferred` = FIRST match). `Weekly_Analysis` schema has 12 cols — no `Engine`, no `Generated At` — so the sort+filter in `getDiagnosisByWeekPreferred` was a no-op. Fix: when no metadata exists, fall back to LAST matching row (matches `getLatestDiagnosis` convention). Forward-compatible with future schema where these cols get added.
+- **/outcomes brief empty state**. Self-resolved transient cold-start `coldFallback: []` firing. No code change.
+
+## 2026-05-04 — Smoke test isolation fix (PR #1, caught by CI on first run)
+
+CI gate caught a real test-isolation bug on its first invocation: 14/16 passed locally, 2 failed in CI Linux. Different ESM module records under tsx — `lib/sheets.ts` imports `./cache` (no extension), the smoke runner imported `../lib/cache.js` (with extension); these resolved to separate module records on Linux but same on Windows by coincidence. `_clearCacheForTests()` cleared one instance, the other (the one readers used) still had stale state. Fix: re-export `_clearCacheForTests` from `lib/sheets.ts` so the smoke runner uses the SAME module graph as the readers. The CI gate caught a bug I missed locally — that's the gate working as designed.
+
 ## 2026-05-04 — CI gate workflow + forecast calibration KPI on /outcomes
 
 Two changes that move from "we have defenses" to "the defenses are mechanically enforced + the central product signal is visible."
