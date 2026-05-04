@@ -10,24 +10,27 @@
     "brand:audit": "node scripts/brand-audit.mjs",
     "smoke": "npx tsx scripts/smoke-tests.ts",
     "rsc:audit": "node scripts/rsc-audit.mjs",
-    "predeploy": "npm run smoke && npm run rsc:audit && npm run brand:audit && npm run build"
+    "predeploy": "npm run smoke && npm run rsc:audit && npm run brand:audit && npm run build",
+    "test:e2e": "playwright test",
+    "test:e2e:install": "playwright install chromium"
   },
   "dependencies": {
+    "@vercel/analytics": "^1.4.1",
+    "date-fns": "^4.1.0",
+    "googleapis": "^144.0.0",
     "next": "14.2.15",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "googleapis": "^144.0.0",
-    "recharts": "^2.13.3",
-    "date-fns": "^4.1.0",
-    "@vercel/analytics": "^1.4.1"
+    "recharts": "^2.13.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@types/node": "^22.7.5",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.0",
-    "typescript": "^5.6.3",
-    "tailwindcss": "^3.4.13",
+    "autoprefixer": "^10.4.20",
     "postcss": "^8.4.47",
-    "autoprefixer": "^10.4.20"
+    "tailwindcss": "^3.4.13",
+    "typescript": "^5.6.3"
   }
 }

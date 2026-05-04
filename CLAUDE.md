@@ -261,6 +261,51 @@ live checks. Every "proven" POV points to a v4.x fix in git history.
 
 ---
 
+## Fix-on-touch rule (added 2026-05-04)
+
+When fixing a UI bug on one page, **before declaring done, grep the codebase for the same anti-pattern on sibling pages**. The 2026-05-04 reactive cycle had multiple instances where a fix shipped on `/diagnosis` was not ported to `/plan` despite both pages having identical state shapes. User caught it; smoke tests didn't (only covered the page I fixed).
+
+**The rule:** any UI fix that touches a shared decision (banner gating, empty-state, fallback behavior, parameter handling) must end with a `git grep` for the OLD pattern across all pages. If matches show up, port the fix or extract the rule into a pure function in `lib/sheets.ts` that all callers share.
+
+### Concrete examples
+
+**Banner gating** — fix shipped on `/diagnosis` 2026-05-04 morning, missed on `/plan` until afternoon:
+```bash
+# After fixing one page, before commit:
+git grep -nE 'aiDisabled.*isThisWeekView' app/
+# If multiple matches, every match needs the same fix OR delegation to a shared helper.
+```
+
+**Reader path consistency** — `/diagnosis` (default) and `/diagnosis?week=last` returned different rows for the same week because two readers had divergent tie-breakers:
+```bash
+git grep -nE 'find\(.*Week Ending' lib/sheets.ts
+git grep -nE 'objects\[objects.length' lib/sheets.ts
+# Two readers picking different rows → inconsistent UI. Pick one convention.
+```
+
+**RSC serialization** — already mechanically enforced by `npm run rsc:audit`. Same pattern: a fix on one client component required checking every other client component in `app/`.
+
+### Why this works
+
+Most bug shapes recur. When you find one, the same shape exists somewhere else 60% of the time. A 30-second grep before declaring done is cheaper than a reactive PR after the user reports it on a different page.
+
+### What this is NOT
+
+- Not a substitute for smoke tests. Smoke tests guard the regression. Grep guards the SCOPE of the fix.
+- Not exhaustive. Bugs that don't fit a shared regex pattern won't surface here.
+- Not enforcement. It's a rule. The CI gate doesn't know.
+
+### Required before declaring a UI fix done
+
+1. ✅ Smoke test added FIRST (the existing rule)
+2. ✅ Fix written, smoke goes GREEN
+3. ✅ **Fix-on-touch grep**: search for the OLD pattern across `app/**/*.tsx` and `lib/*.ts`. Address every match.
+4. ✅ Live walk on the affected page
+
+This adds ~30s per fix. The 2026-05-04 reactive cycle would have been ~2 commits shorter with this rule in place.
+
+---
+
 ## Pre-commit QA gate — multi-perspective pass
 
 `npm run build` is necessary but **not sufficient**. Every commit that changes
