@@ -11,3 +11,9 @@ out/
 
 # TypeScript incremental build cache
 tsconfig.tsbuildinfo
+
+# Playwright (test:e2e)
+test-results/
+playwright-report/
+playwright/.cache/
+tests/e2e/.auth/
