@@ -525,6 +525,54 @@ function daysBetween(iso: string, now: Date): number {
   return Math.floor(ms / (1000 * 60 * 60 * 24));
 }
 
+/**
+ * Pure-function decision: should the page show the alarming "AI off this run"
+ * banner, or a quieter "showing prior week" notice?
+ *
+ * Extracted from app/diagnosis/page.tsx so the rule is unit-testable
+ * (see scripts/smoke-tests.ts). Lives here in lib/sheets.ts because it's
+ * a tiny static decision tree, not worth a new module.
+ *
+ * Rule (2026-05-04 incident #4 fix):
+ *   - aiDisabled banner ONLY when ALL true: aiDisabled, isThisWeekView,
+ *     no content (weekDiagnosis null AND liveDiagnosis null).
+ *   - showFallbackNotice when this-week view falls back to liveDiagnosis
+ *     (last-week's content). User needs to know they're seeing prior data.
+ *   - Past-week / archival views: never aiDisabled banner — the user is
+ *     deliberately viewing historical data, current pipeline state is
+ *     irrelevant context.
+ */
+export function computeDiagnosisBannerState(opts: {
+  isArchival: boolean;
+  isThisWeekView: boolean;
+  aiDisabled: boolean;
+  weekDiagnosis: unknown;
+  liveDiagnosis: unknown;
+}): { showAiDisabledBanner: boolean; showFallbackNotice: boolean } {
+  if (opts.isArchival || !opts.isThisWeekView) {
+    return { showAiDisabledBanner: false, showFallbackNotice: false };
+  }
+  const hasFreshThisWeek = opts.weekDiagnosis !== null && opts.weekDiagnosis !== undefined;
+  const hasFallback = opts.liveDiagnosis !== null && opts.liveDiagnosis !== undefined;
+  if (!opts.aiDisabled) {
+    // AI is on. Even if this-week view has no row yet (mid-week not run),
+    // the empty-state copy is enough — no aiDisabled banner needed.
+    return { showAiDisabledBanner: false, showFallbackNotice: false };
+  }
+  // AI is off. If we have NO content at all, fire the alarming banner.
+  if (!hasFreshThisWeek && !hasFallback) {
+    return { showAiDisabledBanner: true, showFallbackNotice: false };
+  }
+  // AI is off but we DO have content (fresh this-week OR fallback last-week).
+  // Don't fire the alarming banner — the user has data to read. If we're
+  // showing FALLBACK content (no this-week row, only liveDiagnosis), surface
+  // a quiet notice so the user knows they're seeing prior week.
+  if (!hasFreshThisWeek && hasFallback) {
+    return { showAiDisabledBanner: false, showFallbackNotice: true };
+  }
+  return { showAiDisabledBanner: false, showFallbackNotice: false };
+}
+
 export function computeStaleness(
   artifact: "diagnosis" | "calendar" | "strategy",
   run: RunStatus,

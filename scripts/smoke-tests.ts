@@ -233,6 +233,79 @@ test("computeStaleness returns crit/never-succeeded only when truly never", asyn
   assertEqual(info.days_since, -1, "never run → days_since -1");
 });
 
+// ─── Tests: diagnosis page render-state (incident 2026-05-04 part 4) ─
+// Bug: when this-week view falls back to liveDiagnosis (last-week's
+// content) because no mid-week row exists yet AND latest run is AI-off,
+// the page rendered with the aiDisabled banner ("AI off this run") on
+// top of legitimate content. The banner is technically true but it
+// alarms the user about a state they don't need to act on — the data
+// IS being shown, it's just from a prior week.
+//
+// Rule: aiDisabled banner only fires when there is GENUINELY no content
+// to show. When fallback content is present, show a quieter "showing
+// prior week" notice instead, not the alarming aiDisabled banner.
+
+test("diagnosis page: no aiDisabled banner when liveDiagnosis fallback is rendered", async () => {
+  const sheets = await import("../lib/sheets.js");
+  // Helper exported by lib/sheets to centralize the render-state decision
+  // so it can be tested without rendering React.
+  if (!(sheets as any).computeDiagnosisBannerState) {
+    throw new Error(
+      "lib/sheets must export computeDiagnosisBannerState — extract the page-level " +
+      "banner decision into a pure function so it can be unit-tested",
+    );
+  }
+  const state = (sheets as any).computeDiagnosisBannerState({
+    isArchival: false,
+    isThisWeekView: true,
+    aiDisabled: true,
+    weekDiagnosis: null,
+    liveDiagnosis: { week_ending: "2026-04-27", headline: "Last week's verdict" },
+  });
+  assertEqual(state.showAiDisabledBanner, false,
+    "aiDisabled banner should NOT show when liveDiagnosis fallback content exists");
+  assertEqual(state.showFallbackNotice, true,
+    "showFallbackNotice SHOULD show — user needs to know they're seeing prior week");
+});
+
+test("diagnosis page: aiDisabled banner DOES fire when no content at all", async () => {
+  const sheets = await import("../lib/sheets.js");
+  const state = (sheets as any).computeDiagnosisBannerState({
+    isArchival: false,
+    isThisWeekView: true,
+    aiDisabled: true,
+    weekDiagnosis: null,
+    liveDiagnosis: null,
+  });
+  assertEqual(state.showAiDisabledBanner, true,
+    "aiDisabled banner SHOULD fire when truly no content");
+});
+
+test("diagnosis page: no aiDisabled banner on past-week view even when AI off", async () => {
+  const sheets = await import("../lib/sheets.js");
+  const state = (sheets as any).computeDiagnosisBannerState({
+    isArchival: false,
+    isThisWeekView: false,
+    aiDisabled: true,
+    weekDiagnosis: { week_ending: "2026-04-27", headline: "x" },
+    liveDiagnosis: { week_ending: "2026-04-27", headline: "x" },
+  });
+  assertEqual(state.showAiDisabledBanner, false,
+    "past-week view never shows aiDisabled banner — that's about current state, not historical");
+});
+
+test("diagnosis page: no aiDisabled banner when AI is on (regardless of view)", async () => {
+  const sheets = await import("../lib/sheets.js");
+  const state = (sheets as any).computeDiagnosisBannerState({
+    isArchival: false,
+    isThisWeekView: true,
+    aiDisabled: false,
+    weekDiagnosis: { week_ending: "2026-05-04", headline: "fresh" },
+    liveDiagnosis: { week_ending: "2026-05-04", headline: "fresh" },
+  });
+  assertEqual(state.showAiDisabledBanner, false, "AI on → no aiDisabled banner");
+});
+
 // ─── Runner ─────────────────────────────────────────────────────────
 async function main() {
   let passed = 0, failed = 0;
