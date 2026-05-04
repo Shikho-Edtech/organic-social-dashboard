@@ -453,6 +453,27 @@ async function _getRunStatusRaw(): Promise<RunStatus> {
     }
     return "unknown";
   };
+
+  // 2026-05-04 carry-forward chain hardening: pre-fix, side-channel writers
+  // (scripts/viral_refresh.py, scripts/check_graph_version.py) appended rows
+  // with all four `Last Successful X At` columns blank. The next legit
+  // `write_run_log` call read THAT row as the prior row and propagated the
+  // blanks. Result: the dashboard's `runStatus.last_successful_diagnosis_at`
+  // would be "" even though a successful AI run existed earlier in history.
+  //
+  // Defense: when the latest row has a blank timestamp for a given
+  // artifact, walk backward through history and pick the most recent row
+  // that DOES have it populated. The pipeline-side fix
+  // (write_audit_log_row carry-forward) prevents new blanks; this read-side
+  // hardening recovers from existing blanks AND any future writer bug.
+  const findLatest = (col: string): string => {
+    for (let i = objects.length - 1; i >= 0; i--) {
+      const v = objects[i][col];
+      if (v && String(v).trim()) return String(v);
+    }
+    return "";
+  };
+
   return {
     last_run_at: last["Run Date"] || "",
     classify_status: normalize(last["Classify Status"]),
@@ -465,10 +486,10 @@ async function _getRunStatusRaw(): Promise<RunStatus> {
     // STR-04 / STR-11: pre-Sprint-N rows have blank Strategy Status ->
     // "unknown" (same honest-blind-spot pattern as priors).
     strategy_status: normalize(last["Strategy Status"]),
-    last_successful_diagnosis_at: last["Last Successful Diagnosis At"] || "",
-    last_successful_calendar_at: last["Last Successful Calendar At"] || "",
-    last_successful_priors_at: last["Last Successful Priors At"] || "",
-    last_successful_strategy_at: last["Last Successful Strategy At"] || "",
+    last_successful_diagnosis_at: findLatest("Last Successful Diagnosis At"),
+    last_successful_calendar_at: findLatest("Last Successful Calendar At"),
+    last_successful_priors_at: findLatest("Last Successful Priors At"),
+    last_successful_strategy_at: findLatest("Last Successful Strategy At"),
   };
 }
 
