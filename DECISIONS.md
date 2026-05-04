@@ -1,5 +1,59 @@
 # Decisions
 
+## 2026-05-04 — Playwright E2E NOT in the predeploy chain (yet)
+
+`npm run predeploy` chains smoke + rsc:audit + brand:audit + build — each ≤10s, total ~45s. Adding Playwright would push it to ~70s. **Decided to keep them separate** for now:
+
+- Predeploy stays fast → low friction → developers actually run it before push
+- E2E runs on demand or as a separate (slower) CI job
+- **Promote E2E into predeploy when** it catches a bug that predeploy missed twice in a row
+
+Tradeoff: faster predeploy vs catching more bug shapes. Right call for a 1-developer codebase where bugs slip through reactively. Re-evaluate when the ratio of "user-caught bug" to "CI-caught bug" gets uncomfortable.
+
+## 2026-05-04 — Smoke tests use `SMOKE_TEST_MODE=1` env hook, not dependency injection
+
+`scripts/smoke-tests.ts` mocks `readTab` via `globalThis.__SMOKE_TEST_TABS__` + an env-var check inside `lib/sheets.ts::readTab`. Could have rewritten to inject a sheets-client provider instead — proper DI, more testable.
+
+**Decided:** env-hook is fine because:
+1. Production code path is one extra `if (process.env.SMOKE_TEST_MODE === "1")` branch — zero runtime cost
+2. DI rewrite would touch every reader; large diff for marginal benefit
+3. The hook makes the seams visible (only `readTab`); a DI rewrite scatters them
+4. Test fixtures live in `globalThis` namespace, isolated from prod imports
+
+If a future reader bypasses `readTab` (direct googleapis call), it can't be mocked — that's the limitation. Acceptable: every existing reader goes through `readTab`, and the smoke test would surface a bypass (unmocked call → real API → CI fail).
+
+## 2026-05-04 — Re-export `_clearCacheForTests` from `lib/sheets.ts`, not direct cache import
+
+CI run #1 of the gate caught a real bug: smoke test imported `_clearCacheForTests` from `../lib/cache.js`; readers used `./cache` (no extension). These resolved to separate ESM module records on Linux + tsx. Tests cleared one cache; readers used the other.
+
+**Decided:** re-export the test hook from the SAME module that the readers use. Tests call `lib/sheets._clearCacheForTests()` → guaranteed one module record because there's only one import path.
+
+Tradeoff: tiny pollution of `lib/sheets.ts`'s public surface. Worth it: the alternative (per-test specifier audits) is fragile, and the failure mode (tests pass locally, fail on CI) is exactly what wastes engineering time.
+
+**Generalizable rule:** any "shared singleton" testing hook should be exposed via the SAME import path the production code uses — never via a parallel path that might resolve to a different module record.
+
+## 2026-05-04 — Calibration KPI status thresholds: 65% / 50% / <50%
+
+`/outcomes` calibration KPI shows a status pill: emerald "calibrated" (≥65%) / amber "drifting" (50–64%) / rose "mis-calibrated" (<50%). The asserted CI is 80%, so why aren't the thresholds 80%?
+
+- **80% target, but pragmatic 65% acceptance.** Real-world calibration on small-n weekly batches is noisy; demanding 80% would set a perpetual "fail" state. 65% means "directionally calibrated enough to act on."
+- **50% as the floor between drift and broken.** Below 50% the bands are no better than coin flips; the forecast layer is theatrical. Above 50% there's signal worth tuning.
+- **Three-tier instead of binary** so the team can spot trend direction (drift toward green = tightening or widening is working).
+
+If the team's preference shifts after observing a few weeks, bump the thresholds in `summarizeCalibration()` in `lib/sheets.ts` — single source of truth.
+
+## 2026-05-04 — Fix-on-touch grep rule: discipline, not enforced by CI
+
+After fixing a UI bug on one page, grep `app/**/*.tsx` for the same shape on sibling pages. ~30s per fix; would have caught today's `/plan` banner bug (same shape as `/diagnosis` fix from 2 commits earlier).
+
+**Decided:** keep this as a CLAUDE.md rule, NOT enforced by CI. Reasons:
+
+- Mechanical enforcement would need a "duplicate anti-pattern detector" — hard to express; would generate false positives for legitimately similar code
+- The class of bug it catches (parallel implementations diverging) is partly covered by extracting shared helpers (`computeDiagnosisBannerState`, `computeCalendarBannerState`)
+- Grep is a 30-second human action; the dev who wrote the fix is the right person to scan for siblings
+
+If "fix on A, missed on B" repeats more than twice more, escalate to a real linter rule. For now: rule + checklist.
+
 ## 2026-05-02 — Closed-loop self-improvement: L0.5 discipline (advisory only, never auto-applied)
 
 We added a closed-loop self-improvement layer (Tier 1 of

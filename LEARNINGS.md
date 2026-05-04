@@ -1,5 +1,45 @@
 # Learnings
 
+## 2026-05-04 — ESM under tsx: same source file via different specifiers can be different module records
+
+`lib/sheets.ts` imports cache via `import { withLastGood } from "./cache"` (no extension). The smoke-test runner imported via `await import("../lib/cache.js")` (with `.js` extension). On Node ESM, module resolution caches by URL — these can resolve to **separate module records** even though they're the same source file. Calling `_clearCacheForTests()` on one cleared its `Map`, but the other (the one `lib/sheets.ts` was reading from) was untouched. Cache state from prior tests bled into subsequent tests.
+
+**Local Windows + tsx happened to align by coincidence; CI Linux + tsx didn't.** First CI run on the new gate caught it: 14/16 pass, 2 fail.
+
+**Reuse rule:** test-side cache resets MUST go through the SAME import specifier the readers use. The fix here was to re-export `_clearCacheForTests` from `lib/sheets.ts` and have tests call it via `lib/sheets`. That guarantees one module record because there's only one import path. **Generalize:** any "shared singleton in module-level state" needs a single canonical access path; never let test code reach for it via a path the production code doesn't use.
+
+---
+
+## 2026-05-04 — Schema-implied tie-breakers must work even when the metadata columns don't exist
+
+`getDiagnosisByWeekPreferred` sorted matching rows by `generated_at` and filtered by `engine` — both expected to be in `Weekly_Analysis`. The schema actually has 12 cols, neither of those. Both fields parsed to `""` every time. Sort was a no-op. `.find()` returned the FIRST matching row. Meanwhile `getLatestDiagnosis()` took the LAST array element. Two readers, two different rows for the same week, two different verdicts on screen.
+
+The original code was forward-looking — written assuming a future schema where these cols would exist. But the dashboard had to work TODAY against the actual schema, and "TODAY" silently produced wrong answers.
+
+**Reuse rule:** when a tie-breaker depends on metadata columns, **detect their presence first**. Have an explicit fallback for the no-metadata path that AGREES with the convention used elsewhere (in our case, `getLatestDiagnosis` = "last array element"). Don't rely on accidentally-correct behavior of empty-string tie-breakers.
+
+**Generalize:** any code that reads optional columns ("if present, use them") needs a documented fallback for the no-column case + a unit test that locks the fallback in. Otherwise schema drift turns into silent data inconsistency.
+
+---
+
+## 2026-05-04 — Manual live-walks have inherent weaknesses; E2E suite is the structural answer
+
+I claimed "11 pages render cleanly" after walking each URL once and grepping the text for `undefined` / `[object Object]`. User caught 3 bugs my walks missed:
+
+| Bug shape | Why my walk missed it |
+|---|---|
+| Same banner-gate fix shipped on /diagnosis but not /plan | I don't grep for "did I fix this same shape on every page that has it" |
+| Same week, two views, different verdicts | I don't cross-compare URLs that should agree |
+| Cold-start coldFallback empty page | I always reload once and accept whatever renders |
+
+Manual eyeball scanning has known-weak spots: cross-page consistency, URL-param × data-shape matrix, transient cold-start states. The structural answer is a Playwright E2E suite that asserts specific rendered properties — running both on demand and (eventually) in CI.
+
+**Reuse rule:** when "I walked all the pages" feels like sufficient verification, it usually isn't. Specific bug shapes need specific assertions. The E2E suite at `tests/e2e/` exists for this — every user-caught bug becomes a test added FIRST, then the fix.
+
+**Pair this with:** the **fix-on-touch grep rule** in CLAUDE.md. When fixing one page, grep `app/**/*.tsx` for the same shape on sibling pages BEFORE declaring done. Catches the "fixed on /diagnosis but not /plan" class without needing E2E to run.
+
+---
+
 ## 2026-05-04 — Reactive whack-a-mole pattern: shipping 7 fixes in 48h for what should have been 1 test suite
 
 Between 2026-05-02 and 2026-05-04 the dashboard shipped this sequence of reactive fixes, each caught visually on the live deploy AFTER it broke for the user:

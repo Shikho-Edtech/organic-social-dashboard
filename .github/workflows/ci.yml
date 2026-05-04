@@ -91,3 +91,65 @@ jobs:
           echo "  rsc:audit: clean"
           echo "  brand:audit: clean"
           echo "  build: green"
+
+  # ─── Docs-hygiene gate (2026-05-04) ──────────────────────────────
+  # User flagged that several commits were merged today without
+  # CHANGELOG entries — same failure mode as predeploy before we made
+  # it mechanical: a discipline rule that quietly slipped in a busy
+  # session. This job fails any PR that touches code without also
+  # touching CHANGELOG.md.
+  #
+  # SCOPE — fires when these paths change:
+  #   app/, lib/, components/, scripts/, src/, .github/workflows/
+  #
+  # NOT a quality gate. Cannot enforce that the entry is informative;
+  # only that one exists. A developer can satisfy it with `## hotfix`
+  # and an empty bullet — that's a known limit. The point is to kill
+  # the "I forgot entirely" failure mode, which is what happened
+  # 2026-05-04. If the entry is empty/unhelpful, it's still visible
+  # in PR review.
+  #
+  # BYPASS — none. If a PR genuinely doesn't warrant a CHANGELOG entry
+  # (lockfile bump, .gitignore tweak), it shouldn't touch the gated
+  # paths anyway. Otherwise add a one-line "internal refactor, no
+  # user-facing change" entry. Cost: 5 seconds. Saving: catches the
+  # next reactive-cycle silent merge.
+  require-changelog:
+    name: docs hygiene (CHANGELOG entry required for code changes)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 2
+
+    steps:
+      - name: Checkout (full history for diff against base)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify CHANGELOG touched on code-touching PR
+        run: |
+          BASE="origin/${{ github.base_ref }}"
+          CHANGED=$(git diff --name-only "$BASE"...HEAD)
+          echo "Files changed in this PR:"
+          echo "$CHANGED" | sed 's/^/  /'
+
+          # Touched any of the gated code paths?
+          TOUCHED_CODE=$(echo "$CHANGED" | grep -E '^(app|lib|components|scripts|src|\.github/workflows)/' || true)
+          if [ -z "$TOUCHED_CODE" ]; then
+            echo "::notice::PR did not touch gated code paths; CHANGELOG entry not required."
+            exit 0
+          fi
+
+          # Touched CHANGELOG.md?
+          if echo "$CHANGED" | grep -q '^CHANGELOG\.md$'; then
+            echo "::notice::CHANGELOG.md was updated. Docs gate passed."
+            exit 0
+          fi
+
+          echo "::error::This PR changes code under app/, lib/, components/, scripts/, src/, or .github/workflows/ but does not update CHANGELOG.md."
+          echo "::error::Add a one-line entry to CHANGELOG.md describing what shipped and why it matters."
+          echo "::error::See organic-social-dashboard/CLAUDE.md 'Post-commit documentation' for the rule. PRs without CHANGELOG entries cannot merge."
+          echo ""
+          echo "Code paths changed without CHANGELOG entry:"
+          echo "$TOUCHED_CODE" | sed 's/^/  /'
+          exit 1
