@@ -1,182 +1,137 @@
 "use client";
 
-// Step 3: empty state rendered on /strategy or /plan when the backing AI
-// stage has been explicitly turned off (pipeline ran with --engine=native or
-// the stage was skipped entirely).
+// AI-pending / AI-failed / AI-off empty state for content-team-facing pages.
 //
-// Design: docs/design/Cycle 1 - Banner and Empty States.html §6 (/strategy
-// and /plan instances). Same card on both pages — only the noun and env-var
-// names change. Byte-identical layout is the point, so the reader learns the
-// pattern once.
+// 2026-05-05 rewrite (page-by-page review feedback): the prior version
+// surfaced env-var copy chips ("set DIAGNOSIS_PROVIDER, DIAGNOSIS_MODEL,
+// DIAGNOSIS_API_KEY in the pipeline's GitHub Actions secrets") and an
+// archived-version deep link. End users don't have access to those
+// secrets and don't need that detail. Replaced with a state-aware pill
+// + last-successful-run + next-scheduled hint + one short message.
 //
-// The "View archived" link wires the archival-read mode: clicking it pushes
-// `?archived=<week-ending>` onto the URL and the page re-renders with the
-// archived artifact. Landing on the same URL with no query param returns to
-// this empty state. One URL param = one state flag; no router push needed
-// beyond the link itself (Next.js App Router re-renders on searchParams).
+// State drives copy (ArtifactStatus from lib/sheets.ts):
+//   - "failed"   → AI [noun] run failed (numbers still update)
+//   - "fallback" → AI [noun] unavailable (likely credits — numbers still update)
+//   - "skipped"  → AI [noun] is off this week (numbers still update)
+//   - other      → AI [noun] pending (will populate at next scheduled run)
+//
+// Numerical data on the page (live KPIs from posts) is independent of AI
+// status; this card never blocks numbers from rendering.
 
-import { useState } from "react";
-import Link from "next/link";
+import type { ArtifactStatus } from "@/lib/sheets";
 
 export default function AIDisabledEmptyState({
-  envVars,
-  lastSuccessfulAt,
-  archiveKey,
   noun,
-  readsDescription,
+  lastSuccessfulAt,
+  status,
+  nextScheduledLabel,
 }: {
-  /**
-   * The stage's env-var names (rendered as copy-on-click chips). 2026-05-04
-   * incident #2: was previously `stage: StageDef` — that object carries
-   * `readStatus` / `readLastSuccessful` FUNCTIONS which can't cross the
-   * server→client RSC boundary. `Functions cannot be passed directly to
-   * Client Components` was the actual digest 3451054532 root cause. Pass
-   * just the serializable string-array slice instead.
-   */
-  envVars: readonly string[];
+  /** Sentence noun, e.g. "AI diagnosis", "AI calendar". */
+  noun: string;
   /** ISO timestamp of the stage's most recent successful run. "" = never. */
   lastSuccessfulAt: string;
+  /** Drives the pill copy + the body sentence. */
+  status: ArtifactStatus;
   /**
-   * The ID to deep-link the archived artifact as `?archived=<archiveKey>`.
-   * For diagnosis this is the Week Ending string (e.g., "2026-04-11").
-   * For calendar it's the Run ID (future; "" until Calendar_Archive exists).
-   * Empty string hides the "View archived" link.
+   * Optional hint about WHEN the next run is expected, e.g. "Thursday
+   * morning" or "Monday morning". When omitted, the body falls back to
+   * a generic "the next scheduled run". Caller computes this because the
+   * cadence differs by artifact (diagnosis runs Mon + Thu; calendar
+   * runs Mon only).
    */
-  archiveKey: string;
-  /** Sentence noun, e.g. "strategy", "calendar". */
-  noun: string;
-  /**
-   * One-sentence description of what the page reads, e.g. "This page reads
-   * the weekly AI diagnosis." Kept as a prop so the component stays generic.
-   */
-  readsDescription: string;
+  nextScheduledLabel?: string;
 }) {
+  const pill = pillFor(status);
+  const title = titleFor(noun, status);
+  const body = bodyFor(status, nextScheduledLabel);
+
   return (
     <div className="max-w-2xl mx-auto my-6">
-      <div className="relative rounded-xl border border-slate-200 bg-white ring-1 ring-inset ring-brand-shikho-indigo/5 p-6 sm:p-8 shadow-sm">
-        {/* Intentionally-off pill */}
-        <div className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-brand-shikho-indigo rounded-full px-2.5 py-1 ring-1 ring-brand-shikho-indigo/15"
-             style={{ backgroundColor: "rgba(30,42,120,0.06)" }}>
-          <span className="w-1.5 h-1.5 rounded-full bg-brand-shikho-indigo" />
-          Intentionally off
+      <div className="relative rounded-xl border border-ink-100 bg-ink-paper p-5 sm:p-6 shadow-sm">
+        <div
+          className={`inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] rounded-full px-2.5 py-1 ring-1 ${pill.classes}`}
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-current" />
+          {pill.label}
         </div>
 
-        <h2 className="mt-3 text-xl sm:text-2xl font-bold text-slate-900 leading-tight tracking-tight break-words">
-          {titleFor(noun)}
+        <h2 className="mt-3 text-lg sm:text-xl font-bold text-ink-primary leading-tight tracking-tight break-words">
+          {title}
         </h2>
 
-        <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-          {readsDescription} Every other page on the dashboard still works on
-          the native pipeline (extract + classify + analyse).
+        <p className="mt-2 text-sm text-ink-secondary leading-relaxed">
+          {body}
         </p>
 
-        <div className="mt-4 flex items-start gap-2 text-[13px] text-slate-600">
-          <svg aria-hidden className="flex-shrink-0 mt-0.5 text-slate-500" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10" />
-            <polyline points="12 6 12 12 16 14" />
-          </svg>
-          <span>
-            Last successful run:{" "}
-            <span className="font-medium text-slate-800">
-              {lastSuccessfulAt ? formatShortDate(lastSuccessfulAt) : "never"}
-            </span>
-            {lastSuccessfulAt && (
-              <span className="text-slate-500"> ({daysAgo(lastSuccessfulAt)})</span>
-            )}
+        <div className="mt-3 text-[12px] text-ink-muted">
+          Last successful run:{" "}
+          <span className="font-medium text-ink-secondary">
+            {lastSuccessfulAt ? formatShortDate(lastSuccessfulAt) : "never"}
           </span>
+          {lastSuccessfulAt && (
+            <span className="text-ink-muted"> ({daysAgo(lastSuccessfulAt)})</span>
+          )}
         </div>
-
-        <div className="mt-5">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 mb-2">
-            How to turn it back on
-          </div>
-          <p className="text-[13px] text-slate-600 leading-relaxed">
-            Set{" "}
-            <EnvChips vars={envVars} />
-            {" "}in the pipeline&apos;s GitHub Actions secrets, then re-run the
-            weekly workflow.
-          </p>
-        </div>
-
-        {archiveKey && (
-          <div className="mt-5 pt-5 border-t border-slate-100">
-            <Link
-              href={`?archived=${encodeURIComponent(archiveKey)}`}
-              className="inline-flex items-center gap-1.5 text-[13px] font-medium text-brand-shikho-indigo hover:text-brand-shikho-blue"
-            >
-              View archived {formatShortDate(lastSuccessfulAt)} version
-              <svg aria-hidden width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="5" y1="12" x2="19" y2="12" />
-                <polyline points="12 5 19 12 12 19" />
-              </svg>
-            </Link>
-          </div>
-        )}
       </div>
     </div>
   );
 }
 
-function titleFor(noun: string): string {
-  // Match design copy: "AI diagnosis is not running this week" /
-  // "AI calendar is not running this week"
-  const n = noun.toLowerCase();
-  if (n.includes("calendar")) return "AI calendar is not running this week";
-  return "AI diagnosis is not running this week";
-}
-
-function EnvChips({ vars }: { vars: readonly string[] }) {
-  // Inline-comma join with chips between words. Last chip gets no trailing
-  // comma. Whitespace must remain as real spaces so the sentence reads
-  // naturally when the inline comma-separated list is read aloud / copied.
-  return (
-    <>
-      {vars.map((v, i) => (
-        <span key={v}>
-          <EnvChip name={v} />
-          {i < vars.length - 1 ? ", " : ""}
-        </span>
-      ))}
-    </>
-  );
-}
-
-function EnvChip({ name }: { name: string }) {
-  const [copied, setCopied] = useState(false);
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(name);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // Clipboard API blocked (http, unfocused doc) — fall back to selection.
-      const r = document.createRange();
-      const el = document.createElement("span");
-      el.textContent = name;
-      document.body.appendChild(el);
-      r.selectNodeContents(el);
-      const sel = window.getSelection();
-      sel?.removeAllRanges();
-      sel?.addRange(r);
-      document.body.removeChild(el);
-    }
+function pillFor(status: ArtifactStatus): { label: string; classes: string } {
+  if (status === "failed") {
+    return {
+      label: "Run failed",
+      classes:
+        "bg-rose-50 text-rose-700 ring-rose-200",
+    };
+  }
+  if (status === "fallback") {
+    return {
+      label: "Unavailable",
+      classes:
+        "bg-amber-50 text-amber-700 ring-amber-200",
+    };
+  }
+  if (status === "skipped") {
+    return {
+      label: "Off this run",
+      classes:
+        "bg-ink-50 text-ink-secondary ring-ink-100",
+    };
+  }
+  return {
+    label: "Pending",
+    classes:
+      "bg-shikho-indigo-50/60 text-brand-shikho-indigo ring-brand-shikho-indigo/15",
   };
-  return (
-    <button
-      type="button"
-      onClick={copy}
-      aria-label={`Copy environment variable name ${name}`}
-      title={copied ? "Copied" : "Click to copy"}
-      className={`inline-flex items-center gap-1 text-[12px] bg-slate-100 hover:bg-slate-200/80 text-brand-shikho-indigo font-semibold rounded px-1.5 py-0.5 transition-colors ${copied ? "ring-1 ring-emerald-300 bg-emerald-50 text-emerald-700" : ""}`}
-    >
-      <code className="font-mono">{name}</code>
-      {copied ? (
-        <svg aria-hidden width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="20 6 9 17 4 12" />
-        </svg>
-      ) : null}
-    </button>
-  );
+}
+
+function titleFor(noun: string, status: ArtifactStatus): string {
+  const base = noun || "AI artifact";
+  if (status === "failed") return `${base} run failed`;
+  if (status === "fallback") return `${base} unavailable for this week`;
+  if (status === "skipped") return `${base} is off this week`;
+  return `${base} pending`;
+}
+
+function bodyFor(
+  status: ArtifactStatus,
+  nextScheduledLabel: string | undefined,
+): string {
+  if (status === "failed") {
+    return "The most recent run did not complete successfully. Numerical data on this page continues to update independently of AI runs.";
+  }
+  if (status === "fallback") {
+    return "The AI run for this week did not produce a verdict (commonly an AI credit limit). Numerical data on this page continues to update independently.";
+  }
+  if (status === "skipped") {
+    return "AI generation is intentionally off this run. Numerical data on this page continues to update independently.";
+  }
+  // pending / unknown / other
+  if (nextScheduledLabel) {
+    return `Will populate after ${nextScheduledLabel}'s scheduled run. Numerical data on this page continues to update independently of AI runs.`;
+  }
+  return "Will populate after the next scheduled run. Numerical data on this page continues to update independently.";
 }
 
 function formatShortDate(iso: string): string {
