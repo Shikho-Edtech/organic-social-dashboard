@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-05-05 — AIDisabledEmptyState rewrite: state-aware, no admin instructions
+
+User feedback (page-by-page review): when AI hasn't run for the current week, /diagnosis and /plan showed an empty-state card that exposed implementation detail end users can't act on:
+- "How to turn it back on. Set DIAGNOSIS_PROVIDER, DIAGNOSIS_MODEL, DIAGNOSIS_API_KEY in the pipeline's GitHub Actions secrets, then re-run the weekly workflow."
+- "View archived [date] version" deep link
+- Hardcoded "is not running this week" copy regardless of whether the AI was failed, intentionally off, or just hadn't fired yet
+
+Rewrote `components/AIDisabledEmptyState.tsx` with a state-aware shape:
+
+| `runStatus.[stage]_status` | Pill | Title | Body |
+|---|---|---|---|
+| `failed` | Run failed (rose) | `[noun] run failed` | "Did not complete successfully. Numbers update independently." |
+| `fallback` | Unavailable (amber) | `[noun] unavailable for this week` | "Likely an AI credit limit. Numbers update independently." |
+| `skipped` | Off this run (ink) | `[noun] is off this week` | "AI generation intentionally off. Numbers update independently." |
+| other | Pending (indigo) | `[noun] pending` | "Will populate after [Thursday morning]'s scheduled run. Numbers update independently." |
+
+Removed entirely:
+- `envVars` prop (no more env-var copy chips)
+- `archiveKey` prop + "View archived" link
+- `readsDescription` prop (was always verbose; new copy is shorter and conditional)
+
+Added:
+- `status: ArtifactStatus` prop (drives all the copy variants)
+- `nextScheduledLabel?: string` prop (caller computes; e.g. "Thursday morning" for diagnosis when today is Mon-Wed, "Monday morning" otherwise; "Monday morning" always for calendar)
+
+Also dropped redundancy on /diagnosis and /plan: when `isEmpty` (the empty-state card is showing), the StalenessBanner above the page header is suppressed. Two cards saying "AI is off this run" was confusing read order; now the empty-state card is the canonical signal.
+
+Brand audit baseline ratcheted from 226 → 215 (the old AIDisabledEmptyState used `slate-*` legacy classes; the new one uses Shikho ink-* tokens, cleaning 11 grandfathered violations as a side-effect).
+
 ## 2026-05-05 — Today page: remove admin-grade copy
 
 User feedback (page-by-page review): two pieces of admin-grade text leaking onto the Today page, which is the most-frequently-opened page by content team members.

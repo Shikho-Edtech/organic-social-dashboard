@@ -10,7 +10,6 @@ import PlanNarrativeCard from "@/components/PlanNarrativeCard";
 import AcademicContextStrip from "@/components/AcademicContextStrip";
 import WeekSelector, { computeWeekEndings, weekRange } from "@/components/WeekSelector";
 // RegenerateThisWeekButton removed in v4.18 — admin-only, returns with SaaS access layers.
-import { STAGES } from "@/lib/stages";
 import { isStaleNow, getStaleReasons } from "@/lib/cache";
 
 /**
@@ -273,6 +272,11 @@ export default async function PlanPage({ searchParams }: { searchParams: Record<
             : ""}
           livePath="/plan"
         />
+      ) : isEmpty ? (
+        // 2026-05-05: when isEmpty, AIDisabledEmptyState card below
+        // owns the message. Suppress the staleness banner here so we
+        // don't duplicate "AI calendar is off this run".
+        null
       ) : (
         <StalenessBanner
           info={staleness}
@@ -311,13 +315,11 @@ export default async function PlanPage({ searchParams }: { searchParams: Record<
           regular branch — this block only owns the empty-state card. */}
       {isEmpty && (
         <AIDisabledEmptyState
-          envVars={STAGES.calendar.envVars}
-          lastSuccessfulAt={runStatus.last_successful_calendar_at}
-          // Calendar_Archive doesn't exist yet; archive link hidden until the
-          // pipeline starts writing it. Empty string hides the link.
-          archiveKey=""
           noun="AI calendar"
-          readsDescription="This page reads the weekly AI-generated content calendar."
+          lastSuccessfulAt={runStatus.last_successful_calendar_at}
+          status={runStatus.calendar_status}
+          // Calendar runs once weekly on Mondays — no mid-week cadence.
+          nextScheduledLabel="Monday morning"
         />
       )}
 

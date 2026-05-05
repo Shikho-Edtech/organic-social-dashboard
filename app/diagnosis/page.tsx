@@ -14,7 +14,6 @@ import AIDisabledEmptyState from "@/components/AIDisabledEmptyState";
 import ArchivalLine from "@/components/ArchivalLine";
 import AcademicContextStrip from "@/components/AcademicContextStrip";
 import PostReference from "@/components/PostReference";
-import { STAGES } from "@/lib/stages";
 import StaleDataBanner from "@/components/StaleDataBanner";
 import { isStaleNow, getStaleReasons } from "@/lib/cache";
 
@@ -85,21 +84,18 @@ function extractMetrics(text: string): Segment[] {
   return segments.length ? segments : [{ kind: "text", value: text }];
 }
 
-// Step 3: map a "Last Successful Diagnosis At" ISO timestamp to the
-// corresponding Weekly_Analysis row's `Week Ending` key. Pragmatic rule:
-// the weekly pipeline fires on Mondays and writes a row whose Week Ending
-// is the preceding Sunday (YYYY-MM-DD). We walk back from the success
-// timestamp to the nearest Sunday. This only needs to be approximate — the
-// `getDiagnosisByWeek` lookup then does an exact-match find against the
-// actual row values, and falls back cleanly when it doesn't match.
-function extractWeekEnding(iso: string): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "";
-  const dow = d.getUTCDay(); // 0=Sun
-  const back = dow === 0 ? 0 : dow;
-  const sunday = new Date(d.getTime() - back * 86400000);
-  return sunday.toISOString().slice(0, 10);
+// 2026-05-05: when diagnosis is pending (AI hasn't run yet for this week),
+// the empty-state card shows "Will populate after [X]'s scheduled run."
+// Diagnosis cadence: weekly Mondays + mid-week Thursdays. Today is BDT.
+//   - Mon..Wed → Thursday is next
+//   - Thu..Sun → next Monday is next
+function nextDiagnosisRunLabel(now: Date): string {
+  // Convert to BDT day-of-week (UTC+6).
+  const bdtMs = now.getTime() + 6 * 60 * 60 * 1000;
+  const bdt = new Date(bdtMs);
+  const dow = bdt.getUTCDay(); // 0=Sun, 1=Mon, ..., 4=Thu
+  if (dow >= 1 && dow <= 3) return "Thursday morning";
+  return "Monday morning";
 }
 
 function HeadlineWithMetrics({ text, metricClass }: { text: string; metricClass: string }) {
@@ -421,6 +417,14 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
       <StaleDataBanner stale={staleData} reasons={staleReasons} />
       {isArchival ? (
         <ArchivalLine archiveDateLabel={archiveDateLabel} livePath="/diagnosis" />
+      ) : isEmpty ? (
+        // 2026-05-05: when isEmpty, AIDisabledEmptyState card below
+        // already communicates the AI status (pending / failed /
+        // unavailable / off) with state-aware copy. Rendering the
+        // StalenessBanner above would duplicate that message ("AI
+        // diagnosis is off this run") and confuse the read order.
+        // Suppress here; the empty-state card is the canonical signal.
+        null
       ) : (
         <StalenessBanner
           info={staleness}
@@ -515,13 +519,12 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
             </div>
           )}
           <AIDisabledEmptyState
-            envVars={STAGES.diagnosis.envVars}
-            lastSuccessfulAt={runStatus.last_successful_diagnosis_at}
-            archiveKey={runStatus.last_successful_diagnosis_at
-              ? extractWeekEnding(runStatus.last_successful_diagnosis_at)
-              : ""}
             noun="AI diagnosis"
-            readsDescription="This page reads the weekly AI diagnosis. Funnel-stage distribution + engagement charts have moved to /engagement."
+            lastSuccessfulAt={runStatus.last_successful_diagnosis_at}
+            status={runStatus.diagnosis_status}
+            // Diagnosis cron: weekly Mondays + mid-week Thursdays. The
+            // appropriate "next" depends on which day-of-week we're on.
+            nextScheduledLabel={nextDiagnosisRunLabel(new Date())}
           />
         </>
       )}
