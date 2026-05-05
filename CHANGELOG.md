@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-05-05 — /overview tier-3 polish: followers color, card rename, content-pillars value labels
+
+Three smaller items from the page-by-page review, bundled into one PR since they all touch /overview:
+
+1. **Followers card now colors net change green/red** to match the other 4 KPI cards. Previously the "+38 net in range · stock" sublabel was plain ink-muted text (no color signal). Extended `KpiCard` with an optional `deltaLabel` prop so a stock-style KPI can pass a signed COUNT (not a %) and still get sign-based coloring. Followers card now passes `delta={netFollowers}` for color and `deltaLabel="+38 net"` for the rendered text.
+
+2. **Renamed "Recommended this period" → "Top patterns from this period"** per user feedback: "we are looking at past performance, not making forward recommendations." Subtitle softened too: "The winning content buckets and posting windows for the selected range. Useful as a hypothesis for what to lean into next; not a guarantee."
+
+3. **Content Pillars chart in composite mode now renders the 0-100 score at each bar's end** (e.g. "Live Class: 65"). Previously, single-metric mode showed `% share of total` at bar ends, but composite mode showed nothing — values only appeared on hover. Toggled `showValueLabel={isComposite}` on the existing `BarChartBase` to render raw bar values for composite mode while keeping single-metric mode's percentage-share behavior unchanged.
+
+Verified: 36/36 smoke, brand 215/215, page-audit 12/12 at 1, build clean.
+
 ## 2026-05-05 — /overview Biggest Movers: composite-score values were labeled "reach" / "interactions"
 
 User feedback (page-by-page review): "Under risers, under brand, I see only 38 reach was five, which is insane for a 30-day period." Reproduced the bug — when the user selected composite-scoring mode (e.g. Total Reach + Interactions together), the per-row sub-text said `38 reach (was 5)` when actually those numbers were 0-100 composite percentile-rank scores, not raw reach.
