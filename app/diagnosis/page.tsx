@@ -374,114 +374,47 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
   // weekDiagnosis). The StalenessBanner below already surfaces the
   // "AI off this run, native pipeline is still fresh" copy when
   // aiDisabled=true is passed.
-  if (aiDisabled && !isArchival && !diagnosis) {
-    return (
-      <div>
-        <StaleDataBanner stale={staleData} reasons={staleReasons} />
-        <StalenessBanner
-          info={staleness}
-          artifact="diagnosis"
-          runStatus={runStatus}
-          aiDisabled
-          hasData={!!diagnosis}
-        />
-        <AcademicContextStrip />
-        <PageHeader
-          title="Diagnosis"
-          subtitle={isThisWeekView
-            ? "This week's numbers — AI verdict pending"
-            : "Last week's view — AI prose unavailable for this week"}
-          dateLabel={`${range.label} · ${isThisWeekView ? "this week" : "last week"} · AI diagnosis off`}
-          lastScrapedAt={runStatus.last_run_at}
-          compact
-        />
+  // 2026-05-05: parallel-render-path consolidation. This page used to
+  // have TWO top-level returns (one for the AI-disabled empty state, one
+  // for everything else). Each independently rendered the chrome
+  // (StaleDataBanner + StalenessBanner + AcademicContextStrip +
+  // PageHeader + WeekSelector). Every surgical fix to one branch silently
+  // dropped something from the other — that was the whole shape of the
+  // 2026-05-04/05 reactive cycle. Now there is ONE return. Chrome props
+  // are computed up front; only the BODY switches on isEmpty. Branches
+  // can no longer drift because there is only one chrome block.
+  const isEmpty = aiDisabled && !isArchival && !diagnosis;
 
-        {/* 2026-05-05 fix: empty-state branch needs the same WeekSelector
-            as the regular render path. Without it, users landing on
-            /diagnosis (the empty-state path when no AI row exists for
-            this week) couldn't navigate to last week's verdict. The two
-            render branches were drifting; selector now appears in both. */}
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-4">
-          <WeekSelector
-            basePath="/diagnosis"
-            current={weekParam}
-            choices={["this", "last"]}
-            preserve={searchParams}
-          />
-        </div>
+  const headerSubtitle = isArchival
+    ? (archiveDateLabel
+        ? `Archived diagnosis for week ending ${archiveDateLabel}`
+        : "Archived diagnosis")
+    : isEmpty
+      ? (isThisWeekView
+          ? "This week's numbers — AI verdict pending"
+          : "Last week's view — AI prose unavailable for this week")
+      : (isThisWeekView
+          ? (weekDiagnosis
+              ? "This week's diagnosis (mid-week, refreshes Thursday)"
+              : "Showing last week's verdict — this week's mid-week diagnosis hasn't run yet")
+          : "Last week's verdict");
 
-        {/* 2026-05-05: even when AI prose is unavailable for this week,
-            render LIVE KPIs from the posts table. Numbers populate every
-            day from daily-refresh + today-refresh writes — they're not
-            blocked by AI's absence. The AIDisabledEmptyState below
-            explains the prose situation. */}
-        {liveKpis && liveKpis.posts > 0 && (
-          <div className="mb-5 rounded-xl bg-ink-paper border border-ink-100 p-4 sm:p-5">
-            <div className="text-xs uppercase tracking-wider text-ink-muted font-semibold mb-3">
-              This week so far · live numbers
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div>
-                <div className="text-[10px] uppercase tracking-wider text-ink-muted font-semibold mb-0.5">
-                  Reach
-                </div>
-                <div className="text-xl sm:text-2xl font-bold text-brand-shikho-indigo tabular-nums leading-tight break-words">
-                  {liveKpis.reach >= 1000
-                    ? `${(liveKpis.reach / 1000).toFixed(1)}K`
-                    : liveKpis.reach}
-                </div>
-                {liveKpis.reach_wow_pct !== null && (
-                  <div className="text-[10px] text-ink-muted mt-0.5">
-                    {liveKpis.reach_wow_pct >= 0 ? "+" : ""}
-                    {liveKpis.reach_wow_pct.toFixed(0)}% WoW
-                  </div>
-                )}
-              </div>
-              <div>
-                <div className="text-[10px] uppercase tracking-wider text-ink-muted font-semibold mb-0.5">
-                  Quality Engagement
-                </div>
-                <div className="text-xl sm:text-2xl font-bold text-brand-shikho-magenta tabular-nums leading-tight break-words">
-                  {liveKpis.qe}
-                </div>
-                {liveKpis.qe_wow_pct !== null && (
-                  <div className="text-[10px] text-ink-muted mt-0.5">
-                    {liveKpis.qe_wow_pct >= 0 ? "+" : ""}
-                    {liveKpis.qe_wow_pct.toFixed(0)}% WoW
-                  </div>
-                )}
-              </div>
-              <div>
-                <div className="text-[10px] uppercase tracking-wider text-ink-muted font-semibold mb-0.5">
-                  Posts
-                </div>
-                <div className="text-xl sm:text-2xl font-bold text-ink-primary tabular-nums leading-tight">
-                  {liveKpis.posts}
-                </div>
-              </div>
-              <div>
-                <div className="text-[10px] uppercase tracking-wider text-ink-muted font-semibold mb-0.5">
-                  Avg engagement
-                </div>
-                <div className="text-xl sm:text-2xl font-bold text-ink-primary tabular-nums leading-tight">
-                  {Math.min(liveKpis.avg_er, 100).toFixed(2)}%
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        <AIDisabledEmptyState
-          envVars={STAGES.diagnosis.envVars}
-          lastSuccessfulAt={runStatus.last_successful_diagnosis_at}
-          archiveKey={runStatus.last_successful_diagnosis_at
-            ? extractWeekEnding(runStatus.last_successful_diagnosis_at)
-            : ""}
-          noun="AI diagnosis"
-          readsDescription="This page reads the weekly AI diagnosis. Funnel-stage distribution + engagement charts have moved to /engagement."
-        />
-      </div>
-    );
-  }
+  const headerDateLabel = isArchival
+    ? `${range.label} · archived snapshot`
+    : isEmpty
+      ? `${range.label} · ${isThisWeekView ? "this week" : "last week"} · AI diagnosis off`
+      : `${range.label} · ${isThisWeekView ? "this week" : "last week"}`;
+
+  // 2026-05-04 incident #4: banner gating via pure function in lib/sheets.ts
+  // so the rule is unit-testable. In the empty-state path we hard-code
+  // aiDisabled=true (matches old behavior); elsewhere it goes through the
+  // matrix in computeDiagnosisBannerState.
+  const bannerAiDisabled = isEmpty
+    ? true
+    : computeDiagnosisBannerState({
+        isArchival, isThisWeekView, aiDisabled,
+        weekDiagnosis, liveDiagnosis,
+      }).showAiDisabledBanner;
 
   return (
     <div className={isArchival ? "opacity-[0.97] [filter:saturate(0.9)]" : ""}>
@@ -493,39 +426,22 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
           info={staleness}
           artifact="diagnosis"
           runStatus={runStatus}
-          // 2026-05-04 incident #4: banner gating delegates to a pure
-          // function in lib/sheets.ts so the rule is unit-testable.
-          // Banner fires ONLY when AI is off, this-week view, AND we have
-          // no content at all (neither this-week nor fallback). When
-          // fallback content is shown, a quieter notice is rendered below
-          // (showFallbackNotice path). See scripts/smoke-tests.ts for the
-          // matrix of states this guards against.
-          aiDisabled={computeDiagnosisBannerState({
-            isArchival, isThisWeekView, aiDisabled,
-            weekDiagnosis, liveDiagnosis,
-          }).showAiDisabledBanner}
+          aiDisabled={bannerAiDisabled}
           hasData={!!diagnosis}
         />
       )}
       <AcademicContextStrip />
       <PageHeader
         title="Diagnosis"
-        subtitle={isArchival
-          ? (archiveDateLabel
-              ? `Archived diagnosis for week ending ${archiveDateLabel}`
-              : "Archived diagnosis")
-          : (isThisWeekView
-              ? (weekDiagnosis
-                  ? "This week's diagnosis (mid-week, refreshes Thursday)"
-                  : "Showing last week's verdict — this week's mid-week diagnosis hasn't run yet")
-              : "Last week's verdict")}
-        dateLabel={`${range.label} · ${isArchival ? "archived snapshot" : (isThisWeekView ? "this week" : "last week")}`}
+        subtitle={headerSubtitle}
+        dateLabel={headerDateLabel}
         lastScrapedAt={runStatus.last_run_at}
         compact
       />
 
       {/* Sprint P7 Phase 2: week selector for Diagnosis. Hidden in
-          archival mode — that path uses the older ArchivalLine UI. */}
+          archival mode — that path uses the older ArchivalLine UI.
+          Renders for empty-state too (was a parallel-path bug 2026-05-05). */}
       {!isArchival && (
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-4">
           <WeekSelector
@@ -537,6 +453,82 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
           {/* RegenerateThisWeekButton removed in v4.18 — admin-only. */}
         </div>
       )}
+
+      {/* AI-disabled empty-state body. Live KPIs (still useful even
+          without AI prose — populate every morning from daily-refresh)
+          plus the AIDisabledEmptyState card explaining what's off. */}
+      {isEmpty && (
+        <>
+          {liveKpis && liveKpis.posts > 0 && (
+            <div className="mb-5 rounded-xl bg-ink-paper border border-ink-100 p-4 sm:p-5">
+              <div className="text-xs uppercase tracking-wider text-ink-muted font-semibold mb-3">
+                This week so far · live numbers
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-ink-muted font-semibold mb-0.5">
+                    Reach
+                  </div>
+                  <div className="text-xl sm:text-2xl font-bold text-brand-shikho-indigo tabular-nums leading-tight break-words">
+                    {liveKpis.reach >= 1000
+                      ? `${(liveKpis.reach / 1000).toFixed(1)}K`
+                      : liveKpis.reach}
+                  </div>
+                  {liveKpis.reach_wow_pct !== null && (
+                    <div className="text-[10px] text-ink-muted mt-0.5">
+                      {liveKpis.reach_wow_pct >= 0 ? "+" : ""}
+                      {liveKpis.reach_wow_pct.toFixed(0)}% WoW
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-ink-muted font-semibold mb-0.5">
+                    Quality Engagement
+                  </div>
+                  <div className="text-xl sm:text-2xl font-bold text-brand-shikho-magenta tabular-nums leading-tight break-words">
+                    {liveKpis.qe}
+                  </div>
+                  {liveKpis.qe_wow_pct !== null && (
+                    <div className="text-[10px] text-ink-muted mt-0.5">
+                      {liveKpis.qe_wow_pct >= 0 ? "+" : ""}
+                      {liveKpis.qe_wow_pct.toFixed(0)}% WoW
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-ink-muted font-semibold mb-0.5">
+                    Posts
+                  </div>
+                  <div className="text-xl sm:text-2xl font-bold text-ink-primary tabular-nums leading-tight">
+                    {liveKpis.posts}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-ink-muted font-semibold mb-0.5">
+                    Avg engagement
+                  </div>
+                  <div className="text-xl sm:text-2xl font-bold text-ink-primary tabular-nums leading-tight">
+                    {Math.min(liveKpis.avg_er, 100).toFixed(2)}%
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          <AIDisabledEmptyState
+            envVars={STAGES.diagnosis.envVars}
+            lastSuccessfulAt={runStatus.last_successful_diagnosis_at}
+            archiveKey={runStatus.last_successful_diagnosis_at
+              ? extractWeekEnding(runStatus.last_successful_diagnosis_at)
+              : ""}
+            noun="AI diagnosis"
+            readsDescription="This page reads the weekly AI diagnosis. Funnel-stage distribution + engagement charts have moved to /engagement."
+          />
+        </>
+      )}
+
+      {/* Regular body — every block below is hidden when isEmpty. */}
+      {!isEmpty && (<>
+
 
       {/* Sprint P7 Phase 2: "Preliminary, mid-week (Thu)" pill on
           this-week views when the diagnosis row was generated by the
@@ -1190,6 +1182,7 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
           </div>
         </div>
       )}
+      </>)}
     </div>
   );
 }

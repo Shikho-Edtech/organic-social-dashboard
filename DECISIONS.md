@@ -1,5 +1,23 @@
 # Decisions
 
+## 2026-05-05 — Single-return page shape; structural PageShell extraction deferred
+
+The reactive drift cycle (parallel render paths in /diagnosis and /plan independently re-rendering chrome) had two possible fixes:
+
+1. **Small fix (shipped):** consolidate to ONE top-level return per page. Compute chrome props into named variables; the body alone switches on `isEmpty`. Mechanical edit, ~150 lines moved, no new components.
+2. **Structural fix (deferred):** extract a shared `<PageShell>` component owning chrome for ALL pages, plus an eslint rule banning multiple top-level returns in `app/**/page.tsx`.
+
+**Chose the small fix because:**
+- Closes the bug class on the two pages where it actually bit (/diagnosis, /plan).
+- Doesn't introduce a new shared component before its API is stable. A PageShell that has to support 6+ pages with different chrome combinations (some have selector, some don't; some have ArchivalLine, some don't; outcomes has its own header pattern) is a refactor that benefits from a few weeks of catalog work first.
+- Defers the eslint rule too — better to write the rule against a stabilized convention than against the in-flight refactor.
+
+**What buys time before the structural fix is needed:** the new convention (one return per page) is now established on the two pages that drift most. /outcomes (7 chrome refs / 2 returns) and /today (5 chrome refs / 1 return — already conforming) are next candidates. When /outcomes drifts (it will), consolidate it the same way; that gives 3 examples to design PageShell against.
+
+**Tradeoff acknowledged:** without the eslint rule, nothing mechanically prevents a future PR from re-introducing a second top-level return. Discipline rule: any new state branch on a page goes inside the body switch.
+
+---
+
 ## 2026-05-04 — Playwright E2E NOT in the predeploy chain (yet)
 
 `npm run predeploy` chains smoke + rsc:audit + brand:audit + build — each ≤10s, total ~45s. Adding Playwright would push it to ~70s. **Decided to keep them separate** for now:

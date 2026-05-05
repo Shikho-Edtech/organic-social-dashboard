@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-05-05 — kill the parallel-render-path drift on /diagnosis and /plan
+
+User caught the pattern: "i am seeing this pattern of one thing being fixed and breaking another thing while fixing it." Every reactive bug in the last 4 days had the same shape — both /diagnosis and /plan had TWO top-level returns (one for the AI-disabled empty state, one for everything else), and each independently rendered the chrome (StaleDataBanner + StalenessBanner + AcademicContextStrip + PageHeader + WeekSelector). Every "surgical" fix to one branch silently dropped something from the other. TypeScript couldn't catch it; smoke tests guarded the data layer not the JSX tree; fix-on-touch grep caught sibling-PAGE drift but not same-PAGE parallel-path drift.
+
+Fix shipped: ONE top-level return per page. Chrome props (subtitle, dateLabel, banner aiDisabled flag) computed up front into named variables; only the BODY switches on `isEmpty` inside a single tree. Branches can no longer drift because there is only one chrome block.
+
+Concrete impact:
+- /diagnosis: collapsed lines 377-538 (early empty-state return + first part of regular return) into one chrome block. Body branches between AIDisabledEmptyState (with live KPIs) and the regular verdict / findings / performers / watch-outs tree.
+- /plan: same shape. Empty-state body is now just the AIDisabledEmptyState card; chrome (incl. WeekSelector, which the empty-state branch was previously missing — latent drift bug fixed for free) lives above the body switch.
+- 25/25 smoke green, build green, brand audit clean (no regressions).
+
+What this leaves on the table: the structural-est fix would be a `<PageShell>` component that owns chrome for ALL pages, plus an eslint rule banning multiple top-level returns in `app/**/page.tsx`. Queued for next sprint. /outcomes (7 chrome refs across 2 returns) and /today (5 refs) still have the pattern; they haven't bitten yet, but they will.
+
 ## 2026-05-05 — /diagnosis empty-state branch: add missing WeekSelector + clearer subtitle
 
 User caught: default `/diagnosis` only showed one view (no week tabs visible). The empty-state render branch (when no AI row exists for this week + AI off) was missing the `WeekSelector` that the regular render path has. The two render branches had drifted — the regular path got the selector + week-aware subtitle; the empty-state path got neither.

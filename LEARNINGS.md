@@ -1,5 +1,27 @@
 # Learnings
 
+## 2026-05-05 — Parallel render paths in a page file are a drift trap; consolidate to ONE return
+
+**Pattern.** A page with N top-level returns (typically empty-state vs regular) where each return independently renders the chrome (banners, header, selector). Every surgical edit hits ONE return; the other N-1 silently drift. TypeScript can't catch it; smoke tests guard data shape not JSX tree; brand audit guards classes not structure; fix-on-touch grep guards sibling-PAGE drift not same-PAGE drift. The page compiles green and renders subtly broken.
+
+**How it manifested.** Four reactive bugs in 24h on /diagnosis and /plan:
+1. Banner gating fixed in /diagnosis regular branch; /plan still showed it.
+2. Live KPI strip added to /diagnosis regular branch; empty-state branch returned before reaching it.
+3. KPI strip lifted into empty-state branch; WeekSelector still missing from empty-state.
+4. WeekSelector added; subtitle copy needed updating in empty-state too.
+
+Each one looked like a one-off. The shape was always the same: I edited one of the two returns and left the other behind.
+
+**Fix.** Consolidate to ONE top-level return per page. Compute chrome props (subtitle, dateLabel, banner flags) into named variables BEFORE the return. Inside the return, render chrome once at top, then switch the BODY on a single boolean (`isEmpty`). Now the chrome is unfork-able: there's literally one block to edit.
+
+**Generalize.** Any time a page file grows a second top-level return, it's the start of this drift trap. Catch it early:
+- The grep for the failure mode: `git grep -nE '^\s*return \(' app/**/page.tsx` — count per file. >1 = consolidate before adding more code on that page.
+- The structural-est fix: extract a `<PageShell>` component that owns chrome for the whole app + an eslint rule banning multiple top-level returns in `app/**/page.tsx`. Queued.
+
+**What guards this from coming back.** Until the eslint rule lands, the discipline is: any new state branch on a page goes inside the body switch, never as an additional top-level return. New top-level return = new drift surface.
+
+---
+
 ## 2026-05-04 — ESM under tsx: same source file via different specifiers can be different module records
 
 `lib/sheets.ts` imports cache via `import { withLastGood } from "./cache"` (no extension). The smoke-test runner imported via `await import("../lib/cache.js")` (with `.js` extension). On Node ESM, module resolution caches by URL — these can resolve to **separate module records** even though they're the same source file. Calling `_clearCacheForTests()` on one cleared its `Map`, but the other (the one `lib/sheets.ts` was reading from) was untouched. Cache state from prior tests bled into subsequent tests.
