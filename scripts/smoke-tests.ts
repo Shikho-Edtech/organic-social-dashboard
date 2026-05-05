@@ -720,6 +720,84 @@ test("computeCalibrationFromOutcomes returns [] for empty input without throwing
   assertEqual(out.length, 0, "empty input → []");
 });
 
+// ─── Tests: preliminary-only calibration (2026-05-05 — surfacing fresh-post forecast quality) ─
+// The frozen Calibration_Log + computeCalibrationFromOutcomes both EXCLUDE
+// preliminary rows (post < 7 days old). That's correct for "is the 80% CI
+// empirically calibrated post-decay?" but misses "is the forecast useful
+// when an operator is planning slots THIS week?" Live data 2026-05-05 had
+// 67% hit rate on FINAL verdicts vs 15% on PRELIMINARY for the same week —
+// the gap is the actual signal.
+
+test("computePreliminaryCalibration counts only preliminary rows", async () => {
+  const sheets = await import("../lib/sheets.js");
+  if (!(sheets as any).computePreliminaryCalibration) {
+    throw new Error("lib/sheets must export computePreliminaryCalibration");
+  }
+  // 2 final hits + 4 prelim missed for week W. Final-only would say 2/2 = 100%.
+  // Preliminary-only should say 0/4 = 0%.
+  const rows = [
+    fakeOutcome({ week_ending: "2026-05-04", verdict: "hit", preliminary: false }),
+    fakeOutcome({ week_ending: "2026-05-04", verdict: "hit", preliminary: false }),
+    fakeOutcome({ week_ending: "2026-05-04", verdict: "missed", preliminary: true }),
+    fakeOutcome({ week_ending: "2026-05-04", verdict: "missed", preliminary: true }),
+    fakeOutcome({ week_ending: "2026-05-04", verdict: "missed", preliminary: true }),
+    fakeOutcome({ week_ending: "2026-05-04", verdict: "missed", preliminary: true }),
+  ];
+  const out = (sheets as any).computePreliminaryCalibration(rows);
+  assertEqual(out.length, 1, "one week");
+  assertEqual(out[0].hit_rate_inside_ci, 0, "0/4 prelim → 0%");
+  assertEqual(out[0].hits, 0, "no prelim hits");
+  assertEqual(out[0].missed, 4, "all 4 prelim missed counted");
+  assertEqual(out[0].final_slots, 4, "denom = prelim final-verdict count");
+});
+
+test("computePreliminaryCalibration handles mixed prelim verdicts", async () => {
+  const sheets = await import("../lib/sheets.js");
+  // 1 hit + 1 exceeded + 2 missed + 1 no-data, all preliminary.
+  // hit_rate = hits / (hits + exceeded + missed) = 1/4 = 0.25
+  const rows = [
+    fakeOutcome({ week_ending: "2026-05-04", verdict: "hit", preliminary: true }),
+    fakeOutcome({ week_ending: "2026-05-04", verdict: "exceeded", preliminary: true }),
+    fakeOutcome({ week_ending: "2026-05-04", verdict: "missed", preliminary: true }),
+    fakeOutcome({ week_ending: "2026-05-04", verdict: "missed", preliminary: true }),
+    fakeOutcome({ week_ending: "2026-05-04", verdict: "no-data", preliminary: true }),
+  ];
+  const out = (sheets as any).computePreliminaryCalibration(rows);
+  assertEqual(out[0].hit_rate_inside_ci, 0.25, "1/4 = 0.25");
+  assertEqual(out[0].no_data, 1, "no-data prelim counted in no_data bucket");
+});
+
+test("computePreliminaryCalibration returns [] when no preliminary rows", async () => {
+  const sheets = await import("../lib/sheets.js");
+  // All final, no prelim. Should return zero weeks.
+  const rows = [
+    fakeOutcome({ week_ending: "2026-04-27", verdict: "hit", preliminary: false }),
+    fakeOutcome({ week_ending: "2026-04-27", verdict: "missed", preliminary: false }),
+  ];
+  const out = (sheets as any).computePreliminaryCalibration(rows);
+  assertEqual(out.length, 0, "no prelim rows → no weeks emitted");
+});
+
+test("computePreliminaryCalibration + computeCalibrationFromOutcomes are disjoint partitions", async () => {
+  const sheets = await import("../lib/sheets.js");
+  // Property test: for any week, prelim_hits + final_hits == total hits across all rows.
+  // Same for missed, exceeded.
+  const rows = [
+    fakeOutcome({ week_ending: "2026-04-27", verdict: "hit", preliminary: false }),
+    fakeOutcome({ week_ending: "2026-04-27", verdict: "hit", preliminary: true }),
+    fakeOutcome({ week_ending: "2026-04-27", verdict: "missed", preliminary: false }),
+    fakeOutcome({ week_ending: "2026-04-27", verdict: "missed", preliminary: true }),
+    fakeOutcome({ week_ending: "2026-04-27", verdict: "missed", preliminary: true }),
+    fakeOutcome({ week_ending: "2026-04-27", verdict: "exceeded", preliminary: true }),
+  ];
+  const finalOut = (sheets as any).computeCalibrationFromOutcomes(rows)[0];
+  const prelimOut = (sheets as any).computePreliminaryCalibration(rows)[0];
+  // Total hits in source: 2. Final has 1, prelim has 1. Sum matches.
+  assertEqual(finalOut.hits + prelimOut.hits, 2, "hits partition matches");
+  assertEqual(finalOut.missed + prelimOut.missed, 3, "missed partition matches");
+  assertEqual(finalOut.exceeded + prelimOut.exceeded, 1, "exceeded partition matches");
+});
+
 test("mergeCalibrationSources: live entry preferred over frozen for same week", async () => {
   const sheets = await import("../lib/sheets.js");
   if (!(sheets as any).mergeCalibrationSources) {

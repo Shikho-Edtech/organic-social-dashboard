@@ -1618,6 +1618,57 @@ export function summarizeCalibration(
 export function computeCalibrationFromOutcomes(
   rows: OutcomeLogEntry[],
 ): CalibrationLogEntry[] {
+  return _aggregateCalibration(rows, (r) => !r.preliminary);
+}
+
+/**
+ * Preliminary-only calibration: same formula, applied to ONLY rows where
+ * `preliminary === true` (post < 7 days old, reach hasn't decayed yet).
+ *
+ * 2026-05-05: data showed week 2026-04-27 had 67% hit rate on FINAL
+ * verdicts vs 15% on PRELIMINARY. Both are true; they answer different
+ * questions:
+ *   - final calibration  → "is the 80% CI empirically calibrated post-decay?"
+ *   - prelim calibration → "is the forecast useful when an operator is
+ *     planning slots THIS week (before reach matures)?"
+ *
+ * Surfaced side-by-side on /outcomes so operators see the gap. Big gap +
+ * low prelim rate = bands are theatrical at planning time even if they
+ * land near 80% after 7 days. Small gap = bands work the moment they're
+ * needed.
+ *
+ * Returns weeks where AT LEAST one preliminary final-verdict row exists.
+ * Weeks with only preliminary no-data rows are emitted with null hit_rate
+ * (consistent with the final-only path).
+ */
+export function computePreliminaryCalibration(
+  rows: OutcomeLogEntry[],
+): CalibrationLogEntry[] {
+  // Drop weeks that have NO preliminary rows at all so callers can
+  // distinguish "no preliminary data" from "preliminary data is null".
+  const prelimWeeks = new Set<string>();
+  for (const r of rows) {
+    if (r.preliminary && r.week_ending) prelimWeeks.add(r.week_ending);
+  }
+  if (prelimWeeks.size === 0) return [];
+  return _aggregateCalibration(rows, (r) => r.preliminary).filter(
+    (e) => prelimWeeks.has(e.week_ending),
+  );
+}
+
+/**
+ * Shared aggregator for the two calibration views (final-only and
+ * preliminary-only). The maturity filter selects which rows feed the
+ * verdict counts; the formula is identical.
+ *
+ * Note: `total_slots` reflects the FILTERED row count for the week (not
+ * the full week count). Callers that need the full count should use
+ * `getOutcomeLogByWeek(week).length` directly.
+ */
+function _aggregateCalibration(
+  rows: OutcomeLogEntry[],
+  filter: (r: OutcomeLogEntry) => boolean,
+): CalibrationLogEntry[] {
   const byWeek = new Map<string, OutcomeLogEntry[]>();
   for (const r of rows) {
     if (!r.week_ending) continue;
@@ -1627,7 +1678,7 @@ export function computeCalibrationFromOutcomes(
   }
   const result: CalibrationLogEntry[] = [];
   for (const [week, weekRows] of byWeek) {
-    const eligible = weekRows.filter((r) => !r.preliminary);
+    const eligible = weekRows.filter(filter);
     let hits = 0, exceeded = 0, missed = 0, noData = 0;
     let widthSum = 0, midSum = 0, sharpnessN = 0;
     let latestGenerated = "";
@@ -1657,6 +1708,8 @@ export function computeCalibrationFromOutcomes(
     const sharpness = sharpnessN > 0 && midSum > 0 ? widthSum / midSum : null;
     result.push({
       week_ending: week,
+      // total_slots is the full week count (incl. rows the filter excluded)
+      // so callers can show "X of Y slots have a final verdict" denominators.
       total_slots: weekRows.length,
       final_slots: denom,
       hits,
