@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-05-05 — /outcomes: side-by-side preliminary vs aged-final calibration
+
+Live read of Outcome_Log on 2026-05-05 surfaced the actual signal hiding behind the rolling 4-week calibration KPI: week 2026-04-27 had **67% hit rate on FINAL verdicts (≥7 days old) vs 15% on PRELIMINARY (< 7 days)**. Both numbers are correctly computed; they answer different questions:
+
+- **Final calibration** → "is the 80% CI empirically calibrated post-decay?" (the rolling-4w KPI)
+- **Preliminary calibration** → "is the band useful when an operator is planning slots THIS week, before reach matures?" (NEW)
+
+The gap is the actual story. Big gap + low prelim = bands are theatrical at planning time even though they land near 80% after a week. Small gap = the forecast is useful when it's actually being used.
+
+New helper `computePreliminaryCalibration(rows)` in `lib/sheets.ts` — same formula as `computeCalibrationFromOutcomes`, applied only to `preliminary === true` rows. Implementation factored out a private `_aggregateCalibration(rows, filter)` helper so the two views share the math; only the row filter differs.
+
+`/outcomes` calibration card now renders a parallel "Preliminary (fresh posts, < 7 days)" sub-row below the main 4-col KPI grid: same 4 metrics in smaller emphasis, with an inline `gap vs aged: Xpp` annotation on the header. When the gap exceeds 15pp the explainer paragraph gets a coral warning sentence flagging that "reach catches up over 7 days, hiding miscalibration that's visible at planning time."
+
+Tests: 4 new smoke tests cover the prelim helper (only-prelim filter, mixed prelim verdicts, empty-prelim case, and a partition property test confirming `final_hits + prelim_hits = total hits across rows`). 36/36 smoke green. Build clean. Brand 226/226. Page audit 12/12 at 1.
+
+Why this is on /outcomes and not a new page: it's the same metric, same data source, same operator. Splitting into two cards would imply they're independent KPIs; they're really two views of one signal that ought to be read together.
+
 ## 2026-05-05 — page-structure audit: mechanical gate against multi-top-level-returns
 
 The `/diagnosis` and `/plan` consolidations earlier today killed the parallel-render-path drift on those two pages, but nothing was preventing it from being re-introduced by a future PR. This commit adds the missing mechanical gate.

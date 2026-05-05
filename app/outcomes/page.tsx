@@ -29,6 +29,10 @@ import {
   // over Outcome_Log, falling back to Calibration_Log for historical weeks.
   computeCalibrationFromOutcomes,
   mergeCalibrationSources,
+  // 2026-05-05: preliminary-only calibration. Same formula applied to
+  // posts < 7 days old. Surfaces the gap between "what the operator sees
+  // at planning time" and "what the band looks like after reach matures."
+  computePreliminaryCalibration,
 } from "@/lib/sheets";
 import WeekSelector, { weekRange, computeWeekEndings, resolveWeekParam } from "@/components/WeekSelector";
 import type { OutcomeLogEntry, OutcomeVerdict } from "@/lib/types";
@@ -190,6 +194,13 @@ export default async function OutcomesPage({
   // Surfaces the central Tier-1 signal from PLAN_ALGORITHM_AUDIT — without
   // a visible calibration KPI, prompt/prior changes can't be evaluated.
   const calibration = summarizeCalibration(calibrationRows, 4);
+  // 2026-05-05: parallel summary for PRELIMINARY rows (posts < 7 days old).
+  // Live data showed week 2026-04-27 had 67% hit on FINAL verdicts vs 15%
+  // on PRELIMINARY for the same week — the gap is the actual signal. Final
+  // calibration says "the 80% CI contains 80% post-decay"; preliminary
+  // calibration says "the band is useful at planning time." Both matter.
+  const calibrationPrelimRows = computePreliminaryCalibration(allOutcomeRows);
+  const calibrationPrelim = summarizeCalibration(calibrationPrelimRows, 4);
   // Prefer the URL-resolved week if it has data; else fall back to
   // latest-graded; else the most recent week with any rows. Final
   // fallback to empty when nothing exists yet.
@@ -517,6 +528,83 @@ export default async function OutcomesPage({
                   </div>
                 </div>
               </div>
+
+              {/* 2026-05-05: preliminary parallel. Same metric applied
+                  to fresh-post (< 7 days old) verdicts. Surfaces the
+                  gap between "what the operator sees at planning time"
+                  and "what the band looks like after reach matures."
+                  Shown only when prelim data exists; hidden otherwise
+                  so we don't pad the card with empty state. */}
+              {calibrationPrelim.weeks_measured > 0 && (
+                <div className="mt-4 pt-3 border-t border-ink-100">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[10px] uppercase tracking-wider text-ink-muted font-semibold">
+                      Preliminary (fresh posts, &lt; 7 days)
+                    </span>
+                    {calibrationPrelim.avg_hit_rate_inside_ci !== null &&
+                      calibration.avg_hit_rate_inside_ci !== null && (
+                        <span className="text-[10px] text-ink-muted">
+                          gap vs aged:{" "}
+                          {(
+                            (calibration.avg_hit_rate_inside_ci -
+                              calibrationPrelim.avg_hit_rate_inside_ci) *
+                            100
+                          ).toFixed(1)}
+                          pp
+                        </span>
+                      )}
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-ink-muted font-semibold mb-0.5">
+                        Hit rate inside CI
+                      </div>
+                      <div className="text-lg sm:text-xl font-bold text-ink-secondary tabular-nums leading-tight break-words">
+                        {calibrationPrelim.avg_hit_rate_inside_ci !== null
+                          ? `${(calibrationPrelim.avg_hit_rate_inside_ci * 100).toFixed(1)}%`
+                          : "—"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-ink-muted font-semibold mb-0.5">
+                        Calibration error
+                      </div>
+                      <div className="text-lg sm:text-xl font-bold text-ink-secondary tabular-nums leading-tight break-words">
+                        {calibrationPrelim.avg_calibration_error !== null
+                          ? calibrationPrelim.avg_calibration_error.toFixed(2)
+                          : "—"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-ink-muted font-semibold mb-0.5">
+                        Latest week
+                      </div>
+                      <div className="text-base sm:text-lg font-bold text-ink-secondary tabular-nums leading-tight break-words">
+                        {calibrationPrelim.latest_hit_rate_inside_ci !== null
+                          ? `${(calibrationPrelim.latest_hit_rate_inside_ci * 100).toFixed(1)}%`
+                          : "—"}
+                      </div>
+                      <div className="text-[10px] text-ink-muted mt-0.5">
+                        {calibrationPrelim.latest_week
+                          ? `wk ${calibrationPrelim.latest_week.slice(5)}`
+                          : "no data yet"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-ink-muted font-semibold mb-0.5">
+                        Weeks measured
+                      </div>
+                      <div className="text-lg sm:text-xl font-bold text-ink-secondary tabular-nums leading-tight">
+                        {calibrationPrelim.weeks_measured}
+                      </div>
+                      <div className="text-[10px] text-ink-muted mt-0.5">
+                        of last 4
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <p className="text-[12px] text-ink-muted mt-3 leading-relaxed">
                 Of slots whose post aged ≥ 7 days and whose forecast band
                 exists, what fraction landed inside <code className="text-[11px] bg-ink-50 px-1 rounded">[low, high]</code>?
@@ -526,6 +614,23 @@ export default async function OutcomesPage({
                 will inherit the miscalibration. See{" "}
                 <code className="text-[11px] bg-ink-50 px-1 rounded">docs/PLAN_ALGORITHM_AUDIT.md</code>{" "}
                 §1.1 for the full rationale.
+                {calibrationPrelim.weeks_measured > 0 &&
+                  calibrationPrelim.avg_hit_rate_inside_ci !== null &&
+                  calibration.avg_hit_rate_inside_ci !== null &&
+                  Math.abs(
+                    calibration.avg_hit_rate_inside_ci -
+                      calibrationPrelim.avg_hit_rate_inside_ci,
+                  ) > 0.15 && (
+                    <>
+                      {" "}
+                      <span className="text-brand-amber">
+                        Large preliminary-vs-aged gap above means the band
+                        is much wider than needed — reach catches up over
+                        7 days, hiding miscalibration that's visible at
+                        planning time.
+                      </span>
+                    </>
+                  )}
               </p>
             </Card>
           )}
