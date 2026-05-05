@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-05-05 — /outcomes calibration KPI is now live, not a Monday snapshot
+
+User noted earlier today: `Calibration_Log` is written by the pipeline weekly (Mondays), but `Outcome_Log` accumulates new verdicts every day as posts age past the preliminary window. The dashboard read the frozen Monday snapshot, so the calibration KPI was stale all week. Concrete: week 2026-04-27 read 66.7% hit rate from `Calibration_Log` while the live aggregation over `Outcome_Log` gave 21.7%. Operator was looking at yesterday's truth, not today's.
+
+Fix: compute calibration LIVE from `Outcome_Log` rows; merge over `Calibration_Log` only for weeks where Outcome_Log is empty (pre-OSL-04 historical).
+
+Two new pure helpers in `lib/sheets.ts`:
+- `computeCalibrationFromOutcomes(rows)` → groups by week, applies the same `hits / (hits + exceeded + missed)` formula the pipeline writes, excludes preliminary rows (matches `Calibration_Log` writer's exclusion), computes sharpness as `sum(high - low) / sum(mid)`. Returns array shaped exactly like `getCalibrationLog`.
+- `mergeCalibrationSources(live, frozen)` → for each week, prefer the live entry; fall back to frozen when no live data exists for that week.
+
+`/outcomes` now fetches both `getOutcomeLog` and `getCalibrationLog` in parallel, computes live, merges, and feeds the result to the existing `summarizeCalibration` (unchanged). Card copy didn't reference cadence so no copy edits.
+
+Tests: 7 new smoke tests cover the formula, the preliminary-exclusion rule, the null-when-nothing-graded edge, sharpness math, the empty input case, and both merge directions. 32/32 green; build clean; brand 226/226.
+
+Closes weakness named in `LEARNINGS.md` 2026-05-05 ("Calibration KPI staleness: weekly writer + daily scorer = mid-week drift"). The Tier-1 signal is now actually fresh enough to evaluate prompt/prior changes against, per `docs/PLAN_ALGORITHM_AUDIT.md` §1.1.
+
 ## 2026-05-05 — kill the parallel-render-path drift on /diagnosis and /plan
 
 User caught the pattern: "i am seeing this pattern of one thing being fixed and breaking another thing while fixing it." Every reactive bug in the last 4 days had the same shape — both /diagnosis and /plan had TWO top-level returns (one for the AI-disabled empty state, one for everything else), and each independently rendered the chrome (StaleDataBanner + StalenessBanner + AcademicContextStrip + PageHeader + WeekSelector). Every "surgical" fix to one branch silently dropped something from the other. TypeScript couldn't catch it; smoke tests guarded the data layer not the JSX tree; fix-on-touch grep caught sibling-PAGE drift but not same-PAGE parallel-path drift.

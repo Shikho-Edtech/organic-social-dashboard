@@ -1,5 +1,24 @@
 # Decisions
 
+## 2026-05-05 — Live-aggregate calibration on the dashboard, keep the pipeline writer
+
+The calibration KPI on /outcomes was reading the pipeline's `Calibration_Log` tab, which is written once per Monday. Three options for the fix:
+
+1. **Read from the weekly tab, accept staleness.** Status-quo, rejected — the staleness was 45 points off-truth mid-week (66.7% frozen vs 21.7% live).
+2. **Make the pipeline rewrite Calibration_Log every scorer run.** Push the freshness problem to the writer. Rejected because the scorer runs ~3x daily on partial weeks and we don't want to thrash a weekly-shaped tab; also the dashboard would still be reading a snapshot, just a faster-moving one.
+3. **Compute live on the dashboard, keep the pipeline writer for historical fallback.** Chosen.
+
+Why option 3:
+- The dashboard already reads `Outcome_Log` (raw event log) for the per-week table. Aggregating it for calibration is a few-dozen-line pure function over an array we're already loading. No new reads.
+- The pipeline's `Calibration_Log` keeps its job of recording the weekly state for historical comparison and for tools that don't have raw `Outcome_Log` access (e.g. the pipeline's own report.py).
+- Works for pre-OSL-04 historical weeks too: when `Outcome_Log` doesn't have rows for a week (pre-2026-04-23), the merge falls back to the frozen `Calibration_Log` value so the time series doesn't truncate.
+
+What this implies for future KPIs: any metric backed by an event log + a periodic aggregation tab should follow the same pattern. Live-aggregate on the dashboard, use the pre-agg tab as fallback for weeks the event log doesn't cover.
+
+Tradeoff acknowledged: the dashboard now does more work per page load (groups + counts `Outcome_Log` once on every render). At current scale (a few thousand rows total) it's well within the existing `getOutcomeLog` cache window. Worth revisiting if `Outcome_Log` grows past ~50K rows.
+
+---
+
 ## 2026-05-05 — Single-return page shape; structural PageShell extraction deferred
 
 The reactive drift cycle (parallel render paths in /diagnosis and /plan independently re-rendering chrome) had two possible fixes:

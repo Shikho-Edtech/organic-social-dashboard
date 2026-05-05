@@ -24,6 +24,11 @@ import {
   getPosts,
   getCalibrationLog,
   summarizeCalibration,
+  // 2026-05-05: live calibration computation. Calibration_Log only updates
+  // Mondays — these helpers replace the frozen read with a live aggregation
+  // over Outcome_Log, falling back to Calibration_Log for historical weeks.
+  computeCalibrationFromOutcomes,
+  mergeCalibrationSources,
 } from "@/lib/sheets";
 import WeekSelector, { weekRange, computeWeekEndings, resolveWeekParam } from "@/components/WeekSelector";
 import type { OutcomeLogEntry, OutcomeVerdict } from "@/lib/types";
@@ -165,11 +170,22 @@ export default async function OutcomesPage({
   // canonical Mon-anchor.
   const resolvedWeek = resolveWeekParam(requestedRaw);
 
-  const [allWeeks, latestGraded, calibrationRows] = await Promise.all([
+  const [allWeeks, latestGraded, calibrationRowsFrozen, allOutcomeRows] = await Promise.all([
     listOutcomeWeeks(),
     getLatestGradedOutcomeWeek(),
     getCalibrationLog(),
+    getOutcomeLog(),
   ]);
+  // 2026-05-05: live calibration. Compute calibration entries directly
+  // from Outcome_Log (refreshed daily by the scorer) and merge over the
+  // pipeline's Calibration_Log (refreshed weekly on Mondays). For weeks
+  // present in both, live wins — the dashboard now reflects today's data,
+  // not Monday's snapshot. Pre-OSL-04 historical weeks (no Outcome_Log
+  // rows) fall back to the frozen value so the time series doesn't
+  // truncate. See LEARNINGS.md 2026-05-05 "Calibration KPI staleness:
+  // weekly writer + daily scorer = mid-week drift."
+  const calibrationRowsLive = computeCalibrationFromOutcomes(allOutcomeRows);
+  const calibrationRows = mergeCalibrationSources(calibrationRowsLive, calibrationRowsFrozen);
   // Rolling 4-week summary of "did our 80% CI actually contain 80%?"
   // Surfaces the central Tier-1 signal from PLAN_ALGORITHM_AUDIT — without
   // a visible calibration KPI, prompt/prior changes can't be evaluated.

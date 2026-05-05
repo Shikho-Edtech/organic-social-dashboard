@@ -1,5 +1,22 @@
 # Learnings
 
+## 2026-05-05 — Calibration KPI staleness: weekly writer + daily scorer = mid-week drift
+
+**The shape.** A KPI was sourced from a tab the pipeline rewrites WEEKLY (Mondays), but the underlying signal updates DAILY as the scorer runs. So mid-week the dashboard showed Monday's snapshot of a fast-moving signal — week 2026-04-27 read 66.7% hit rate from frozen `Calibration_Log` when live aggregation over `Outcome_Log` gave 21.7%. The KPI was 45 points off, and the user only noticed because they manually cross-checked.
+
+**Why it took this long to surface.** The Calibration_Log tab itself looked fine — internally consistent, well-structured. The bug only appears when you ask "is what this tab says true *today*?" against the source-of-truth (`Outcome_Log`). Smoke tests verified the reader parsed correctly; they didn't compare reader output against a freshly aggregated truth.
+
+**Fix.** Compute the metric LIVE from raw event rows (`Outcome_Log`); merge over the frozen weekly snapshot only for weeks the live source doesn't cover (pre-OSL-04 historical weeks). The pipeline-written tab becomes a fallback for backfill, not the primary read.
+
+**Generalize.** Any metric whose source data refreshes faster than the pre-aggregated table the dashboard reads is a staleness trap. Catch the shape early:
+- If a writer is "weekly" or "daily" and there's a faster-moving raw log, the dashboard should aggregate from the raw log directly.
+- Pre-aggregated tables are useful for historical fallback (data the raw log doesn't have anymore) and for cheap cross-checks, not as the primary read.
+- Test the formula with a fixture that diverges from the frozen value — `live ≠ frozen` is the test, not just `reader parses correctly`.
+
+This pattern is likely to recur on any future "rolling N-day" KPI sourced from a weekly-written summary tab. Same fix shape: compute live from the underlying event log, fall back to the weekly tab for historical only.
+
+---
+
 ## 2026-05-05 — Parallel render paths in a page file are a drift trap; consolidate to ONE return
 
 **Pattern.** A page with N top-level returns (typically empty-state vs regular) where each return independently renders the chrome (banners, header, selector). Every surgical edit hits ONE return; the other N-1 silently drift. TypeScript can't catch it; smoke tests guard data shape not JSX tree; brand audit guards classes not structure; fix-on-touch grep guards sibling-PAGE drift not same-PAGE drift. The page compiles green and renders subtly broken.
