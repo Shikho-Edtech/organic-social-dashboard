@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-05-05 — /reference: copy rewritten for end-user comprehension
+
+User feedback (page-by-page review): the reference page's taxonomy descriptions and glossary definitions were too technical for content-team eyes. Examples flagged:
+- Hook Types description: "tracked independently in Priors_HookType for fatigue detection. Same hook on same pillar blocked for 6 weeks; cross-pillar blocked for 2 weeks." → references internal table name; explains a rule mechanically rather than in plain English.
+- Forecast band: "Computed from Priors_Pillar × Priors_Format × Priors_AcademicSeason at plan time." → leaks 3 internal table names.
+- Past-week immutability: "Pipeline writer refuses to overwrite past weeks unless force_regenerate=true is explicitly set." → references a flag end users don't have access to.
+- Mid-week vs End-of-week: "Mid-week (Thursday morning) writes engine='ai-midweek' on Mon-Wed data" → engine name is implementation detail.
+- System Suggestions: "Written to System_Suggestions tab each weekly run" → tab name is internal.
+
+Rewrote 6 taxonomy descriptions + 9 glossary definitions to plain English. Kept all content (every term still there); changed only the wording so an end user reads it as workflow guidance, not implementation notes.
+
+What's NOT in this PR (queued for tier 5 redesign):
+- Layout / spacing fix (boxes leaving half their card empty)
+- Visual restyling (red spotlight names, yellow header)
+- FAQ section addition
+- Slow page load investigation
+
+Verified: 36/36 smoke, brand 215/215, page-audit 12/12 at 1, build clean.
+
 ## 2026-05-05 — AIDisabledEmptyState rewrite: state-aware, no admin instructions
 
 User feedback (page-by-page review): when AI hasn't run for the current week, /diagnosis and /plan showed an empty-state card that exposed implementation detail end users can't act on:
