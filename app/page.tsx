@@ -483,7 +483,15 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
                             {m.key}
                           </div>
                           <div className="text-[11px] text-ink-500 tabular-nums">
-                            {primaryMetric === "engagement"
+                            {/* 2026-05-05 fix: in composite mode the value is a
+                                 0-100 percentile-rank score, NOT a raw metric
+                                 value. Labelling it "X reach" or "X interactions"
+                                 produced implausible reads like "38 reach, was 5"
+                                 for a 30-day window. Render as "score" so the
+                                 number's scale matches the user's expectation. */}
+                            {isComposite
+                              ? `score ${Math.round(m.current)} (was ${Math.round(m.previous)})`
+                              : primaryMetric === "engagement"
                               ? `${m.current.toFixed(2)}% (was ${m.previous.toFixed(2)}%)`
                               : `${Math.round(m.current).toLocaleString()} ${metricLabel[primaryMetric].toLowerCase()} (was ${Math.round(m.previous).toLocaleString()})`}
                           </div>
@@ -518,7 +526,9 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
                             {m.key}
                           </div>
                           <div className="text-[11px] text-ink-500 tabular-nums">
-                            {primaryMetric === "engagement"
+                            {isComposite
+                              ? `score ${Math.round(m.current)} (was ${Math.round(m.previous)})`
+                              : primaryMetric === "engagement"
                               ? `${m.current.toFixed(2)}% (was ${m.previous.toFixed(2)}%)`
                               : `${Math.round(m.current).toLocaleString()} ${metricLabel[primaryMetric].toLowerCase()} (was ${Math.round(m.previous).toLocaleString()})`}
                           </div>
