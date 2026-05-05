@@ -196,28 +196,28 @@ export default async function ReferencePage() {
   const taxonomySections: Section[] = [
     {
       title: "Content Pillars",
-      description: "The thematic categorization of every post. Every slot in Plan and every published post is tagged with one pillar. Used for strategy weighting + adherence checks.",
+      description: "The themes of our content. Every planned slot and every published post is tagged with one pillar. Used to balance the content mix across the week.",
       values: pillars,
       valueDescriptions: PILLAR_DESCRIPTIONS,
       accent: "from-brand-shikho-indigo to-brand-shikho-magenta",
     },
     {
       title: "Formats",
-      description: "Post media type. Format determines forecast band (each pillar × format pair has its own reach distribution in priors).",
+      description: "Post media type. Different formats have different typical reach, so the forecast band for each slot depends on its format.",
       values: formats,
       valueDescriptions: FORMAT_DESCRIPTIONS,
       accent: "from-brand-cyan to-brand-shikho-indigo",
     },
     {
       title: "Funnel Stages",
-      description: "Where the post sits in the marketing funnel. Plan validator enforces TOFU ≥ 20%, MOFU ≥ 30%, BOFU ≥ 20%, with TOFU/BOFU each ≤ 50%.",
+      description: "Where the post sits in the marketing funnel. The plan keeps a healthy mix every week: at least 20% TOFU, 30% MOFU, 20% BOFU, and no single stage above 50%.",
       values: funnelStages,
       valueDescriptions: FUNNEL_STAGE_DESCRIPTIONS,
       accent: "from-brand-green to-brand-cyan",
     },
     {
       title: "Hook Types",
-      description: "The opening pattern of the caption / first frame. Each hook tracked independently in Priors_HookType for fatigue detection. Same hook on same pillar blocked for 6 weeks; cross-pillar blocked for 2 weeks.",
+      description: "How the post opens — the caption's first line or the video's first frame. We rotate hooks to keep them fresh: the same hook on the same pillar can't repeat within 6 weeks; cross-pillar reuse is blocked for 2 weeks.",
       values: hookTypes,
       valueDescriptions: HOOK_TYPE_DESCRIPTIONS,
       valueExamples: HOOK_TYPE_EXAMPLES,
@@ -225,7 +225,7 @@ export default async function ReferencePage() {
     },
     {
       title: "Spotlight Types",
-      description: "What the post features. Strategy stage's teacher_rotation array uses these to balance creator visibility week to week.",
+      description: "What (or who) the post features. Used to balance which teachers, programs, parents, and student stories we feature week to week.",
       values: spotlightTypes,
       valueDescriptions: SPOTLIGHT_TYPE_DESCRIPTIONS,
       valueExamples: SPOTLIGHT_TYPE_EXAMPLES,
@@ -233,7 +233,7 @@ export default async function ReferencePage() {
     },
     {
       title: "Caption Tone",
-      description: "Caption voice / register (matches the caption_tone classifier field). Lower-cardinality dimension; useful for cross-format pattern detection.",
+      description: "The voice and register of the caption. Useful for spotting tone patterns across formats and pillars.",
       values: tones,
       valueDescriptions: TONE_DESCRIPTIONS,
       valueExamples: TONE_EXAMPLES,
@@ -283,7 +283,7 @@ export default async function ReferencePage() {
     {
       term: "Reach (unique reach)",
       key: "Distinct people who saw the post — the dashboard's primary scoring metric.",
-      def: "Facebook insights' post_total_media_view_unique field. Different from media_views (total impressions including re-views) and from views (Reels-specific).",
+      def: "Facebook's unique-reach figure. Different from total views (which counts re-views) and from Reel views (which is its own metric).",
     },
     {
       term: "Engagement Rate",
@@ -291,34 +291,34 @@ export default async function ReferencePage() {
       def: "Captures interaction density without bias toward larger-audience posts. Currently shown on Diagnosis verdict (~2.43% typical).",
     },
     {
-      term: "Quality Engagement (candidate)",
+      term: "Quality Engagement",
       key: "Shares × 2 + Comments × 1, summed weekly — the high-intent subset of engagement.",
-      def: "Excludes reactions because they're a low-effort reach proxy. Shares double-weighted because each share = unpaid distribution + algorithm reward. CANDIDATE north-star; being trialed alongside reach for 4 to 8 weeks before a canonical anchor decision.",
+      def: "Excludes reactions because they're a low-effort reach proxy. Shares are double-weighted because each share gives the post extra unpaid distribution. Currently trialed alongside reach to see which one tracks team intuition better.",
     },
     {
       term: "Interactions",
-      key: "Reactions + Comments + Shares summed — dominated by reactions, behaves as a reach proxy.",
-      def: "Reactions are ~80-90% of total. That's why we don't use this as the candidate north-star: Quality Engagement is the high-intent subset that strips reactions out.",
+      key: "Reactions + Comments + Shares summed — dominated by reactions, so it tracks reach more than intent.",
+      def: "Reactions are roughly 80-90% of total interactions, which makes this a noisy intent signal. Quality Engagement strips reactions out so you can see how often people actually shared or commented.",
     },
     {
       term: "Hypothesis (h0 / h1 / h2 …)",
-      key: "The weekly bets the strategy stage emits — what we're testing this week.",
-      def: "h1 = primary strategic hypothesis (always set). h2+ = experiments to run. h0 = status-quo / null hypothesis. Each slot in the plan ties to a hypothesis_id; the chip on Plan/Outcomes/Diagnosis surfaces the actual statement on hover.",
+      key: "The strategic bets the planning stage emits each week.",
+      def: "h1 is the main bet for the week. h2+ are experiments running alongside. h0 is status-quo (no specific bet). Each plan slot ties to one hypothesis — hover the small chip on Plan, Outcomes, or Diagnosis to see the full statement.",
     },
     {
-      term: "Forecast band (CI)",
-      key: "The 80% confidence interval for unique reach, stamped on every plan slot.",
-      def: "Computed from Priors_Pillar × Priors_Format × Priors_AcademicSeason at plan time. Immutable once stamped. Outcome scoring compares actual reach against this band.",
+      term: "Forecast band",
+      key: "The reach range we expect a slot to land in (80% confidence interval).",
+      def: "Computed from history at the time the plan is generated, then locked once published. Outcomes scoring compares actual reach against this range to judge whether the slot hit, missed, or exceeded.",
     },
     {
       term: "Verdicts",
       key: "Hit / Exceeded / Missed / No-data / Preliminary — what happened vs the forecast band.",
-      def: "Hit = actual landed inside the band. Exceeded = actual > band high. Missed = actual < band low. No-data = no matched post yet (forward-looking week or matcher couldn't join). Preliminary = post <7 days old; reach hasn't fully decayed; verdict shown but excluded from Calibration_Log.",
+      def: "Hit = actual reach landed inside the band. Exceeded = actual was above the high end. Missed = actual was below the low end. No-data = no matching post yet (the slot's planned post hasn't been published, or the matcher couldn't link it). Preliminary = the post is less than 7 days old, so reach is still maturing — verdict shown but not counted in calibration.",
     },
     {
       term: "\"Scored on reach\" warning",
-      key: "Appears on Outcomes when the slot targeted something other than reach (e.g. follows).",
-      def: "The deterministic verdict still scores reach because that's the only dimension we have 90-day priors for. The chip tells you the slot's intent isn't being measured directly.",
+      key: "Appears on Outcomes when the slot targeted something other than reach (e.g. follows or comments).",
+      def: "We score every slot against reach because that's the metric with reliable history. When a slot's actual goal was different (e.g. \"comments > 50\"), the chip flags that the slot's intent isn't being measured directly — the reach verdict is a proxy.",
     },
     {
       term: "\"Week-level fallback\" on source posts",
@@ -327,8 +327,8 @@ export default async function ReferencePage() {
     },
     {
       term: "Calibration",
-      key: "How well the forecast bands actually contain reality — target is 80%.",
-      def: "Target: 80% of slots should land inside the 80% CI. Drift below 70% over 4 weeks = priors are over-confident. Drift above 90% = bands too wide (calibrated but un-sharp).",
+      key: "How often the forecast bands actually contain reality — target is 80%.",
+      def: "If 80 of every 100 slots land inside the 80% band, the forecasts are well calibrated. Persistently below 70% means the bands are too narrow (over-confident); persistently above 90% means they're too wide (under-confident, less useful).",
     },
     {
       term: "Hit Rate",
@@ -337,18 +337,18 @@ export default async function ReferencePage() {
     },
     {
       term: "Mid-week vs End-of-week diagnosis",
-      key: "Pipeline runs diagnosis twice per week — Thursday preliminary + Monday canonical.",
-      def: "Mid-week (Thursday morning) writes engine='ai-midweek' on Mon-Wed data → labeled 'Preliminary, mid-week' on Diagnosis This Week. End-of-week (Monday morning) writes engine='ai' on the completed Mon-Sun → the canonical retrospective.",
+      key: "AI diagnosis runs twice each week — Thursday morning (preliminary) and Monday morning (canonical).",
+      def: "Thursday's run looks at Monday through Wednesday and gets labeled \"Preliminary, mid-week\" on the Diagnosis page. Monday's run covers the completed Monday-to-Sunday week and is the canonical retrospective.",
     },
     {
-      term: "\"Past-week immutability\"",
-      key: "Once a Monday rolls over, that week's Plan + Outcomes are frozen.",
-      def: "Pipeline writer refuses to overwrite past weeks unless force_regenerate=true is explicitly set. Preserves the contract Outcomes scores against.",
+      term: "Past-week immutability",
+      key: "Once a Monday rolls over, last week's Plan and Outcomes are frozen.",
+      def: "We don't rewrite history — Outcomes scores actuals against the original plan, so changing the plan after the fact would invalidate the verdict. Past weeks read as a permanent record.",
     },
     {
       term: "System Suggestions",
-      key: "Auto-derived advisory suggestions, never auto-applied — the human decides each one.",
-      def: "Written to System_Suggestions tab each weekly run (calibration drift, hypothesis retire, pillar over/underperform). The strategy prompt reads them as advisory context only. The team / human decides whether to follow each suggestion.",
+      key: "Auto-derived advisory notes (calibration drift, hypothesis retire, pillar over/underperform). Never auto-applied.",
+      def: "The pipeline produces these suggestions every weekly run. They feed into the planning stage as advisory context, but the team always decides whether to act on each one. Nothing is changed without a human in the loop.",
     },
   ];
 
