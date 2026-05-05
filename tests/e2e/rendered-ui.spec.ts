@@ -44,57 +44,63 @@ test.describe("/plan banner gating", () => {
   });
 });
 
-test.describe("/diagnosis cross-view consistency", () => {
-  test("same week's verdict matches across default-fallback view and ?week=last", async ({ page }) => {
-    // Bug shipped 2026-05-04: when Weekly_Analysis has multiple rows for
-    // the same week_ending, /diagnosis (default → liveDiagnosis = LAST
-    // row) and /diagnosis?week=last (getDiagnosisByWeekPreferred → was
-    // FIRST match) returned different rows → different verdicts on
-    // screen for the same conceptual data.
+// 2026-05-05: removed "/diagnosis cross-view consistency" test. The bug
+// it guarded (same week showing different rows on /diagnosis vs
+// /diagnosis?week=last) was fixed by simplifying getDiagnosisByWeekPreferred
+// to always pick the LATEST matching row. As a side effect, /diagnosis
+// no longer falls back to liveDiagnosis on this-week view — the two
+// URLs are now intentionally OF DIFFERENT WEEKS by design (this-week vs
+// last-week). Asserting they match is no longer meaningful. Smoke test
+// `getDiagnosisByWeekPreferred + getLatestDiagnosis agree on which row
+// when same week is latest` still guards the underlying invariant.
 
-    // Helper: scrape the visible "X posts" line from the verdict block.
-    async function getVerdictPostCount(): Promise<string | null> {
-      // The verdict card has a "<N> posts" stat. Match the integer
-      // immediately followed by " posts" / "POSTS" (case-insensitive).
-      const txt = await page.locator("main").innerText();
-      const m = txt.match(/(\d+)\s+POSTS/i);
-      return m ? m[1] : null;
-    }
-
+test.describe("/diagnosis week selector present on both branches", () => {
+  // Bug shipped 2026-05-05: empty-state render branch (when no AI row
+  // exists for this week + AI off) was missing the WeekSelector. User
+  // landing on default /diagnosis couldn't navigate to last week's
+  // verdict. The regular render path had it; the two branches drifted.
+  // This test asserts the selector is present on BOTH variants so the
+  // drift can't happen silently again.
+  test("WeekSelector renders on default this-week URL (empty-state path included)", async ({ page }) => {
     await page.goto("/diagnosis");
     await page.waitForLoadState("networkidle");
-    const defaultPosts = await getVerdictPostCount();
+    // The selector renders BOTH choices as visible buttons, regardless
+    // of which one is currently active.
+    await expect(page.getByRole("link", { name: /This week/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Last week/i })).toBeVisible();
+  });
 
+  test("WeekSelector renders on ?week=last URL (regular render path)", async ({ page }) => {
     await page.goto("/diagnosis?week=last");
     await page.waitForLoadState("networkidle");
-    const explicitLastPosts = await getVerdictPostCount();
-
-    // Both views render the same week's verdict. They MUST agree.
-    expect(defaultPosts).toBeTruthy();
-    expect(explicitLastPosts).toBeTruthy();
-    expect(defaultPosts).toBe(explicitLastPosts);
+    await expect(page.getByRole("link", { name: /This week/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Last week/i })).toBeVisible();
   });
 });
 
-test.describe("/diagnosis fallback subtitle", () => {
-  test("default this-week view shows 'Showing last week's verdict' subtitle when mid-week row absent", async ({ page }) => {
-    // Bug shipped 2026-05-04: when AI is off and mid-week diagnosis
-    // hasn't run, page falls back to liveDiagnosis (last week's). The
-    // subtitle must clearly state this so the user doesn't think they're
-    // looking at this-week data.
+test.describe("/diagnosis subtitle reflects view state", () => {
+  test("default this-week view subtitle clearly labels what's shown", async ({ page }) => {
+    // 2026-05-05: refactor split this-week behavior into 3 explicit states.
+    // The subtitle MUST match the state — never show "This week's diagnosis"
+    // header above last-week's content (the original bug).
+    //
+    // States:
+    //   - this-week + AI on + mid-week row exists → "This week's diagnosis (mid-week, refreshes Thursday)"
+    //   - this-week + no AI prose row             → "This week's numbers — AI verdict pending"
+    //   - this-week + AI off + no row             → similar (empty-state branch)
     await page.goto("/diagnosis");
     await page.waitForLoadState("networkidle");
 
-    // Either we're showing fresh this-week's mid-week diagnosis (subtitle
-    // mentions "mid-week") or we're showing prior-week fallback (subtitle
-    // mentions "Showing last week"). Both are correct states; we just
-    // assert one of the two clear-context subtitles is present (NOT a
-    // misleading generic "This week's diagnosis" with last-week content).
     const main = page.locator("main");
     const text = await main.innerText();
-    const hasFreshSubtitle = /This week's diagnosis \(mid-week, refreshes Thursday\)/i.test(text);
-    const hasFallbackSubtitle = /Showing last week's verdict/i.test(text);
-    expect(hasFreshSubtitle || hasFallbackSubtitle).toBe(true);
+    // ANY of the explicitly-labeled subtitles is fine. Forbidden: the
+    // generic "This week's diagnosis" with no qualifier (that was the
+    // bug — it implied live this-week content when actually fallback).
+    const acceptable =
+      /This week's diagnosis \(mid-week, refreshes Thursday\)/i.test(text) ||
+      /This week's numbers — AI verdict pending/i.test(text) ||
+      /Last week's view — AI prose unavailable/i.test(text);
+    expect(acceptable).toBe(true);
   });
 });
 
