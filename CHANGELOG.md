@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-05-05 — Calibration check on a weekly schedule; auto-issue every Monday
+
+Manual `npm run calibration` works but relies on the admin remembering to run it. New `.github/workflows/calibration-weekly.yml` schedules it for **Monday 09:00 BDT** (`0 3 * * 1` UTC) and posts the report as a GitHub Issue tagged `calibration-report`.
+
+What the workflow does:
+1. Checks out the repo, installs deps with `npm ci`.
+2. Runs `npm run calibration` against live Sheet data (creds via repo secrets).
+3. Captures stdout to `calibration-report.txt`.
+4. Creates a GitHub Issue titled `Weekly calibration check — YYYY-MM-DD` with the captured report inside a fenced code block.
+5. Uploads the report as a 90-day workflow artifact (backup).
+6. Auto-creates the `calibration-report` label on first run (idempotent).
+
+Trigger: `schedule` (Monday cron) + `workflow_dispatch` (admin can re-run on demand from the Actions tab).
+
+**Required repo secrets (one-time setup):** Settings → Secrets and variables → Actions → New repository secret:
+- `GOOGLE_SHEETS_CREDS_JSON`: full service-account JSON (same value as `.env.local`)
+- `GOOGLE_SPREADSHEET_ID`: the data spreadsheet's ID
+
+Until those secrets are added the scheduled run will fail with a creds error; the admin gets a Failed-workflow email which is itself a reasonable fallback signal.
+
+When the dashboard adds proper user-level access controls and an admin route reappears, this workflow stays — the issue history is a useful longitudinal record either way.
+
 ## 2026-05-05 — Calibration KPI off the shared dashboard; admin gets a CLI
 
 The calibration card on /outcomes was admin-grade information ("is the forecast layer empirically calibrated?") sitting on a content-team dashboard where it caused more confusion than signal. Content team can't act on calibration, may misread "DRIFTING" as a reason to lose confidence in unrelated forecasts, and the card's sub-rows + 39.4pp gap annotation occupy meaningful vertical space they have to scroll past to reach the per-day verdict grid (which IS what they came for).
