@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-05-05 — /diagnosis empty-state branch: add missing WeekSelector + clearer subtitle
+
+User caught: default `/diagnosis` only showed one view (no week tabs visible). The empty-state render branch (when no AI row exists for this week + AI off) was missing the `WeekSelector` that the regular render path has. The two render branches had drifted — the regular path got the selector + week-aware subtitle; the empty-state path got neither.
+
+Why this kept happening: every "surgical" fix touches one branch in isolation. The Live KPI fix (PR #6 yesterday) added KPIs to the empty-state branch but didn't audit the rest of the chrome. That's the discipline failure.
+
+Fix:
+- WeekSelector now renders in the empty-state branch too. Users can navigate from /diagnosis → ?week=last from any state.
+- Subtitle on the empty-state branch now reflects the current view ("This week's numbers — AI verdict pending" for this-week, "Last week's view — AI prose unavailable for this week" for last-week).
+- 2 new E2E tests assert WeekSelector visible on BOTH `/diagnosis` and `/diagnosis?week=last`. Updated existing tests that encoded the OLD buggy behavior to match new contract. 6/6 E2E green.
+
+Real meta-fix needed: extract the chrome (banners + header + selector) shared by both render branches into a single block, so future "fix one branch" changes can't drop selectors from the other. Queued; not in this PR.
+
 ## 2026-05-05 — /diagnosis empty-state path: render live KPIs alongside AI-off card
 
 Live verify of yesterday's `ff391a7` caught a half-finished refactor: the AI-off empty-state branch on /diagnosis returned BEFORE reaching the KPI strip. So this-week view (when no AI prose row exists) showed the "AI diagnosis is not running this week" instructions card with NO numbers. The fix: render live KPIs (reach, QE, posts, avg engagement, WoW deltas) inside that empty-state branch too. Numbers populate from `Raw_Posts` regardless of whether AI prose is available.

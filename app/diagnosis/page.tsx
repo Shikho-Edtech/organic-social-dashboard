@@ -388,11 +388,28 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
         <AcademicContextStrip />
         <PageHeader
           title="Diagnosis"
-          subtitle="Claude's diagnosis and recommended actions"
-          dateLabel={`${range.label} · AI diagnosis off`}
+          subtitle={isThisWeekView
+            ? "This week's numbers — AI verdict pending"
+            : "Last week's view — AI prose unavailable for this week"}
+          dateLabel={`${range.label} · ${isThisWeekView ? "this week" : "last week"} · AI diagnosis off`}
           lastScrapedAt={runStatus.last_run_at}
           compact
         />
+
+        {/* 2026-05-05 fix: empty-state branch needs the same WeekSelector
+            as the regular render path. Without it, users landing on
+            /diagnosis (the empty-state path when no AI row exists for
+            this week) couldn't navigate to last week's verdict. The two
+            render branches were drifting; selector now appears in both. */}
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-4">
+          <WeekSelector
+            basePath="/diagnosis"
+            current={weekParam}
+            choices={["this", "last"]}
+            preserve={searchParams}
+          />
+        </div>
+
         {/* 2026-05-05: even when AI prose is unavailable for this week,
             render LIVE KPIs from the posts table. Numbers populate every
             day from daily-refresh + today-refresh writes — they're not
