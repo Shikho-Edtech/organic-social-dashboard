@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-05-05 — page-structure audit: mechanical gate against multi-top-level-returns
+
+The `/diagnosis` and `/plan` consolidations earlier today killed the parallel-render-path drift on those two pages, but nothing was preventing it from being re-introduced by a future PR. This commit adds the missing mechanical gate.
+
+`scripts/page-structure-audit.mjs` walks every `app/<route>/page.tsx`, finds the default-exported page function via brace-balanced scan (skips param destructuring + return-type annotations), and counts top-level `return` statements at depth-2 indent inside the function body. Helper sub-components defined as siblings (e.g. `VerdictPill`, `Breakdown` at the bottom of `app/outcomes/page.tsx`) are correctly excluded because they live outside the page function's brace boundary.
+
+Wired into `npm run predeploy` (so local devs catch it before push) and `.github/workflows/ci.yml` (so PRs can't merge without it being clean). Ratchet baseline at `.page-structure-baseline.json` mirrors `brand-audit`'s convention — exit non-zero on regressions, walk DOWN with `--write-baseline` after consolidations.
+
+Surprise finding: the audit's bracket-correct version showed every page already has exactly 1 top-level return. The earlier grep that suggested /outcomes (3) and /trends (3) were drifting was a false alarm — those extras were sibling helper components, not parallel paths inside the page. So the structural fix is genuinely complete: there is nothing to consolidate, only to prevent regression.
+
+PageShell extraction stays deferred. With every page at single-return + the audit guarding it, the chrome-duplication problem can't recur via the same shape. PageShell's value would now be cosmetic (DRY + slight ergonomics), not load-bearing — defer until there's a fresh reason.
+
+Closes the structural-fix queue from `DECISIONS.md` 2026-05-05 ("Single-return page shape; structural PageShell extraction deferred"). Predeploy chain: smoke 32/32, rsc:audit clean, brand:audit 226/226, page:audit 12/12 at 1, build green.
+
 ## 2026-05-05 — /outcomes calibration KPI is now live, not a Monday snapshot
 
 User noted earlier today: `Calibration_Log` is written by the pipeline weekly (Mondays), but `Outcome_Log` accumulates new verdicts every day as posts age past the preliminary window. The dashboard read the frozen Monday snapshot, so the calibration KPI was stale all week. Concrete: week 2026-04-27 read 66.7% hit rate from `Calibration_Log` while the live aggregation over `Outcome_Log` gave 21.7%. Operator was looking at yesterday's truth, not today's.

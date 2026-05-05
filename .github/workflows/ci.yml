@@ -38,7 +38,7 @@ permissions:
 
 jobs:
   predeploy:
-    name: predeploy gate (smoke + rsc:audit + brand:audit + build)
+    name: predeploy gate (smoke + rsc:audit + brand:audit + page:audit + build)
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -70,6 +70,13 @@ jobs:
         # Palette / typography drift via ratchet baseline.
         run: npm run brand:audit
 
+      - name: Run page-structure audit
+        # Catches the 2026-05-04 / 05 parallel-render-path drift class:
+        # any app/<route>/page.tsx with more than ONE top-level return
+        # in its default-exported page function. Ratchet baseline at
+        # .page-structure-baseline.json — every page currently at 1.
+        run: npm run page:audit
+
       - name: Build Next.js production bundle
         # Type-check + bundle. Surfaces any compile errors that escaped
         # the previous gates.
@@ -90,6 +97,7 @@ jobs:
           echo "  smoke: 16+ tests"
           echo "  rsc:audit: clean"
           echo "  brand:audit: clean"
+          echo "  page:audit: clean"
           echo "  build: green"
 
   # ─── Docs-hygiene gate (2026-05-04) ──────────────────────────────

@@ -1,0 +1,17 @@
+{
+  "note": "Per-file count of top-level returns in app/<route>/page.tsx. Audit fails when a file's count grows OR when a new file enters with count > 1. Walk this DOWN with --write-baseline after consolidation passes; never up.",
+  "counts": {
+    "app/diagnosis/page.tsx": 1,
+    "app/engagement/page.tsx": 1,
+    "app/explore/page.tsx": 1,
+    "app/login/page.tsx": 1,
+    "app/outcomes/page.tsx": 1,
+    "app/page.tsx": 1,
+    "app/plan/page.tsx": 1,
+    "app/reels/page.tsx": 1,
+    "app/reference/page.tsx": 1,
+    "app/timing/page.tsx": 1,
+    "app/today/page.tsx": 1,
+    "app/trends/page.tsx": 1
+  }
+}

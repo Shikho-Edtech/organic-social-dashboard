@@ -1,5 +1,22 @@
 # Decisions
 
+## 2026-05-05 — Mechanical audit instead of PageShell for the structural fix
+
+The original plan for the structural-fix step was a `<PageShell>` component that owned chrome (banners + header + selector) for all pages, plus a lint rule banning multiple top-level returns. After shipping the audit, the second half turned out to be load-bearing and the first half turned out to not matter:
+
+**The audit (kept).** `scripts/page-structure-audit.mjs` walks every page file, finds the default-exported function via brace-balanced scan, and counts depth-2 `return` statements inside its body. Wired into predeploy + CI. Ratchet baseline at 0 grandfathered violations. This is what actually prevents the bug class — once a page has one return, no PR can quietly add a second.
+
+**PageShell (deferred indefinitely).** Once the audit was correct, every page already had exactly 1 top-level return. The earlier grep result (`/outcomes` and `/trends` showing 3 returns each) was a false positive — those returns were inside sibling helper components, not parallel paths inside the page. So the chrome-duplication problem doesn't recur because:
+1. /diagnosis and /plan are consolidated (this morning's fix)
+2. Every other page only ever had 1 return
+3. The audit guards against new drift
+
+Extracting PageShell would now be cosmetic. The DRY argument doesn't help much when the chrome already lives in 2 places — chrome lifts make sense at 5+ duplications, not 2. Defer until there's a fresh reason (e.g. a 5th page joining the AI-powered chrome family).
+
+**Tradeoff acknowledged.** The audit's brace-balanced scan is regex-based, not AST-based. False negatives are possible if a page adopts unusual syntax (arrow function default export, decorators, etc.). Current pages are uniform enough that the heuristic is correct. If a future page breaks the audit, the fix is to swap to a TS parser — not to abandon the rule.
+
+---
+
 ## 2026-05-05 — Live-aggregate calibration on the dashboard, keep the pipeline writer
 
 The calibration KPI on /outcomes was reading the pipeline's `Calibration_Log` tab, which is written once per Monday. Three options for the fix:

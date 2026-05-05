@@ -10,7 +10,8 @@
     "brand:audit": "node scripts/brand-audit.mjs",
     "smoke": "npx tsx scripts/smoke-tests.ts",
     "rsc:audit": "node scripts/rsc-audit.mjs",
-    "predeploy": "npm run smoke && npm run rsc:audit && npm run brand:audit && npm run build",
+    "page:audit": "node scripts/page-structure-audit.mjs",
+    "predeploy": "npm run smoke && npm run rsc:audit && npm run brand:audit && npm run page:audit && npm run build",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install chromium"
   },
