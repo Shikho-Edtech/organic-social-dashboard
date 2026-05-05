@@ -38,7 +38,9 @@ permissions:
 
 jobs:
   predeploy:
-    name: predeploy gate (smoke + rsc:audit + brand:audit + page:audit + build)
+    # Job name is the branch-protection key — keep it stable even when
+    # steps are added. The `page:audit` step is INSIDE this job.
+    name: predeploy gate (smoke + rsc:audit + brand:audit + build)
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
