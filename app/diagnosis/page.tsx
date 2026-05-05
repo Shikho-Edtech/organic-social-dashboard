@@ -393,6 +393,66 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
           lastScrapedAt={runStatus.last_run_at}
           compact
         />
+        {/* 2026-05-05: even when AI prose is unavailable for this week,
+            render LIVE KPIs from the posts table. Numbers populate every
+            day from daily-refresh + today-refresh writes — they're not
+            blocked by AI's absence. The AIDisabledEmptyState below
+            explains the prose situation. */}
+        {liveKpis && liveKpis.posts > 0 && (
+          <div className="mb-5 rounded-xl bg-ink-paper border border-ink-100 p-4 sm:p-5">
+            <div className="text-xs uppercase tracking-wider text-ink-muted font-semibold mb-3">
+              This week so far · live numbers
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-ink-muted font-semibold mb-0.5">
+                  Reach
+                </div>
+                <div className="text-xl sm:text-2xl font-bold text-brand-shikho-indigo tabular-nums leading-tight break-words">
+                  {liveKpis.reach >= 1000
+                    ? `${(liveKpis.reach / 1000).toFixed(1)}K`
+                    : liveKpis.reach}
+                </div>
+                {liveKpis.reach_wow_pct !== null && (
+                  <div className="text-[10px] text-ink-muted mt-0.5">
+                    {liveKpis.reach_wow_pct >= 0 ? "+" : ""}
+                    {liveKpis.reach_wow_pct.toFixed(0)}% WoW
+                  </div>
+                )}
+              </div>
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-ink-muted font-semibold mb-0.5">
+                  Quality Engagement
+                </div>
+                <div className="text-xl sm:text-2xl font-bold text-brand-shikho-magenta tabular-nums leading-tight break-words">
+                  {liveKpis.qe}
+                </div>
+                {liveKpis.qe_wow_pct !== null && (
+                  <div className="text-[10px] text-ink-muted mt-0.5">
+                    {liveKpis.qe_wow_pct >= 0 ? "+" : ""}
+                    {liveKpis.qe_wow_pct.toFixed(0)}% WoW
+                  </div>
+                )}
+              </div>
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-ink-muted font-semibold mb-0.5">
+                  Posts
+                </div>
+                <div className="text-xl sm:text-2xl font-bold text-ink-primary tabular-nums leading-tight">
+                  {liveKpis.posts}
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-ink-muted font-semibold mb-0.5">
+                  Avg engagement
+                </div>
+                <div className="text-xl sm:text-2xl font-bold text-ink-primary tabular-nums leading-tight">
+                  {Math.min(liveKpis.avg_er, 100).toFixed(2)}%
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         <AIDisabledEmptyState
           envVars={STAGES.diagnosis.envVars}
           lastSuccessfulAt={runStatus.last_successful_diagnosis_at}

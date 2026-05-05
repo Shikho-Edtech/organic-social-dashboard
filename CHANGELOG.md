@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-05-05 — /diagnosis empty-state path: render live KPIs alongside AI-off card
+
+Live verify of yesterday's `ff391a7` caught a half-finished refactor: the AI-off empty-state branch on /diagnosis returned BEFORE reaching the KPI strip. So this-week view (when no AI prose row exists) showed the "AI diagnosis is not running this week" instructions card with NO numbers. The fix: render live KPIs (reach, QE, posts, avg engagement, WoW deltas) inside that empty-state branch too. Numbers populate from `Raw_Posts` regardless of whether AI prose is available.
+
+Now this-week view shows: live KPI strip + AIDisabledEmptyState below it, in that order. Last-week view continues to show: AI prose + KPI block (already worked correctly in `ff391a7`).
+
 ## 2026-05-04 — /diagnosis: live KPIs every day; AI prose decoupled
 
 User flagged the architectural gap: `/diagnosis` KPIs (reach, QE, posts count, avg engagement, WoW deltas) were frozen at AI-run time via `Weekly_Analysis.key_metrics` JSON. Wrong-shaped because (a) last-week view never reflected late attribution updates, (b) this-week view fell back to last-week's frozen prose AND numbers, mislabeling them as this-week.
