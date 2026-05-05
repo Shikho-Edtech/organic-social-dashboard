@@ -9,9 +9,18 @@ type Props = {
    *  hover/tap of the label. Useful for KPIs whose math isn't obvious
    *  (e.g. reach-weighted ER vs naive average ER). */
   labelTooltip?: string;
+  /**
+   * 2026-05-05: optional override for the colored delta string. When
+   * present, replaces the default "+X.X%" formatting. Color is still
+   * driven by the SIGN of `delta`. Useful for stock-style KPIs (e.g.
+   * Followers) where the signal is a signed COUNT ("+38 net"), not a
+   * percent change. Pass `delta` for sign + color and `deltaLabel` for
+   * the rendered text.
+   */
+  deltaLabel?: string;
 };
 
-export default function KpiCard({ label, value, delta, sublabel, labelTooltip }: Props) {
+export default function KpiCard({ label, value, delta, sublabel, labelTooltip, deltaLabel }: Props) {
   // Shikho v1.0: emerald-500 for positive (brand-green preserved), coral-500
   // for negative (brand-red now maps to Shikho coral).
   const deltaColor = delta === undefined
@@ -19,7 +28,9 @@ export default function KpiCard({ label, value, delta, sublabel, labelTooltip }:
     : delta > 0 ? "text-brand-green"
     : delta < 0 ? "text-brand-shikho-coral"
     : "text-ink-secondary";
-  const deltaText = delta !== undefined ? `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%` : null;
+  const deltaText = deltaLabel !== undefined
+    ? deltaLabel
+    : delta !== undefined ? `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%` : null;
   // Subtle paper → indigo-50 gradient grounds the KPI in the Shikho palette
   // without competing with the chart cards. Indigo tint is the brand's
   // signature "cool foundation" that the big number reads cleanly against.

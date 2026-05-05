@@ -323,7 +323,13 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
         <KpiCard
           label="Followers"
           value={currentFollowers}
-          sublabel={`${netFollowers >= 0 ? "+" : ""}${netFollowers.toLocaleString()} net in range · stock`}
+          // 2026-05-05: net follower change is a COUNT not a %, but it
+          // should still color green/red like the other 4 KPI cards.
+          // Pass `delta` for the sign-based color and `deltaLabel` to
+          // override the default "+X.X%" formatting with the count.
+          delta={netFollowers}
+          deltaLabel={`${netFollowers >= 0 ? "+" : ""}${netFollowers.toLocaleString()} net`}
+          sublabel="in range · stock"
         />
       </div>
 
@@ -432,7 +438,13 @@ export default async function OverviewPage({ searchParams }: { searchParams: Rec
             height={Math.max(200, pillarData.length * 32)}
             metricName={isComposite ? "Composite" : metricLabel[primaryMetric]}
             valueAxisLabel={isComposite ? "Composite score" : metricLabel[primaryMetric]}
+            // Single-metric mode shows each pillar's % share of total
+            // (e.g. "Live Class: 40%"). Composite mode shows the raw 0-100
+            // score at the bar end (e.g. "Live Class: 65") so the operator
+            // can read the value without hovering — fix per page-by-page
+            // review 2026-05-05.
             showPercent={!isComposite}
+            showValueLabel={isComposite}
             compositeBreakdown={isComposite ? pillarCompositeBreakdown : undefined}
           />
         </ChartCard>
