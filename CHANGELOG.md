@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-05-05 — Today page: remove admin-grade copy
+
+User feedback (page-by-page review): two pieces of admin-grade text leaking onto the Today page, which is the most-frequently-opened page by content team members.
+
+1. **Removed the "Decision deferred to North_Star_Trace review · See PLAN_ALGORITHM_AUDIT.md Tier 4" line** from the "Two metrics shown in parallel" callout below the This Week So Far box. Reach + QE explanation stays; the admin reference doesn't.
+
+2. **Removed the "Calendar pipeline last ran 36h ago: fresh run may be due" alert** from the alert strip. The Today page reads numeric data refreshed every 2-4 hours, not the weekly AI calendar's freshness — flagging 36h hours was confusing because weekly cadence is normal. The StalenessBanner above the header still fires when the calendar is genuinely stale beyond expected cadence; no information lost.
+
+Net: -2 places where end users see content that wasn't for them.
+
 ## 2026-05-05 — Calibration check on a weekly schedule; auto-issue every Monday
 
 Manual `npm run calibration` works but relies on the admin remembering to run it. New `.github/workflows/calibration-weekly.yml` schedules it for **Monday 09:00 BDT** (`0 3 * * 1` UTC) and posts the report as a GitHub Issue tagged `calibration-report`.
