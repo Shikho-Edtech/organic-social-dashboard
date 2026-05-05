@@ -1594,6 +1594,108 @@ export function summarizeCalibration(
 }
 
 /**
+ * Live calibration computation from Outcome_Log rows.
+ *
+ * 2026-05-05: the pipeline writes `Calibration_Log` once per Monday, but
+ * `Outcome_Log` accumulates new verdicts every day as posts age past the
+ * preliminary window. So mid-week the dashboard's calibration KPI was
+ * showing a stale Monday snapshot — week 2026-04-27 read 66.7% hit rate
+ * from frozen `Calibration_Log` while the live aggregation over
+ * `Outcome_Log` was 21.7%. Fix: compute the same metric live from raw
+ * outcomes, fall back to the frozen value only for historical weeks that
+ * predate `Outcome_Log` (pre-OSL-04, before 2026-04-23).
+ *
+ * Pure over the rows array; matches `Calibration_Log`'s aggregation rules:
+ *   - `hit_rate_inside_ci = hits / (hits + exceeded + missed)`
+ *   - Excludes `preliminary` rows from the denominator (matches pipeline
+ *     writer's exclusion: posts < 7 days old haven't decayed yet).
+ *   - `sharpness = sum(high - low) / sum(mid)` over rows with all three
+ *     forecast band fields populated.
+ *   - `calibration_error = |0.80 - hit_rate|` (null when hit_rate null).
+ *
+ * Returns one entry per week, newest-first, matching `getCalibrationLog`.
+ */
+export function computeCalibrationFromOutcomes(
+  rows: OutcomeLogEntry[],
+): CalibrationLogEntry[] {
+  const byWeek = new Map<string, OutcomeLogEntry[]>();
+  for (const r of rows) {
+    if (!r.week_ending) continue;
+    const arr = byWeek.get(r.week_ending) || [];
+    arr.push(r);
+    byWeek.set(r.week_ending, arr);
+  }
+  const result: CalibrationLogEntry[] = [];
+  for (const [week, weekRows] of byWeek) {
+    const eligible = weekRows.filter((r) => !r.preliminary);
+    let hits = 0, exceeded = 0, missed = 0, noData = 0;
+    let widthSum = 0, midSum = 0, sharpnessN = 0;
+    let latestGenerated = "";
+    for (const r of eligible) {
+      if (r.verdict === "hit") hits += 1;
+      else if (r.verdict === "exceeded") exceeded += 1;
+      else if (r.verdict === "missed") missed += 1;
+      else noData += 1;
+      if (
+        r.forecast_low !== null &&
+        r.forecast_mid !== null &&
+        r.forecast_high !== null &&
+        r.forecast_mid > 0 &&
+        r.forecast_high >= r.forecast_low
+      ) {
+        widthSum += r.forecast_high - r.forecast_low;
+        midSum += r.forecast_mid;
+        sharpnessN += 1;
+      }
+      if (r.generated_at && r.generated_at > latestGenerated) {
+        latestGenerated = r.generated_at;
+      }
+    }
+    const denom = hits + exceeded + missed;
+    const hitRate = denom > 0 ? hits / denom : null;
+    const calibError = hitRate !== null ? Math.abs(0.80 - hitRate) : null;
+    const sharpness = sharpnessN > 0 && midSum > 0 ? widthSum / midSum : null;
+    result.push({
+      week_ending: week,
+      total_slots: weekRows.length,
+      final_slots: denom,
+      hits,
+      exceeded,
+      missed,
+      no_data: noData,
+      hit_rate_inside_ci: hitRate !== null ? Math.round(hitRate * 10000) / 10000 : null,
+      calibration_error: calibError !== null ? Math.round(calibError * 10000) / 10000 : null,
+      sharpness: sharpness !== null ? Math.round(sharpness * 10000) / 10000 : null,
+      generated_at: latestGenerated,
+    });
+  }
+  return result.sort((a, b) => b.week_ending.localeCompare(a.week_ending));
+}
+
+/**
+ * Merge live (Outcome_Log-derived) calibration entries with the pipeline's
+ * frozen `Calibration_Log`. For weeks present in BOTH, prefer the live
+ * entry — that's the freshest aggregation. For weeks present only in the
+ * frozen source (typically pre-OSL-04 weeks where Outcome_Log doesn't have
+ * rows), keep the frozen entry so historical weeks don't drop off the KPI.
+ *
+ * Returns newest-first by `week_ending`.
+ */
+export function mergeCalibrationSources(
+  live: CalibrationLogEntry[],
+  frozen: CalibrationLogEntry[],
+): CalibrationLogEntry[] {
+  const liveWeeks = new Set(live.map((e) => e.week_ending));
+  const merged: CalibrationLogEntry[] = [...live];
+  for (const f of frozen) {
+    if (!liveWeeks.has(f.week_ending)) {
+      merged.push(f);
+    }
+  }
+  return merged.sort((a, b) => b.week_ending.localeCompare(a.week_ending));
+}
+
+/**
  * Read every Outcome_Log row. Newest-week-first ordering so callers can
  * `groupBy(week_ending)` and take the first group as the latest. Returns
  * empty array when the tab doesn't exist yet (OSL-04 pre-shipping) or is

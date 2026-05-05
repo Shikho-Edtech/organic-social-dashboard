@@ -1,5 +1,44 @@
 # Learnings
 
+## 2026-05-05 — Calibration KPI staleness: weekly writer + daily scorer = mid-week drift
+
+**The shape.** A KPI was sourced from a tab the pipeline rewrites WEEKLY (Mondays), but the underlying signal updates DAILY as the scorer runs. So mid-week the dashboard showed Monday's snapshot of a fast-moving signal — week 2026-04-27 read 66.7% hit rate from frozen `Calibration_Log` when live aggregation over `Outcome_Log` gave 21.7%. The KPI was 45 points off, and the user only noticed because they manually cross-checked.
+
+**Why it took this long to surface.** The Calibration_Log tab itself looked fine — internally consistent, well-structured. The bug only appears when you ask "is what this tab says true *today*?" against the source-of-truth (`Outcome_Log`). Smoke tests verified the reader parsed correctly; they didn't compare reader output against a freshly aggregated truth.
+
+**Fix.** Compute the metric LIVE from raw event rows (`Outcome_Log`); merge over the frozen weekly snapshot only for weeks the live source doesn't cover (pre-OSL-04 historical weeks). The pipeline-written tab becomes a fallback for backfill, not the primary read.
+
+**Generalize.** Any metric whose source data refreshes faster than the pre-aggregated table the dashboard reads is a staleness trap. Catch the shape early:
+- If a writer is "weekly" or "daily" and there's a faster-moving raw log, the dashboard should aggregate from the raw log directly.
+- Pre-aggregated tables are useful for historical fallback (data the raw log doesn't have anymore) and for cheap cross-checks, not as the primary read.
+- Test the formula with a fixture that diverges from the frozen value — `live ≠ frozen` is the test, not just `reader parses correctly`.
+
+This pattern is likely to recur on any future "rolling N-day" KPI sourced from a weekly-written summary tab. Same fix shape: compute live from the underlying event log, fall back to the weekly tab for historical only.
+
+---
+
+## 2026-05-05 — Parallel render paths in a page file are a drift trap; consolidate to ONE return
+
+**Pattern.** A page with N top-level returns (typically empty-state vs regular) where each return independently renders the chrome (banners, header, selector). Every surgical edit hits ONE return; the other N-1 silently drift. TypeScript can't catch it; smoke tests guard data shape not JSX tree; brand audit guards classes not structure; fix-on-touch grep guards sibling-PAGE drift not same-PAGE drift. The page compiles green and renders subtly broken.
+
+**How it manifested.** Four reactive bugs in 24h on /diagnosis and /plan:
+1. Banner gating fixed in /diagnosis regular branch; /plan still showed it.
+2. Live KPI strip added to /diagnosis regular branch; empty-state branch returned before reaching it.
+3. KPI strip lifted into empty-state branch; WeekSelector still missing from empty-state.
+4. WeekSelector added; subtitle copy needed updating in empty-state too.
+
+Each one looked like a one-off. The shape was always the same: I edited one of the two returns and left the other behind.
+
+**Fix.** Consolidate to ONE top-level return per page. Compute chrome props (subtitle, dateLabel, banner flags) into named variables BEFORE the return. Inside the return, render chrome once at top, then switch the BODY on a single boolean (`isEmpty`). Now the chrome is unfork-able: there's literally one block to edit.
+
+**Generalize.** Any time a page file grows a second top-level return, it's the start of this drift trap. Catch it early:
+- The grep for the failure mode: `git grep -nE '^\s*return \(' app/**/page.tsx` — count per file. >1 = consolidate before adding more code on that page.
+- The structural-est fix: extract a `<PageShell>` component that owns chrome for the whole app + an eslint rule banning multiple top-level returns in `app/**/page.tsx`. Queued.
+
+**What guards this from coming back.** Until the eslint rule lands, the discipline is: any new state branch on a page goes inside the body switch, never as an additional top-level return. New top-level return = new drift surface.
+
+---
+
 ## 2026-05-04 — ESM under tsx: same source file via different specifiers can be different module records
 
 `lib/sheets.ts` imports cache via `import { withLastGood } from "./cache"` (no extension). The smoke-test runner imported via `await import("../lib/cache.js")` (with `.js` extension). On Node ESM, module resolution caches by URL — these can resolve to **separate module records** even though they're the same source file. Calling `_clearCacheForTests()` on one cleared its `Map`, but the other (the one `lib/sheets.ts` was reading from) was untouched. Cache state from prior tests bled into subsequent tests.

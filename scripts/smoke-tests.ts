@@ -598,6 +598,180 @@ test("getDiagnosisByWeekPreferred picks latest by generated_at when metadata exi
     "should pick last matching row (newest insert)");
 });
 
+// ─── Tests: live calibration computation (2026-05-05 — fixing /outcomes staleness) ─
+// User finding: Calibration_Log only updates Mondays (weekly cron writes
+// it once). But Outcome_Log gets new verdicts daily as the scorer runs.
+// So mid-week, the calibration KPI on /outcomes shows a frozen snapshot
+// from Monday — week 2026-04-27 reads 66.7% from Calibration_Log when
+// the live aggregation over Outcome_Log is 21.7%. Fix: compute calibration
+// LIVE from Outcome_Log; fall back to Calibration_Log only for weeks
+// where no Outcome_Log rows exist (pre-OSL-04 weeks).
+
+// Helper to build an Outcome_Log row object directly (tests pass these
+// to computeCalibrationFromOutcomes which is pure on the array).
+function fakeOutcome(overrides: Partial<{
+  week_ending: string;
+  verdict: string;
+  preliminary: boolean;
+  forecast_low: number | null;
+  forecast_mid: number | null;
+  forecast_high: number | null;
+  generated_at: string;
+}> = {}): any {
+  return {
+    outcome_key: "k", week_ending: overrides.week_ending ?? "2026-04-27",
+    day: "Monday", date: "2026-04-21", slot_index: 0,
+    hypothesis_id: "h1", pillar: "Live Class", format: "Reel",
+    forecast_low: overrides.forecast_low ?? 1000,
+    forecast_mid: overrides.forecast_mid ?? 2000,
+    forecast_high: overrides.forecast_high ?? 4000,
+    actual_reach: 2500, score: 0.5,
+    verdict: overrides.verdict ?? "hit",
+    exam_adjusted_used: false, exam_adjusted_mid: null,
+    generated_at: overrides.generated_at ?? "2026-04-27T08:00:00",
+    preliminary: overrides.preliminary ?? false,
+    matched_post_id: "", age_days: 8,
+    slot_target_metric: "", slot_expected_reach_range: "",
+  };
+}
+
+test("computeCalibrationFromOutcomes groups by week and computes hit_rate_inside_ci as hits / (hits + exceeded + missed)", async () => {
+  const sheets = await import("../lib/sheets.js");
+  if (!(sheets as any).computeCalibrationFromOutcomes) {
+    throw new Error("lib/sheets must export computeCalibrationFromOutcomes");
+  }
+  const rows = [
+    // Week 2026-04-27: 2 hits, 1 exceeded, 5 missed → 2/8 = 0.25
+    fakeOutcome({ week_ending: "2026-04-27", verdict: "hit" }),
+    fakeOutcome({ week_ending: "2026-04-27", verdict: "hit" }),
+    fakeOutcome({ week_ending: "2026-04-27", verdict: "exceeded" }),
+    fakeOutcome({ week_ending: "2026-04-27", verdict: "missed" }),
+    fakeOutcome({ week_ending: "2026-04-27", verdict: "missed" }),
+    fakeOutcome({ week_ending: "2026-04-27", verdict: "missed" }),
+    fakeOutcome({ week_ending: "2026-04-27", verdict: "missed" }),
+    fakeOutcome({ week_ending: "2026-04-27", verdict: "missed" }),
+    // Week 2026-04-20: 4 hits, 0 exceeded, 1 missed → 4/5 = 0.80
+    fakeOutcome({ week_ending: "2026-04-20", verdict: "hit" }),
+    fakeOutcome({ week_ending: "2026-04-20", verdict: "hit" }),
+    fakeOutcome({ week_ending: "2026-04-20", verdict: "hit" }),
+    fakeOutcome({ week_ending: "2026-04-20", verdict: "hit" }),
+    fakeOutcome({ week_ending: "2026-04-20", verdict: "missed" }),
+  ];
+  const out = (sheets as any).computeCalibrationFromOutcomes(rows);
+  assertEqual(out.length, 2, "two weeks → two entries");
+  assertEqual(out[0].week_ending, "2026-04-27", "newest first");
+  assertEqual(out[0].hit_rate_inside_ci, 0.25, "wk 04-27: 2 hits / 8 final = 0.25");
+  assertEqual(out[1].hit_rate_inside_ci, 0.8, "wk 04-20: 4 hits / 5 final = 0.80");
+  assertEqual(out[1].calibration_error, 0, "0.80 hit rate → calibration_error = 0");
+});
+
+test("computeCalibrationFromOutcomes excludes preliminary rows from the calibration denominator", async () => {
+  const sheets = await import("../lib/sheets.js");
+  // 1 hit non-prelim + 4 missed prelim. Without exclusion: 1/5 = 0.20.
+  // With exclusion (correct): 1/1 = 1.00.
+  const rows = [
+    fakeOutcome({ week_ending: "2026-05-04", verdict: "hit", preliminary: false }),
+    fakeOutcome({ week_ending: "2026-05-04", verdict: "missed", preliminary: true }),
+    fakeOutcome({ week_ending: "2026-05-04", verdict: "missed", preliminary: true }),
+    fakeOutcome({ week_ending: "2026-05-04", verdict: "missed", preliminary: true }),
+    fakeOutcome({ week_ending: "2026-05-04", verdict: "missed", preliminary: true }),
+  ];
+  const out = (sheets as any).computeCalibrationFromOutcomes(rows);
+  assertEqual(out.length, 1, "one week");
+  assertEqual(out[0].hit_rate_inside_ci, 1.0, "preliminary rows excluded → 1/1");
+  assertEqual(out[0].total_slots, 5, "total_slots counts all rows incl. preliminary");
+  assertEqual(out[0].final_slots, 1, "final_slots only counts non-preliminary final verdicts");
+});
+
+test("computeCalibrationFromOutcomes returns null hit_rate when no final verdicts in the week", async () => {
+  const sheets = await import("../lib/sheets.js");
+  // All rows are no-data or confounded — nothing graded.
+  const rows = [
+    fakeOutcome({ week_ending: "2026-05-04", verdict: "no-data" }),
+    fakeOutcome({ week_ending: "2026-05-04", verdict: "unavailable" }),
+    fakeOutcome({ week_ending: "2026-05-04", verdict: "inconclusive-exam-confounded" }),
+  ];
+  const out = (sheets as any).computeCalibrationFromOutcomes(rows);
+  assertEqual(out.length, 1, "week present");
+  assertEqual(out[0].hit_rate_inside_ci, null, "no final verdicts → null");
+  assertEqual(out[0].calibration_error, null, "null hit_rate → null calibration_error");
+});
+
+test("computeCalibrationFromOutcomes sharpness is mean band width / mean forecast mid", async () => {
+  const sheets = await import("../lib/sheets.js");
+  // Two rows with bands (low=1000, mid=2000, high=4000) → width=3000
+  // Sharpness = mean(width) / mean(mid) = 3000 / 2000 = 1.5
+  const rows = [
+    fakeOutcome({ week_ending: "2026-05-04", verdict: "hit",
+      forecast_low: 1000, forecast_mid: 2000, forecast_high: 4000 }),
+    fakeOutcome({ week_ending: "2026-05-04", verdict: "missed",
+      forecast_low: 1000, forecast_mid: 2000, forecast_high: 4000 }),
+  ];
+  const out = (sheets as any).computeCalibrationFromOutcomes(rows);
+  assertEqual(out[0].sharpness, 1.5, "(3000+3000) / (2000+2000) = 1.5");
+});
+
+test("computeCalibrationFromOutcomes returns [] for empty input without throwing", async () => {
+  const sheets = await import("../lib/sheets.js");
+  const out = await assertNoThrow(
+    () => (sheets as any).computeCalibrationFromOutcomes([]),
+    "empty array should not throw",
+  );
+  assertEqual(out.length, 0, "empty input → []");
+});
+
+test("mergeCalibrationSources: live entry preferred over frozen for same week", async () => {
+  const sheets = await import("../lib/sheets.js");
+  if (!(sheets as any).mergeCalibrationSources) {
+    throw new Error("lib/sheets must export mergeCalibrationSources");
+  }
+  const live = [
+    { week_ending: "2026-04-27", total_slots: 30, final_slots: 8,
+      hits: 2, exceeded: 1, missed: 5, no_data: 22,
+      hit_rate_inside_ci: 0.25, calibration_error: 0.55,
+      sharpness: 1.0, generated_at: "2026-05-05T08:00:00" },
+  ];
+  const frozen = [
+    // Same week, but frozen Monday snapshot when only 3 verdicts existed.
+    { week_ending: "2026-04-27", total_slots: 30, final_slots: 3,
+      hits: 2, exceeded: 0, missed: 1, no_data: 27,
+      hit_rate_inside_ci: 0.667, calibration_error: 0.133,
+      sharpness: 1.0, generated_at: "2026-05-04T01:00:00" },
+  ];
+  const merged = (sheets as any).mergeCalibrationSources(live, frozen);
+  assertEqual(merged.length, 1, "deduped to one week");
+  assertEqual(merged[0].hit_rate_inside_ci, 0.25, "live (0.25) wins over frozen (0.667)");
+  assertEqual(merged[0].final_slots, 8, "live final_slots count wins");
+});
+
+test("mergeCalibrationSources: frozen used for weeks without live data", async () => {
+  const sheets = await import("../lib/sheets.js");
+  const live = [
+    { week_ending: "2026-04-27", total_slots: 30, final_slots: 8,
+      hits: 2, exceeded: 1, missed: 5, no_data: 22,
+      hit_rate_inside_ci: 0.25, calibration_error: 0.55,
+      sharpness: null, generated_at: "2026-05-05T08:00:00" },
+  ];
+  const frozen = [
+    // Pre-OSL-04 historical week — no Outcome_Log rows exist for it.
+    { week_ending: "2026-03-30", total_slots: 30, final_slots: 19,
+      hits: 8, exceeded: 2, missed: 9, no_data: 11,
+      hit_rate_inside_ci: 0.4211, calibration_error: 0.3789,
+      sharpness: 1.0394, generated_at: "2026-04-06T01:00:00" },
+    // Same week as live → frozen one is dropped
+    { week_ending: "2026-04-27", total_slots: 30, final_slots: 3,
+      hits: 2, exceeded: 0, missed: 1, no_data: 27,
+      hit_rate_inside_ci: 0.667, calibration_error: 0.133,
+      sharpness: 1.0, generated_at: "2026-05-04T01:00:00" },
+  ];
+  const merged = (sheets as any).mergeCalibrationSources(live, frozen);
+  assertEqual(merged.length, 2, "live (1) + frozen-only-for-historical (1) = 2");
+  assertEqual(merged[0].week_ending, "2026-04-27", "newest first");
+  assertEqual(merged[0].hit_rate_inside_ci, 0.25, "live wins for 2026-04-27");
+  assertEqual(merged[1].week_ending, "2026-03-30", "historical frozen week kept");
+  assertEqual(merged[1].hit_rate_inside_ci, 0.4211, "frozen value preserved");
+});
+
 // ─── Runner ─────────────────────────────────────────────────────────
 async function main() {
   let passed = 0, failed = 0;

@@ -1,5 +1,42 @@
 # Decisions
 
+## 2026-05-05 — Live-aggregate calibration on the dashboard, keep the pipeline writer
+
+The calibration KPI on /outcomes was reading the pipeline's `Calibration_Log` tab, which is written once per Monday. Three options for the fix:
+
+1. **Read from the weekly tab, accept staleness.** Status-quo, rejected — the staleness was 45 points off-truth mid-week (66.7% frozen vs 21.7% live).
+2. **Make the pipeline rewrite Calibration_Log every scorer run.** Push the freshness problem to the writer. Rejected because the scorer runs ~3x daily on partial weeks and we don't want to thrash a weekly-shaped tab; also the dashboard would still be reading a snapshot, just a faster-moving one.
+3. **Compute live on the dashboard, keep the pipeline writer for historical fallback.** Chosen.
+
+Why option 3:
+- The dashboard already reads `Outcome_Log` (raw event log) for the per-week table. Aggregating it for calibration is a few-dozen-line pure function over an array we're already loading. No new reads.
+- The pipeline's `Calibration_Log` keeps its job of recording the weekly state for historical comparison and for tools that don't have raw `Outcome_Log` access (e.g. the pipeline's own report.py).
+- Works for pre-OSL-04 historical weeks too: when `Outcome_Log` doesn't have rows for a week (pre-2026-04-23), the merge falls back to the frozen `Calibration_Log` value so the time series doesn't truncate.
+
+What this implies for future KPIs: any metric backed by an event log + a periodic aggregation tab should follow the same pattern. Live-aggregate on the dashboard, use the pre-agg tab as fallback for weeks the event log doesn't cover.
+
+Tradeoff acknowledged: the dashboard now does more work per page load (groups + counts `Outcome_Log` once on every render). At current scale (a few thousand rows total) it's well within the existing `getOutcomeLog` cache window. Worth revisiting if `Outcome_Log` grows past ~50K rows.
+
+---
+
+## 2026-05-05 — Single-return page shape; structural PageShell extraction deferred
+
+The reactive drift cycle (parallel render paths in /diagnosis and /plan independently re-rendering chrome) had two possible fixes:
+
+1. **Small fix (shipped):** consolidate to ONE top-level return per page. Compute chrome props into named variables; the body alone switches on `isEmpty`. Mechanical edit, ~150 lines moved, no new components.
+2. **Structural fix (deferred):** extract a shared `<PageShell>` component owning chrome for ALL pages, plus an eslint rule banning multiple top-level returns in `app/**/page.tsx`.
+
+**Chose the small fix because:**
+- Closes the bug class on the two pages where it actually bit (/diagnosis, /plan).
+- Doesn't introduce a new shared component before its API is stable. A PageShell that has to support 6+ pages with different chrome combinations (some have selector, some don't; some have ArchivalLine, some don't; outcomes has its own header pattern) is a refactor that benefits from a few weeks of catalog work first.
+- Defers the eslint rule too — better to write the rule against a stabilized convention than against the in-flight refactor.
+
+**What buys time before the structural fix is needed:** the new convention (one return per page) is now established on the two pages that drift most. /outcomes (7 chrome refs / 2 returns) and /today (5 chrome refs / 1 return — already conforming) are next candidates. When /outcomes drifts (it will), consolidate it the same way; that gives 3 examples to design PageShell against.
+
+**Tradeoff acknowledged:** without the eslint rule, nothing mechanically prevents a future PR from re-introducing a second top-level return. Discipline rule: any new state branch on a page goes inside the body switch.
+
+---
+
 ## 2026-05-04 — Playwright E2E NOT in the predeploy chain (yet)
 
 `npm run predeploy` chains smoke + rsc:audit + brand:audit + build — each ≤10s, total ~45s. Adding Playwright would push it to ~70s. **Decided to keep them separate** for now:
