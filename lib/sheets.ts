@@ -347,18 +347,24 @@ async function _getDiagnosisByWeekRaw(weekEnding: string): Promise<Diagnosis | n
  */
 export async function getDiagnosisByWeekPreferred(
   weekEnding: string,
-  prefer: "midweek" | "full" = "full",
+  // 2026-05-04 simplification: dropped `prefer` parameter. The rule is now
+  // simply "latest matching row" — whichever AI run wrote most recently for
+  // this week is the operator's intent. Empirically the engine-preference
+  // filtering was overengineering: schema doesn't carry engine/generated_at
+  // columns reliably, and "midweek vs full" forced an artificial choice
+  // when both runs target the same week_ending. Keep argument signature
+  // backwards-compatible by accepting + ignoring an unused 2nd param.
+  _legacyPreferUnused?: "midweek" | "full",
 ): Promise<Diagnosis | null> {
   return withLastGood(
-    `getDiagnosisByWeekPreferred:${weekEnding}:${prefer}`,
-    () => _getDiagnosisByWeekPreferredRaw(weekEnding, prefer),
+    `getDiagnosisByWeekPreferred:${weekEnding}`,
+    () => _getDiagnosisByWeekPreferredRaw(weekEnding),
     (d) => d === null,
     { coldFallback: null },
   );
 }
 async function _getDiagnosisByWeekPreferredRaw(
   weekEnding: string,
-  prefer: "midweek" | "full" = "full",
 ): Promise<Diagnosis | null> {
   if (!weekEnding) return null;
   const rows = await readTab("Weekly_Analysis");
@@ -381,32 +387,22 @@ async function _getDiagnosisByWeekPreferredRaw(
   // DIFFERENT verdicts for the same week when 3+ rows existed. User
   // caught this 2026-05-04 on week 2026-04-27 (4 rows in the sheet).
   //
-  // Fix: when engine/generated_at metadata IS present, use it (forward-
-  // compatible with future schema where these get added). When absent,
-  // fall back to LAST matching row by sheet-insert order — matches
-  // getLatestDiagnosis convention so the two paths agree.
+  // 2026-05-04 simplification: take the LATEST matching row. Don't filter
+  // by engine. Whichever run wrote most recently is the operator's intent.
+  // - When metadata exists (future schema): pick newest by generated_at.
+  // - When metadata absent (current schema): last matching row by insert
+  //   order = newest. Matches getLatestDiagnosis convention so the two
+  //   readers agree.
   const parsed = matching.map(diagnosisFromRow);
-  const hasMetadata = parsed.some(
-    (d) => d.generated_at || d.engine,
-  );
+  const hasMetadata = parsed.some((d) => d.generated_at);
   if (hasMetadata) {
     const byNewestFirst = [...parsed].sort((a, b) => {
       const ta = a.generated_at ? Date.parse(a.generated_at) : 0;
       const tb = b.generated_at ? Date.parse(b.generated_at) : 0;
       return tb - ta;
     });
-    const midweekRow = byNewestFirst.find((d) => d.engine === "ai-midweek");
-    const fullRow = byNewestFirst.find(
-      (d) => d.engine === "ai" || d.engine === "native-insights",
-    );
-    if (prefer === "midweek") {
-      return midweekRow || fullRow || byNewestFirst[0];
-    }
-    return fullRow || midweekRow || byNewestFirst[0];
+    return byNewestFirst[0];
   }
-  // No engine/generated_at metadata in the sheet (current Weekly_Analysis
-  // schema). LAST matching row by insert order = newest. Matches what
-  // getLatestDiagnosis returns for the all-weeks view.
   return parsed[parsed.length - 1];
 }
 

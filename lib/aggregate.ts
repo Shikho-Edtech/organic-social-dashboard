@@ -827,3 +827,100 @@ export function detectRedFlags(posts: Post[], daily: DailyMetric[]): RedFlag[] {
 
   return flags;
 }
+
+// ─── Live week-KPI helper (2026-05-04) ──────────────────────────────
+//
+// /diagnosis page used to display KPIs (reach, QE, posts, avg ER) read
+// from `Weekly_Analysis.key_metrics` JSON — frozen at AI-run time. Wrong-
+// shaped because:
+//   - last-week view never reflected late-attribution updates
+//   - this-week view fell back to last-week's frozen numbers
+//
+// This helper computes the KPIs LIVE from the posts table (refreshed
+// daily by daily-refresh + every 2h by today-refresh). Pure function;
+// no Sheets I/O. Unit-testable in scripts/smoke-tests.ts.
+//
+// Usage from /diagnosis page:
+//   const range = { start: weekStart, end: weekEnd, priorStart: weekStart-7d, priorEnd: weekEnd-7d };
+//   const kpis = computeWeekKPIs(allPosts, range);
+//   render kpis.reach, kpis.qe, kpis.posts, kpis.avg_er, kpis.reach_wow_pct, kpis.qe_wow_pct.
+//
+// Behavior:
+//   - Filters posts to [start, end] inclusive (BDT-aligned ISO dates).
+//   - Reach = sum of post_total_media_view_unique (matches pipeline convention).
+//   - QE = sum of (shares*2 + comments*1) per post.
+//   - Avg ER = (reactions + comments + shares) / reach, post-by-post,
+//     reach-weighted (matches existing dashboard convention).
+//   - WoW deltas null when prior is 0 or priorStart/priorEnd not provided.
+
+import { totalReach as totalReachFromPosts, totalQualityEngagement as totalQEFromPosts, wowDelta as wowDeltaPct } from "./qualityEngagement";
+
+export interface WeekKPIs {
+  /** Number of posts published in [start, end]. */
+  posts: number;
+  /** Sum of unique reach across the week's posts. */
+  reach: number;
+  /** Quality Engagement total (shares*2 + comments*1). */
+  qe: number;
+  /** Reach-weighted engagement rate %, 0 when reach=0. */
+  avg_er: number;
+  /** Sum of reactions + comments + shares (raw interactions). */
+  total_interactions: number;
+  /** Prior-week reach (0 when priorStart/priorEnd not provided). */
+  prior_reach: number;
+  /** Prior-week QE. */
+  prior_qe: number;
+  /** % delta vs prior week, null when no prior or prior was 0. */
+  reach_wow_pct: number | null;
+  /** % delta vs prior week, null when no prior or prior was 0. */
+  qe_wow_pct: number | null;
+}
+
+export function computeWeekKPIs(
+  posts: Post[],
+  range: {
+    /** YYYY-MM-DD inclusive (BDT). */
+    start: string;
+    /** YYYY-MM-DD inclusive (BDT). */
+    end: string;
+    /** Optional: prior-week range for WoW deltas. */
+    priorStart?: string;
+    priorEnd?: string;
+  },
+): WeekKPIs {
+  // filterPosts wants Date objects. Build BDT-aligned start (00:00:00) and
+  // end-of-day (23:59:59.999) so the range is inclusive on both sides.
+  const toStartDate = (iso: string) => new Date(`${iso}T00:00:00+06:00`);
+  const toEndDate = (iso: string) => new Date(`${iso}T23:59:59.999+06:00`);
+
+  const inWeek = filterPosts(posts, {
+    start: toStartDate(range.start),
+    end: toEndDate(range.end),
+  });
+  const inPrior = range.priorStart && range.priorEnd
+    ? filterPosts(posts, {
+        start: toStartDate(range.priorStart),
+        end: toEndDate(range.priorEnd),
+      })
+    : [];
+
+  const reach = totalReachFromPosts(inWeek);
+  const qe = totalQEFromPosts(inWeek);
+  const totalInt = inWeek.reduce((s, p) => s + totalInteractions(p), 0);
+  const avgEr = reach > 0 ? (totalInt / reach) * 100 : 0;
+
+  const priorReach = totalReachFromPosts(inPrior);
+  const priorQe = totalQEFromPosts(inPrior);
+
+  return {
+    posts: inWeek.length,
+    reach,
+    qe,
+    avg_er: avgEr,
+    total_interactions: totalInt,
+    prior_reach: priorReach,
+    prior_qe: priorQe,
+    reach_wow_pct: wowDeltaPct(reach, priorReach),
+    qe_wow_pct: wowDeltaPct(qe, priorQe),
+  };
+}

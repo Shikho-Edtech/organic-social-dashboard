@@ -491,6 +491,113 @@ test("getDiagnosisByWeekPreferred + getLatestDiagnosis agree on which row when s
     "by-week-preferred should also pick last matching row when no metadata to sort");
 });
 
+// ─── Tests: live-KPI computation for /diagnosis (2026-05-04 user feedback) ──
+// Bug-shape user identified: /diagnosis KPIs (reach, QE, posts count, avg ER)
+// were frozen at AI-run time via Weekly_Analysis.key_metrics JSON. Should
+// be live-computed from the posts table so:
+//   - last-week view reflects late-attribution updates
+//   - this-week view shows actual this-week numbers (not last-week's frozen)
+//
+// New helper: computeWeekKPIs(posts, range) → { posts, reach, qe, avg_er,
+// reach_wow, qe_wow }. Pure function over post arrays. Easy to test.
+
+function fakePost(opts: {
+  id: string;
+  created_time: string;  // ISO
+  reach?: number;
+  shares?: number;
+  comments?: number;
+  reactions?: number;
+}): any {
+  // Match the dashboard's normalized Post shape (lib/types.ts). Reads via
+  // postReach() use unique_views first, then media_views.
+  return {
+    id: opts.id,
+    created_time: opts.created_time,
+    unique_views: opts.reach ?? 0,
+    media_views: opts.reach ?? 0,
+    shares: opts.shares ?? 0,
+    comments: opts.comments ?? 0,
+    reactions: opts.reactions ?? 0,
+    message: "",
+  };
+}
+
+test("computeWeekKPIs returns deterministic stats for a week's posts", async () => {
+  const aggregate = await import("../lib/aggregate.js");
+  if (!(aggregate as any).computeWeekKPIs) {
+    throw new Error("lib/aggregate must export computeWeekKPIs");
+  }
+  const posts = [
+    fakePost({ id: "a", created_time: "2026-04-28T10:00:00+00:00", reach: 10000, shares: 5, comments: 10, reactions: 100 }),
+    fakePost({ id: "b", created_time: "2026-04-30T10:00:00+00:00", reach: 20000, shares: 8, comments: 12, reactions: 200 }),
+    fakePost({ id: "out_of_range", created_time: "2026-04-01T10:00:00+00:00", reach: 99999, shares: 99, comments: 99, reactions: 999 }),
+  ];
+  const kpis = (aggregate as any).computeWeekKPIs(posts, {
+    start: "2026-04-27",
+    end: "2026-05-03",
+  });
+  assertEqual(kpis.posts, 2, "should count 2 posts in range, exclude the out-of-range one");
+  assertEqual(kpis.reach, 30000, "reach = 10K + 20K");
+  // QE = 5*2 + 10*1 + 8*2 + 12*1 = 10 + 10 + 16 + 12 = 48
+  assertEqual(kpis.qe, 48, "QE = (5+8)*2 + (10+12)*1 = 48");
+});
+
+test("computeWeekKPIs computes WoW deltas vs prior week", async () => {
+  const aggregate = await import("../lib/aggregate.js");
+  const posts = [
+    // current week: 2 posts, 30K reach
+    fakePost({ id: "a", created_time: "2026-04-28T10:00:00+00:00", reach: 10000 }),
+    fakePost({ id: "b", created_time: "2026-04-30T10:00:00+00:00", reach: 20000 }),
+    // prior week: 1 post, 15K reach (so reach_wow = +100%)
+    fakePost({ id: "p", created_time: "2026-04-22T10:00:00+00:00", reach: 15000 }),
+  ];
+  const kpis = (aggregate as any).computeWeekKPIs(posts, {
+    start: "2026-04-27",
+    end: "2026-05-03",
+    priorStart: "2026-04-20",
+    priorEnd: "2026-04-26",
+  });
+  assertEqual(kpis.reach, 30000, "current reach");
+  assertEqual(kpis.prior_reach, 15000, "prior reach");
+  assertEqual(kpis.reach_wow_pct, 100, "30K vs 15K = +100% WoW");
+});
+
+test("computeWeekKPIs handles empty week without throwing", async () => {
+  const aggregate = await import("../lib/aggregate.js");
+  const kpis = await assertNoThrow(
+    () => (aggregate as any).computeWeekKPIs([], { start: "2026-04-27", end: "2026-05-03" }),
+    "empty posts array should not throw",
+  );
+  assertEqual(kpis.posts, 0, "empty");
+  assertEqual(kpis.reach, 0, "empty");
+  assertEqual(kpis.reach_wow_pct, null, "no prior → null");
+});
+
+// ─── Tests: getDiagnosisByWeekPreferred simplified (2026-05-04 user feedback) ─
+// User's rule: pick LATEST run for the week, regardless of engine. Drop the
+// prefer="midweek" / prefer="full" filtering — overengineering. Just take
+// newest by generated_at; fall back to last array element when no metadata.
+
+test("getDiagnosisByWeekPreferred picks latest by generated_at when metadata exists", async () => {
+  setMockSheet("Weekly_Analysis", [
+    [
+      "Week Ending", "Headline", "Posts This Week", "Avg Engagement",
+      "What Happened (JSON)", "Top Performers (JSON)", "Underperformers (JSON)",
+      "Exam Alert", "Negative Signals (JSON)", "Reel Intelligence (JSON)",
+      "Full Diagnosis (JSON)", "Source Post IDs",
+    ],
+    // No engine/generated_at columns in the schema → all rows tie on metadata.
+    // The fallback rule (last matching row) applies.
+    ["2026-04-27", "Older verdict", "30", "2.0", "{}", "[]", "[]", "", "[]", "{}", "{}", ""],
+    ["2026-04-27", "Latest verdict", "32", "2.2", "{}", "[]", "[]", "", "[]", "{}", "{}", ""],
+  ]);
+  const sheets = await import("../lib/sheets.js");
+  const d = await sheets.getDiagnosisByWeekPreferred("2026-04-27");
+  assertEqual(d!.headline, "Latest verdict",
+    "should pick last matching row (newest insert)");
+});
+
 // ─── Runner ─────────────────────────────────────────────────────────
 async function main() {
   let passed = 0, failed = 0;

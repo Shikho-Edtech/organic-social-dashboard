@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-05-04 — /diagnosis: live KPIs every day; AI prose decoupled
+
+User flagged the architectural gap: `/diagnosis` KPIs (reach, QE, posts count, avg engagement, WoW deltas) were frozen at AI-run time via `Weekly_Analysis.key_metrics` JSON. Wrong-shaped because (a) last-week view never reflected late attribution updates, (b) this-week view fell back to last-week's frozen prose AND numbers, mislabeling them as this-week.
+
+Fixed:
+
+1. **Live KPIs.** New `computeWeekKPIs(posts, range)` helper in `lib/aggregate.ts` computes reach, QE, posts count, avg ER, WoW deltas deterministically from the posts table. Posts table refreshes every 2h via today-refresh + every morning via daily-refresh, so KPIs now update daily on both views. `/diagnosis` page replaces the old `diagnosis.posts_this_week` / `diagnosis.avg_engagement` reads with `liveKpis`. The reach + QE block (already live since v4.x) stays as-is; the quick-stat strip below it now matches.
+2. **AI prose decoupled from KPI display.** `/diagnosis` no longer falls back to `liveDiagnosis` (last week's row) on the this-week view. When no AI prose exists for the requested week, the KPI strip still renders live numbers; the prose blocks (headline, findings, performers, watch-outs) render the AI row's content if it exists for the target week, otherwise the existing empty-state path. No more "this week's diagnosis" header above last-week's content.
+3. **Simplified `getDiagnosisByWeekPreferred`.** Dropped the `prefer="midweek" | "full"` parameter — overengineering, schema doesn't carry engine/generated_at columns reliably. Now just returns the LATEST matching row for the week (newest by generated_at when present, else last array element). Both Monday weekly and Thursday mid-week runs target the same `week_ending`; whichever wrote most recently is what gets shown.
+
+Test-first: 4 new smoke tests (25/25 total). `computeWeekKPIs` covered for in-range filtering, WoW deltas, empty-week tolerance. `getDiagnosisByWeekPreferred` covered for "latest matching row" semantics.
+
 ## 2026-05-04 — Docs-hygiene CI gate + backfill of LEARNINGS / DECISIONS / CHANGELOG (PR #4)
 
 User flagged that several commits this session were merged without `CHANGELOG.md` entries — same failure mode as `predeploy` before we made it mechanical: a discipline rule that quietly slipped during a busy session. Two fixes:
