@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-05-05 — /overview Biggest Movers: composite-score values were labeled "reach" / "interactions"
+
+User feedback (page-by-page review): "Under risers, under brand, I see only 38 reach was five, which is insane for a 30-day period." Reproduced the bug — when the user selected composite-scoring mode (e.g. Total Reach + Interactions together), the per-row sub-text said `38 reach (was 5)` when actually those numbers were 0-100 composite percentile-rank scores, not raw reach.
+
+Root cause: in composite mode `m.current` and `m.previous` come from `groupStatCompositeScore()` which produces a 0-100 score. The display string blindly used `metricLabel[primaryMetric].toLowerCase()` regardless. Single-metric mode had been correct all along.
+
+Fix: render the sub-text as `score ${X} (was ${Y})` when `isComposite` is true. Single-metric mode unchanged.
+
+Card header was already clear (`Biggest Movers · Composite of Total Reach, Interactions`) so the panel-level read was correct; only the per-row scale was misleading.
+
 ## 2026-05-05 — /reference: copy rewritten for end-user comprehension
 
 User feedback (page-by-page review): the reference page's taxonomy descriptions and glossary definitions were too technical for content-team eyes. Examples flagged:
