@@ -371,6 +371,15 @@ to verify. Report what was checked and what was caught.
    - Charts lead with the four Shikho core hues
    - Prefer Tailwind tokens (`text-brand-shikho-indigo`) over raw hex
 
+9. **Page structure.** `npm run page:audit` must exit 0. Each
+   `app/<route>/page.tsx` may have AT MOST ONE top-level `return` in its
+   default-exported page function. State branches go INSIDE the body of
+   that single return as conditionals or sub-blocks, NOT as additional
+   top-level returns above it. Ratchet baseline at
+   `.page-structure-baseline.json`. See `LEARNINGS.md` 2026-05-05
+   "Parallel render paths in a page file are a drift trap" for the
+   rationale and bug shape this prevents.
+
 ### What to report
 
 After running the gate, a commit summary should mention what was checked
