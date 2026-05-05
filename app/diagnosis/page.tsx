@@ -6,7 +6,7 @@ import WeekSelector, { computeWeekEndings, weekRange } from "@/components/WeekSe
 // dashboard surfaces. Operator-side regeneration belongs in the SaaS
 // admin layer, not in a shared user dashboard. Returns when the
 // multi-tenant rollout adds access controls.
-import { filterPosts } from "@/lib/aggregate";
+import { filterPosts, computeWeekKPIs } from "@/lib/aggregate";
 import { resolveRange } from "@/lib/daterange";
 import PageHeader from "@/components/PageHeader";
 import StalenessBanner from "@/components/StalenessBanner";
@@ -206,13 +206,17 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
   // end-of-week-preferred for "Last week"). Falls back to the latest
   // row when nothing matches the target week (e.g. before mid-week
   // cron has run on a Tuesday).
+  // 2026-05-04: getDiagnosisByWeekPreferred no longer takes a `prefer`
+  // argument — it just returns the latest matching row for the week.
+  // Whichever AI run (Monday weekly OR Thursday mid-week) wrote most
+  // recently is what gets shown. Numerical KPIs are now live-computed
+  // from posts (see computeWeekKPIs below) instead of read from the
+  // frozen AI row, so this-week view shows fresh numbers even when no
+  // AI prose exists yet.
   const weekScopedDiagnosisP =
     isArchival || !targetWeek
       ? Promise.resolve(null as Awaited<ReturnType<typeof getDiagnosisByWeekPreferred>>)
-      : getDiagnosisByWeekPreferred(
-          targetWeek,
-          isThisWeekView ? "midweek" : "full",
-        );
+      : getDiagnosisByWeekPreferred(targetWeek);
 
   const [posts, liveDiagnosis, archivedDiagnosis, weekDiagnosis, runStatus, diagnosisEngine, planNarrative] = await Promise.all([
     getPosts(),
@@ -233,18 +237,56 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
   // case (Tuesday morning, mid-week cron hasn't fired) renders an
   // appropriate placeholder via the existing empty-state path.
   const aiDisabled = diagnosisEngine === "native" || diagnosisEngine === "off";
-  // Default: "this week" view shows only the mid-week row (null if not yet
-  // generated) — design intent so users don't see last-week's verdict
-  // mislabeled as this week. BUT when aiDisabled is true (the latest run
-  // logged engine=off), there's no mid-week row coming, so falling back to
-  // liveDiagnosis (most recent Weekly_Analysis row) is more useful than a
-  // dead-end empty state. The aiDisabled banner above the content makes
-  // the provenance honest.
-  const diagnosis = isArchival
-    ? archivedDiagnosis
-    : (weekDiagnosis || (isThisWeekView ? (aiDisabled ? liveDiagnosis : null) : liveDiagnosis));
+  // 2026-05-04: stop falling back to liveDiagnosis on this-week view.
+  //
+  // Old behavior: if no AI row existed for this week, page borrowed
+  // last-week's `diagnosis` row (the AI prose) so the verdict card had
+  // SOMETHING to show — but the numbers it showed were stamped at last
+  // week's run time, mislabeled as this week's. User correctly identified
+  // this as wrong-shaped: they expected this-week's deterministic numbers
+  // (live from posts) + an honest "AI verdict pending Thursday" notice
+  // when no AI prose exists for this week yet.
+  //
+  // New behavior:
+  //   - `diagnosis` is null when no AI row matches the requested week
+  //   - KPI strip below renders LIVE numbers from posts regardless
+  //   - When `diagnosis` is null on this-week view, the AI-prose blocks
+  //     are replaced with a "verdict pending" notice
+  //   - Last-week view renders the AI prose for that week alongside
+  //     live KPIs (which DO update as Meta backfills attribution)
+  const diagnosis = isArchival ? archivedDiagnosis : weekDiagnosis;
   const staleness = computeStaleness("diagnosis", runStatus);
   const inRange = filterPosts(posts, { start: range.start, end: range.end });
+
+  // 2026-05-04: Live KPIs computed deterministically from posts. These
+  // populate every day from daily-refresh + today-refresh writes to
+  // Raw_Posts; they're NOT frozen at AI run time. Same KPIs render on
+  // both this-week and last-week views, with the latter updating as Meta
+  // backfills late attribution. See lib/aggregate.ts::computeWeekKPIs +
+  // smoke tests in scripts/smoke-tests.ts.
+  const liveKpis = (() => {
+    if (!targetWeek) return null;
+    try {
+      const wkStart = new Date(`${targetWeek}T00:00:00`);
+      if (isNaN(wkStart.getTime())) return null;
+      const wkEnd = new Date(wkStart);
+      wkEnd.setDate(wkEnd.getDate() + 6);
+      const priorStart = new Date(wkStart);
+      priorStart.setDate(priorStart.getDate() - 7);
+      const priorEnd = new Date(wkStart);
+      priorEnd.setDate(priorEnd.getDate() - 1);
+      const isoStart = wkStart.toISOString().slice(0, 10);
+      const isoEnd = wkEnd.toISOString().slice(0, 10);
+      const isoPriorStart = priorStart.toISOString().slice(0, 10);
+      const isoPriorEnd = priorEnd.toISOString().slice(0, 10);
+      return computeWeekKPIs(posts, {
+        start: isoStart, end: isoEnd,
+        priorStart: isoPriorStart, priorEnd: isoPriorEnd,
+      });
+    } catch {
+      return null;
+    }
+  })();
 
   // Funnel distribution / engagement charts moved to /engagement (Sprint P6
   // user feedback: Strategy should focus on the weekly verdict + performers,
@@ -608,37 +650,22 @@ export default async function DiagnosisPage({ searchParams }: { searchParams: Re
               return null;
             }
           })()}
-          {/* Quick-stat strip: posts + avg engagement at a glance */}
-          {(diagnosis.posts_this_week || diagnosis.avg_engagement) && (
+          {/* Quick-stat strip: posts + avg engagement at a glance.
+              2026-05-04: live-computed from posts (computeWeekKPIs).
+              Updates daily as Raw_Posts gets refreshed by daily-refresh +
+              today-refresh; no longer frozen at AI run time. */}
+          {liveKpis && liveKpis.posts > 0 && (
             <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 pt-3 border-t border-shikho-indigo-100/60">
-              {diagnosis.posts_this_week ? (
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-lg font-bold text-brand-shikho-indigo tabular-nums">{diagnosis.posts_this_week}</span>
-                  <span className="text-[11px] uppercase tracking-wider text-ink-muted font-semibold">posts</span>
-                </div>
-              ) : null}
-              {diagnosis.avg_engagement ? (() => {
-                // The pipeline can write avg_engagement in EITHER form:
-                //   - decimal fraction: 0.0243 (= 2.43%)
-                //   - already-percentage: 2.43 (= 2.43%)
-                // Detect: anything ≤ 1 we treat as a fraction; anything > 1
-                //   we treat as already-percentage. Then clamp to ≤ 100
-                //   because a 243% engagement rate is nonsense — produced by
-                //   the pipeline writing 2.43 and the dashboard multiplying
-                //   by 100 again. This guard makes the display honest until
-                //   we standardize the wire format.
-                const raw = Number(diagnosis.avg_engagement);
-                const pct = raw <= 1 ? raw * 100 : raw;
-                const safe = Math.min(pct, 100);
-                return (
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-lg font-bold text-brand-shikho-magenta tabular-nums">
-                      {safe.toFixed(2)}%
-                    </span>
-                    <span className="text-[11px] uppercase tracking-wider text-ink-muted font-semibold">avg engagement</span>
-                  </div>
-                );
-              })() : null}
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-lg font-bold text-brand-shikho-indigo tabular-nums">{liveKpis.posts}</span>
+                <span className="text-[11px] uppercase tracking-wider text-ink-muted font-semibold">posts</span>
+              </div>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-lg font-bold text-brand-shikho-magenta tabular-nums">
+                  {Math.min(liveKpis.avg_er, 100).toFixed(2)}%
+                </span>
+                <span className="text-[11px] uppercase tracking-wider text-ink-muted font-semibold">avg engagement</span>
+              </div>
               {diagnosis.engine && (
                 <div className="ml-auto text-[10px] uppercase tracking-wider text-ink-muted font-semibold">
                   Engine · {diagnosis.engine}
