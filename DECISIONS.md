@@ -1,5 +1,26 @@
 # Decisions
 
+## 2026-05-05 — Calibration KPI off the shared dashboard
+
+Shipped the calibration KPI card on /outcomes earlier today (PR #8 + #10). User flagged the right product question on review: "this is admin-grade info on a shared dashboard for content planners — should it be there at all, or recorded in Sheets and reassessed weekly by an admin until proper access controls land?"
+
+The card was wrong in three ways for its current placement:
+
+1. **Wrong audience.** /outcomes is opened by content team members planning next week's slots. They can't act on calibration; it's a quality grade for the FORECAST, not for their work. Seeing "DRIFTING" can erode trust in unrelated forecast numbers elsewhere in the dashboard.
+2. **Wrong density.** The card occupies meaningful vertical space (full Card + 4-col KPI grid + preliminary sub-row + 4 more cells + explainer paragraph). Content team has to scroll past all of it to reach the per-day verdict grid they came for.
+3. **Wrong stage.** With only 2 weeks of finalized data the card is mostly saying "not enough data yet." Real Tier 2 readiness call needs ≥4 weeks. The card was always going to say "drifting" or "not measurable" for the next 2-3 weeks regardless.
+
+Three options considered:
+- **Compress to a single inline footnote** (1-2 numbers, low contrast). Half-measure — still steals attention from a non-admin audience for an admin metric.
+- **Move to a separate `/admin` route**. Right shape long-term but premature; access controls don't exist yet, route would be visible to all behind the single dashboard password.
+- **Remove from UI entirely; ship a CLI script for the admin (chosen).**
+
+Why the CLI: admin runs it weekly (~1 second), gets the same code-path-derived view, no math drift. Re-skinning as a proper admin page when access controls land is a 30-min job because the data-layer helpers (`computeCalibrationFromOutcomes`, `computePreliminaryCalibration`, `mergeCalibrationSources`, `summarizeCalibration`) all stay exported from `lib/sheets.ts`. Smoke tests for them stay green. The card is the rendering, not the metric.
+
+What this implies more generally: **segregate by audience even before access controls land.** A shared dashboard has an implicit "everyone" audience. Adding admin-grade content because we can technically render it wastes the user's attention budget. Default off; opt in via separate surface (CLI now, admin route later).
+
+---
+
 ## 2026-05-05 — Mechanical audit instead of PageShell for the structural fix
 
 The original plan for the structural-fix step was a `<PageShell>` component that owned chrome (banners + header + selector) for all pages, plus a lint rule banning multiple top-level returns. After shipping the audit, the second half turned out to be load-bearing and the first half turned out to not matter:

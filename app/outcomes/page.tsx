@@ -15,25 +15,22 @@
 // the grading last ran.
 
 import {
-  getOutcomeLog,
   getOutcomeLogByWeek,
   getLatestGradedOutcomeWeek,
   listOutcomeWeeks,
   computeOutcomeRollup,
   getPlanNarrative,
   getPosts,
-  getCalibrationLog,
-  summarizeCalibration,
-  // 2026-05-05: live calibration computation. Calibration_Log only updates
-  // Mondays — these helpers replace the frozen read with a live aggregation
-  // over Outcome_Log, falling back to Calibration_Log for historical weeks.
-  computeCalibrationFromOutcomes,
-  mergeCalibrationSources,
-  // 2026-05-05: preliminary-only calibration. Same formula applied to
-  // posts < 7 days old. Surfaces the gap between "what the operator sees
-  // at planning time" and "what the band looks like after reach matures."
-  computePreliminaryCalibration,
 } from "@/lib/sheets";
+// NOTE 2026-05-05: calibration KPI card removed from this page. It was
+// admin-grade information ("is the forecast layer empirically calibrated?")
+// sitting on a content-team dashboard where it caused more confusion than
+// signal. The data-layer helpers are still exported from `lib/sheets.ts`
+// (`computeCalibrationFromOutcomes` / `computePreliminaryCalibration` /
+// `mergeCalibrationSources` / `summarizeCalibration`) and are consumed by
+// `scripts/calibration-check.ts` for weekly admin review. Bring the card
+// back as an admin-only surface when access controls land. See
+// DECISIONS.md 2026-05-05 "Calibration KPI off the shared dashboard".
 import WeekSelector, { weekRange, computeWeekEndings, resolveWeekParam } from "@/components/WeekSelector";
 import type { OutcomeLogEntry, OutcomeVerdict } from "@/lib/types";
 import { Card } from "@/components/Card";
@@ -174,33 +171,10 @@ export default async function OutcomesPage({
   // canonical Mon-anchor.
   const resolvedWeek = resolveWeekParam(requestedRaw);
 
-  const [allWeeks, latestGraded, calibrationRowsFrozen, allOutcomeRows] = await Promise.all([
+  const [allWeeks, latestGraded] = await Promise.all([
     listOutcomeWeeks(),
     getLatestGradedOutcomeWeek(),
-    getCalibrationLog(),
-    getOutcomeLog(),
   ]);
-  // 2026-05-05: live calibration. Compute calibration entries directly
-  // from Outcome_Log (refreshed daily by the scorer) and merge over the
-  // pipeline's Calibration_Log (refreshed weekly on Mondays). For weeks
-  // present in both, live wins — the dashboard now reflects today's data,
-  // not Monday's snapshot. Pre-OSL-04 historical weeks (no Outcome_Log
-  // rows) fall back to the frozen value so the time series doesn't
-  // truncate. See LEARNINGS.md 2026-05-05 "Calibration KPI staleness:
-  // weekly writer + daily scorer = mid-week drift."
-  const calibrationRowsLive = computeCalibrationFromOutcomes(allOutcomeRows);
-  const calibrationRows = mergeCalibrationSources(calibrationRowsLive, calibrationRowsFrozen);
-  // Rolling 4-week summary of "did our 80% CI actually contain 80%?"
-  // Surfaces the central Tier-1 signal from PLAN_ALGORITHM_AUDIT — without
-  // a visible calibration KPI, prompt/prior changes can't be evaluated.
-  const calibration = summarizeCalibration(calibrationRows, 4);
-  // 2026-05-05: parallel summary for PRELIMINARY rows (posts < 7 days old).
-  // Live data showed week 2026-04-27 had 67% hit on FINAL verdicts vs 15%
-  // on PRELIMINARY for the same week — the gap is the actual signal. Final
-  // calibration says "the 80% CI contains 80% post-decay"; preliminary
-  // calibration says "the band is useful at planning time." Both matter.
-  const calibrationPrelimRows = computePreliminaryCalibration(allOutcomeRows);
-  const calibrationPrelim = summarizeCalibration(calibrationPrelimRows, 4);
   // Prefer the URL-resolved week if it has data; else fall back to
   // latest-graded; else the most recent week with any rows. Final
   // fallback to empty when nothing exists yet.
@@ -439,201 +413,12 @@ export default async function OutcomesPage({
             </div>
           </Card>
 
-          {/* Calibration KPI strip (2026-05-04): rolling 4-week "did our 80% CI
-              actually contain 80%?" measurement. The central Tier-1 signal
-              from docs/PLAN_ALGORITHM_AUDIT.md — without this visible, prompt
-              and prior changes can't be evaluated. Hidden when no week has
-              been graded yet (typical for a fresh page or a running week
-              with all slots pending). */}
-          {calibration.weeks_measured > 0 && (
-            <Card className="mb-5">
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
-                <div>
-                  <p className="text-xs uppercase tracking-wider text-ink-muted font-semibold">
-                    Forecast calibration · rolling {calibration.weeks_measured}-week
-                  </p>
-                  <h3 className="text-base font-semibold text-ink-primary mt-1">
-                    Did our 80% CI actually contain 80%?
-                  </h3>
-                </div>
-                <span
-                  className={
-                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider self-start " +
-                    (calibration.status === "ok"
-                      ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
-                      : calibration.status === "warn"
-                      ? "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
-                      : "bg-rose-50 text-rose-700 ring-1 ring-rose-200")
-                  }
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                  {calibration.status === "ok"
-                    ? "calibrated"
-                    : calibration.status === "warn"
-                    ? "drifting"
-                    : "mis-calibrated"}
-                </span>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div>
-                  <div className="text-[11px] uppercase tracking-wider text-ink-muted font-semibold mb-1">
-                    Hit rate inside CI
-                  </div>
-                  <div className="text-2xl sm:text-3xl font-bold text-ink-primary break-words leading-tight tabular-nums">
-                    {calibration.avg_hit_rate_inside_ci !== null
-                      ? `${(calibration.avg_hit_rate_inside_ci * 100).toFixed(1)}%`
-                      : "—"}
-                  </div>
-                  <div className="text-[11px] text-ink-muted mt-0.5">
-                    target 80%
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[11px] uppercase tracking-wider text-ink-muted font-semibold mb-1">
-                    Calibration error
-                  </div>
-                  <div className="text-2xl sm:text-3xl font-bold text-ink-primary break-words leading-tight tabular-nums">
-                    {calibration.avg_calibration_error !== null
-                      ? calibration.avg_calibration_error.toFixed(2)
-                      : "—"}
-                  </div>
-                  <div className="text-[11px] text-ink-muted mt-0.5">
-                    abs(0.80 − hit-rate)
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[11px] uppercase tracking-wider text-ink-muted font-semibold mb-1">
-                    Latest week
-                  </div>
-                  <div className="text-xl sm:text-2xl font-bold text-ink-primary break-words leading-tight tabular-nums">
-                    {calibration.latest_hit_rate_inside_ci !== null
-                      ? `${(calibration.latest_hit_rate_inside_ci * 100).toFixed(1)}%`
-                      : "—"}
-                  </div>
-                  <div className="text-[11px] text-ink-muted mt-0.5">
-                    {calibration.latest_week
-                      ? `wk ${calibration.latest_week.slice(5)}`
-                      : "no data yet"}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[11px] uppercase tracking-wider text-ink-muted font-semibold mb-1">
-                    Weeks measured
-                  </div>
-                  <div className="text-2xl sm:text-3xl font-bold text-ink-primary break-words leading-tight tabular-nums">
-                    {calibration.weeks_measured}
-                  </div>
-                  <div className="text-[11px] text-ink-muted mt-0.5">
-                    of last 4
-                  </div>
-                </div>
-              </div>
-
-              {/* 2026-05-05: preliminary parallel. Same metric applied
-                  to fresh-post (< 7 days old) verdicts. Surfaces the
-                  gap between "what the operator sees at planning time"
-                  and "what the band looks like after reach matures."
-                  Shown only when prelim data exists; hidden otherwise
-                  so we don't pad the card with empty state. */}
-              {calibrationPrelim.weeks_measured > 0 && (
-                <div className="mt-4 pt-3 border-t border-ink-100">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-[10px] uppercase tracking-wider text-ink-muted font-semibold">
-                      Preliminary (fresh posts, &lt; 7 days)
-                    </span>
-                    {calibrationPrelim.avg_hit_rate_inside_ci !== null &&
-                      calibration.avg_hit_rate_inside_ci !== null && (
-                        <span className="text-[10px] text-ink-muted">
-                          gap vs aged:{" "}
-                          {(
-                            (calibration.avg_hit_rate_inside_ci -
-                              calibrationPrelim.avg_hit_rate_inside_ci) *
-                            100
-                          ).toFixed(1)}
-                          pp
-                        </span>
-                      )}
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div>
-                      <div className="text-[10px] uppercase tracking-wider text-ink-muted font-semibold mb-0.5">
-                        Hit rate inside CI
-                      </div>
-                      <div className="text-lg sm:text-xl font-bold text-ink-secondary tabular-nums leading-tight break-words">
-                        {calibrationPrelim.avg_hit_rate_inside_ci !== null
-                          ? `${(calibrationPrelim.avg_hit_rate_inside_ci * 100).toFixed(1)}%`
-                          : "—"}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] uppercase tracking-wider text-ink-muted font-semibold mb-0.5">
-                        Calibration error
-                      </div>
-                      <div className="text-lg sm:text-xl font-bold text-ink-secondary tabular-nums leading-tight break-words">
-                        {calibrationPrelim.avg_calibration_error !== null
-                          ? calibrationPrelim.avg_calibration_error.toFixed(2)
-                          : "—"}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] uppercase tracking-wider text-ink-muted font-semibold mb-0.5">
-                        Latest week
-                      </div>
-                      <div className="text-base sm:text-lg font-bold text-ink-secondary tabular-nums leading-tight break-words">
-                        {calibrationPrelim.latest_hit_rate_inside_ci !== null
-                          ? `${(calibrationPrelim.latest_hit_rate_inside_ci * 100).toFixed(1)}%`
-                          : "—"}
-                      </div>
-                      <div className="text-[10px] text-ink-muted mt-0.5">
-                        {calibrationPrelim.latest_week
-                          ? `wk ${calibrationPrelim.latest_week.slice(5)}`
-                          : "no data yet"}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] uppercase tracking-wider text-ink-muted font-semibold mb-0.5">
-                        Weeks measured
-                      </div>
-                      <div className="text-lg sm:text-xl font-bold text-ink-secondary tabular-nums leading-tight">
-                        {calibrationPrelim.weeks_measured}
-                      </div>
-                      <div className="text-[10px] text-ink-muted mt-0.5">
-                        of last 4
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <p className="text-[12px] text-ink-muted mt-3 leading-relaxed">
-                Of slots whose post aged ≥ 7 days and whose forecast band
-                exists, what fraction landed inside <code className="text-[11px] bg-ink-50 px-1 rounded">[low, high]</code>?
-                The pipeline asserts an 80% CI; this measures whether the
-                bands are empirically calibrated. Drift below 65% means the
-                forecast layer is theatrical — Tier 2+ algorithm changes
-                will inherit the miscalibration. See{" "}
-                <code className="text-[11px] bg-ink-50 px-1 rounded">docs/PLAN_ALGORITHM_AUDIT.md</code>{" "}
-                §1.1 for the full rationale.
-                {calibrationPrelim.weeks_measured > 0 &&
-                  calibrationPrelim.avg_hit_rate_inside_ci !== null &&
-                  calibration.avg_hit_rate_inside_ci !== null &&
-                  Math.abs(
-                    calibration.avg_hit_rate_inside_ci -
-                      calibrationPrelim.avg_hit_rate_inside_ci,
-                  ) > 0.15 && (
-                    <>
-                      {" "}
-                      <span className="text-brand-amber">
-                        Large preliminary-vs-aged gap above means the band
-                        is much wider than needed — reach catches up over
-                        7 days, hiding miscalibration that's visible at
-                        planning time.
-                      </span>
-                    </>
-                  )}
-              </p>
-            </Card>
-          )}
+          {/* Forecast calibration KPI removed 2026-05-05 — admin-grade
+              metric on a content-team dashboard. Data layer + helpers
+              still exported from lib/sheets.ts; admin runs
+              `npm run calibration` weekly for the same view. Bring back
+              as an admin-only surface when access controls land. See
+              DECISIONS.md "Calibration KPI off the shared dashboard". */}
 
           {/* R5 (2026-05-02): Yesterday-focused inline card.
               v2 (2026-05-02 user feedback): repositioned BELOW the rollup so

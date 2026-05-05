@@ -11,6 +11,7 @@
     "smoke": "npx tsx scripts/smoke-tests.ts",
     "rsc:audit": "node scripts/rsc-audit.mjs",
     "page:audit": "node scripts/page-structure-audit.mjs",
+    "calibration": "npx tsx scripts/calibration-check.ts",
     "predeploy": "npm run smoke && npm run rsc:audit && npm run brand:audit && npm run page:audit && npm run build",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install chromium"

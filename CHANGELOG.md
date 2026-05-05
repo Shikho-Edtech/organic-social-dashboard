@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-05-05 — Calibration KPI off the shared dashboard; admin gets a CLI
+
+The calibration card on /outcomes was admin-grade information ("is the forecast layer empirically calibrated?") sitting on a content-team dashboard where it caused more confusion than signal. Content team can't act on calibration, may misread "DRIFTING" as a reason to lose confidence in unrelated forecasts, and the card's sub-rows + 39.4pp gap annotation occupy meaningful vertical space they have to scroll past to reach the per-day verdict grid (which IS what they came for).
+
+Removed the entire `<Card>` block from `app/outcomes/page.tsx` (both final-aged + preliminary sub-rows + explainer paragraph). Removed unused imports (`getCalibrationLog`, `getOutcomeLog`, `summarizeCalibration`, `computeCalibrationFromOutcomes`, `mergeCalibrationSources`, `computePreliminaryCalibration`) from the page. The data-layer helpers stay exported from `lib/sheets.ts` — they have a new consumer.
+
+New `scripts/calibration-check.ts` (admin-only): runs the same code path the page used to use, prints per-week + rolling-4w + gap + interpretation to terminal. Wired as `npm run calibration`. Reads `.env.local` like `next dev`. Includes a Tier 2 readiness check per `docs/PLAN_ALGORITHM_AUDIT.md` §1.1 — script tells the admin whether to graduate to Tier 2 work based on weeks-of-data + final hit rate proximity to 80%.
+
+When the dashboard adds user-level access controls, a proper admin-only `/calibration` page can re-render the data using the same helpers. Until then: terminal report, run weekly.
+
+Verified: `npm run calibration` produces a clean readable report against live data; predeploy chain stays green (36/36 smoke, brand 226/226, page-audit 12/12, build clean).
+
 ## 2026-05-05 — /outcomes: side-by-side preliminary vs aged-final calibration
 
 Live read of Outcome_Log on 2026-05-05 surfaced the actual signal hiding behind the rolling 4-week calibration KPI: week 2026-04-27 had **67% hit rate on FINAL verdicts (≥7 days old) vs 15% on PRELIMINARY (< 7 days)**. Both numbers are correctly computed; they answer different questions:
