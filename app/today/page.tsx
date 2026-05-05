@@ -146,16 +146,12 @@ export default async function TodayPage() {
   // -------- ALERTS --------
   type Alert = { severity: "info" | "warning" | "critical"; text: string };
   const alerts: Alert[] = [];
-  // Heuristic exam-window alert (placeholder until SystemSuggestions reader lands)
-  if (runStatus.last_successful_calendar_at) {
-    const ageHours = (now.getTime() - new Date(runStatus.last_successful_calendar_at).getTime()) / 3_600_000;
-    if (ageHours > 36) {
-      alerts.push({
-        severity: "warning",
-        text: `Calendar pipeline last ran ${Math.round(ageHours)}h ago: fresh run may be due`,
-      });
-    }
-  }
+  // 2026-05-05: removed the "calendar pipeline last ran Xh ago" alert.
+  // Today page reads numeric data refreshed every 2-4 hours, not the
+  // weekly AI calendar's freshness — surfacing a 36h threshold here was
+  // confusing because weekly cadence is normal. If the calendar IS
+  // genuinely stale (beyond weekly cadence), the StalenessBanner above
+  // the page header still fires; we don't need a duplicate alert here.
   if (!todaysSlotsByTime.length) {
     alerts.push({
       severity: "warning",
@@ -495,7 +491,7 @@ export default async function TodayPage() {
           </div>
         </div>
         <div className="mt-4 px-3 py-2 rounded-md bg-ink-50 border border-ink-100 text-[11px] text-ink-secondary leading-relaxed">
-          <strong className="text-ink-primary">Two metrics shown in parallel.</strong> Reach is the current scoring anchor (what priors and Outcomes verdicts measure). Quality Engagement (Shares × 2, Comments × 1) is a candidate north-star, displayed alongside reach for 4 to 8 weeks while we collect data on which one tracks team intuition better. Decision deferred to <code className="text-[10px] px-1 py-0.5 rounded bg-ink-100">North_Star_Trace</code> review. See <Link href="/docs" className="underline">PLAN_ALGORITHM_AUDIT.md Tier 4</Link> for rationale.
+          <strong className="text-ink-primary">Two metrics shown in parallel.</strong> Reach is the current scoring anchor (what priors and Outcomes verdicts measure). Quality Engagement (Shares × 2, Comments × 1) is a candidate north-star, displayed alongside reach for 4 to 8 weeks while we collect data on which one tracks team intuition better.
         </div>
       </Card>
     </div>
